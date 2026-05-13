@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell($env:FLASK_APP = \"run.py\"; Set-Location C:\\\\Users\\\\Administrator\\\\netstock; python -m flask db init 2>&1)",
-      "PowerShell(Set-Location C:\\\\Users\\\\Administrator\\\\netstock; $env:FLASK_APP = \"run.py\"; python -m flask db migrate -m \"initial schema\" 2>&1)",
-      "PowerShell(Set-Location C:\\\\Users\\\\Administrator\\\\netstock; $env:FLASK_APP = \"run.py\"; python -m flask db upgrade 2>&1)"
-    ]
-  }
-}
