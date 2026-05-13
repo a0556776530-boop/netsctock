@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Export{% endblock %}
+{% block page_title %}Export Data{% endblock %}
+
+{% block content %}
+<div class="row g-3 justify-content-center">
+
+  <!-- Assets CSV -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center p-4">
+        <i class="bi bi-cpu fs-1 text-primary mb-3 d-block"></i>
+        <h5 class="fw-semibold">Assets</h5>
+        <p class="text-muted small">Serial numbers, types, status, site, assignment, due dates.</p>
+        <div class="badge bg-secondary mb-3">{{ asset_count }} records</div>
+        <a href="{{ url_for('admin.export_assets') }}" class="btn btn-primary d-block">
+          <i class="bi bi-download me-2"></i>Download assets.csv
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Events CSV -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center p-4">
+        <i class="bi bi-clock-history fs-1 text-info mb-3 d-block"></i>
+        <h5 class="fw-semibold">Event History</h5>
+        <p class="text-muted small">Full audit log — dismantled, moved, assigned, returned, retired.</p>
+        <div class="badge bg-secondary mb-3">{{ event_count }} records</div>
+        <a href="{{ url_for('admin.export_events') }}" class="btn btn-info text-white d-block">
+          <i class="bi bi-download me-2"></i>Download events.csv
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasks CSV -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center p-4">
+        <i class="bi bi-check2-square fs-1 text-success mb-3 d-block"></i>
+        <h5 class="fw-semibold">Tasks</h5>
+        <p class="text-muted small">All tasks with status, due dates, assignees, and related assets.</p>
+        <div class="badge bg-secondary mb-3">{{ task_count }} records</div>
+        <a href="{{ url_for('admin.export_tasks') }}" class="btn btn-success d-block">
+          <i class="bi bi-download me-2"></i>Download tasks.csv
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Site reports -->
+<div class="card border-0 shadow-sm mt-4">
+  <div class="card-header bg-transparent fw-semibold">
+    <i class="bi bi-geo-alt me-2"></i>Site Inventory Reports
+  </div>
+  <div class="card-body">
+    <div class="row g-2">
+      {% for site in sites %}
+      <div class="col-auto">
+        <a href="{{ url_for('admin.export_site_csv', id=site.id) }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-download me-1"></i>{{ site.name }}
+        </a>
+      </div>
+      {% else %}
+      <p class="text-muted small mb-0">No sites configured.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

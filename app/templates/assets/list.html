@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% block title %}ציוד{% endblock %}
+{% block page_title %}ציוד{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <span class="text-muted small">{{ assets | length }} פריטי ציוד</span>
+  </div>
+  <div class="d-flex gap-2">
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('admin.export_assets') }}" class="btn btn-outline-secondary btn-sm" title="ייצוא CSV">
+      <i class="bi bi-download me-1"></i>CSV
+    </a>
+    {% endif %}
+    {% if current_user.can_edit %}
+    <a href="{{ url_for('assets.new_asset') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>רשום ציוד
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- סינון -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-12 col-md-3">
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+               placeholder="חפש מספר סידורי / דגם…">
+      </div>
+      <div class="col-6 col-md-2">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">כל הסטטוסים</option>
+          {% for val, label in [('in_use','בשימוש'),('dismantled','פורק'),('in_storage','באחסון'),
+                                 ('assigned','מוקצה'),('faulty','פגום'),('retired','הוצא משירות')] %}
+          <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select name="type" class="form-select form-select-sm">
+          <option value="">כל הסוגים</option>
+          {% for t in asset_types %}
+          <option value="{{ t.id }}" {% if type_filter == t.id %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select name="site" class="form-select form-select-sm">
+          <option value="">כל האתרים</option>
+          {% for s in sites %}
+          <option value="{{ s.id }}" {% if site_filter == s.id %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select name="due" class="form-select form-select-sm">
+          <option value="">כל תאריכי היעד</option>
+          <option value="overdue" {% if due_filter == 'overdue' %}selected{% endif %}>באיחור</option>
+          <option value="soon" {% if due_filter == 'soon' %}selected{% endif %}>יעד השבוע</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-1 d-flex gap-1">
+        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+          <i class="bi bi-search"></i>
+        </button>
+        <a href="{{ url_for('assets.list_assets') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- טבלה -->
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>
+            <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&due={{ due_filter }}&sort=serial_number&order={{ 'desc' if sort == 'serial_number' and order == 'asc' else 'asc' }}"
+               class="text-decoration-none text-dark d-flex align-items-center gap-1">
+              מספר סידורי
+              {% if sort == 'serial_number' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+            </a>
+          </th>
+          <th>סוג / דגם</th>
+          <th>
+            <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&due={{ due_filter }}&sort=status&order={{ 'desc' if sort == 'status' and order == 'asc' else 'asc' }}"
+               class="text-decoration-none text-dark d-flex align-items-center gap-1">
+              סטטוס
+              {% if sort == 'status' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+            </a>
+          </th>
+          <th>אתר</th>
+          <th>מוקצה ל</th>
+          <th>
+            <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&due={{ due_filter }}&sort=due_date&order={{ 'desc' if sort == 'due_date' and order == 'asc' else 'asc' }}"
+               class="text-decoration-none text-dark d-flex align-items-center gap-1">
+              תאריך יעד
+              {% if sort == 'due_date' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+            </a>
+          </th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in assets %}
+        <tr class="{{ 'table-danger' if asset.is_overdue }}">
+          <td>
+            <a href="{{ url_for('assets.detail', id=asset.id) }}" class="fw-semibold text-decoration-none">
+              {{ asset.serial_number }}
+            </a>
+            {% if asset.barcode %}
+            <div class="text-muted x-small"><i class="bi bi-upc"></i> {{ asset.barcode }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <div class="small">{{ asset.asset_type.name if asset.asset_type else '—' }}</div>
+            <div class="text-muted x-small">{{ asset.model or '' }} {{ asset.manufacturer or '' }}</div>
+          </td>
+          <td>
+            <span class="badge bg-{{ asset.status_color }} bg-opacity-15 text-{{ asset.status_color }} border border-{{ asset.status_color }} border-opacity-25">
+              {{ asset.status_label }}
+            </span>
+          </td>
+          <td class="small">{{ asset.current_site.name if asset.current_site else '—' }}</td>
+          <td class="small">{{ asset.assignee.name if asset.assignee else '—' }}</td>
+          <td class="small">
+            {% if asset.due_date %}
+              {% if asset.is_overdue %}
+                <span class="text-danger fw-semibold"><i class="bi bi-exclamation-circle me-1"></i>{{ asset.due_date.strftime('%d %b %Y') }}</span>
+              {% else %}
+                {{ asset.due_date.strftime('%d %b %Y') }}
+              {% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+            {% if current_user.can_edit %}
+            <a href="{{ url_for('assets.edit', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+            לא נמצא ציוד. <a href="{{ url_for('assets.new_asset') }}">לרשום?</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% block title %}לוח בקרה{% endblock %}
+{% block page_title %}לוח בקרה{% endblock %}
+
+{% block content %}
+{% set status_icons = {
+  'in_use': 'bi-check-circle-fill', 'dismantled': 'bi-tools',
+  'in_storage': 'bi-box-seam', 'assigned': 'bi-person-check-fill',
+  'faulty': 'bi-exclamation-triangle-fill', 'retired': 'bi-archive-fill',
+} %}
+{% set status_labels = {
+  'in_use':'בשימוש','dismantled':'פורק','in_storage':'באחסון',
+  'assigned':'מוקצה','faulty':'פגום','retired':'הוצא משירות',
+} %}
+{% set status_colors = {
+  'in_use':'success','dismantled':'warning','in_storage':'info',
+  'assigned':'primary','faulty':'danger','retired':'secondary',
+} %}
+
+<!-- ── כרטיסי סיכום ──────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+          <i class="bi bi-cpu text-primary fs-4"></i>
+        </div>
+        <div>
+          <div class="fs-2 fw-bold">{{ total_assets }}</div>
+          <div class="text-muted small">סה"כ ציוד</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('assets.list_assets', due='overdue') }}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+            <i class="bi bi-clock-history text-danger fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-2 fw-bold text-danger">{{ overdue_assets | length }}</div>
+            <div class="text-muted small">ציוד באיחור</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('assets.list_assets', due='soon') }}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+            <i class="bi bi-calendar-event text-warning fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-2 fw-bold text-warning">{{ due_soon_assets | length }}</div>
+            <div class="text-muted small">יעד השבוע</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('tasks.list_tasks', due='overdue') }}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+            <i class="bi bi-list-task text-danger fs-4"></i>
+          </div>
+          <div>
+            <div class="fs-2 fw-bold text-danger">{{ overdue_tasks | length }}</div>
+            <div class="text-muted small">משימות באיחור</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- ── גרפים ─────────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold small">ציוד לפי סטטוס</div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="min-height:220px;">
+        {% if total_assets > 0 %}
+        <canvas id="statusChart" style="max-height:200px;"></canvas>
+        {% else %}
+        <p class="text-muted small">אין ציוד עדיין.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold small">ציוד לפי סוג</div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="min-height:220px;">
+        <canvas id="typeChart" style="max-height:200px; width:100%;"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold small">פעילות — 14 ימים אחרונים</div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="min-height:220px;">
+        <canvas id="activityChart" style="max-height:200px; width:100%;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── פירוט סטטוסים + ציוד באיחור ──────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold small">פירוט סטטוסים</div>
+      <div class="card-body">
+        {% for status in ['in_use','dismantled','in_storage','assigned','faulty','retired'] %}
+        {% set count = status_counts.get(status, 0) %}
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi {{ status_icons[status] }} text-{{ status_colors[status] }}"></i>
+            <span class="small">{{ status_labels[status] }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <div class="progress" style="width:110px; height:6px;">
+              <div class="progress-bar bg-{{ status_colors[status] }}"
+                   style="width:{{ ((count / total_assets * 100)|round) if total_assets > 0 else 0 }}%"></div>
+            </div>
+            <span class="badge bg-{{ status_colors[status] }} bg-opacity-10 text-{{ status_colors[status] }}">{{ count }}</span>
+          </div>
+        </div>
+        {% endfor %}
+        {% if total_assets == 0 %}
+        <p class="text-muted text-center small py-3">אין ציוד עדיין.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold small d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>ציוד באיחור</span>
+        <a href="{{ url_for('assets.list_assets', due='overdue') }}" class="small text-muted text-decoration-none">הצג הכל</a>
+      </div>
+      <div class="card-body p-0">
+        {% if overdue_assets %}
+        <ul class="list-group list-group-flush">
+          {% for asset in overdue_assets %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <a href="{{ url_for('assets.detail', id=asset.id) }}" class="fw-semibold small font-monospace text-decoration-none">{{ asset.serial_number }}</a>
+              <div class="text-muted x-small">{{ asset.asset_type.name if asset.asset_type else '—' }} · {{ asset.current_site.name if asset.current_site else 'ללא אתר' }}</div>
+            </div>
+            <span class="badge bg-danger">{{ asset.due_date.strftime('%d %b') }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted text-center small py-4">אין ציוד באיחור.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── יעד השבוע + פעילות אחרונה ─────────────────────────────────────────── -->
+<div class="row g-3">
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold small d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-week text-warning me-2"></i>יעד השבוע</span>
+        <a href="{{ url_for('assets.list_assets', due='soon') }}" class="small text-muted text-decoration-none">הצג הכל</a>
+      </div>
+      <div class="card-body p-0">
+        {% if due_soon_assets %}
+        <ul class="list-group list-group-flush">
+          {% for asset in due_soon_assets %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <a href="{{ url_for('assets.detail', id=asset.id) }}" class="fw-semibold small font-monospace text-decoration-none">{{ asset.serial_number }}</a>
+              <div class="text-muted x-small">{{ asset.asset_type.name if asset.asset_type else '—' }}</div>
+            </div>
+            <span class="badge bg-warning text-dark">{{ asset.due_date.strftime('%d %b') }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted text-center small py-4">לא נדרש השבוע.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold small">
+        <i class="bi bi-activity me-2"></i>פעילות אחרונה
+      </div>
+      <div class="card-body p-0">
+        {% if recent_events %}
+        <ul class="list-group list-group-flush">
+          {% for event in recent_events %}
+          <li class="list-group-item d-flex align-items-start gap-3 py-2">
+            <div class="mt-1 text-muted"><i class="bi {{ event.event_icon }}"></i></div>
+            <div class="flex-grow-1">
+              <div class="small">
+                <a href="{{ url_for('assets.detail', id=event.asset.id) }}" class="fw-semibold font-monospace text-decoration-none">{{ event.asset.serial_number }}</a>
+                — {{ event.event_label }}
+              </div>
+              <div class="text-muted x-small">{{ event.performed_by_user.name }} · {{ event.event_date.strftime('%d %b %H:%M') }}</div>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted text-center small py-4">אין פעילות אחרונה.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+Chart.defaults.font.size   = 12;
+
+const statusData   = {{ status_chart | safe }};
+const typeData     = {{ type_chart | safe }};
+const activityData = {{ activity_chart | safe }};
+
+const statusEl = document.getElementById('statusChart');
+if (statusEl) {
+  new Chart(statusEl, {
+    type: 'doughnut',
+    data: {
+      labels:   statusData.labels,
+      datasets: [{ data: statusData.data, backgroundColor: statusData.colors, borderWidth: 2, borderColor: '#fff' }],
+    },
+    options: {
+      cutout: '68%',
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
+      },
+    },
+  });
+}
+
+const typeEl = document.getElementById('typeChart');
+if (typeEl) {
+  new Chart(typeEl, {
+    type: 'bar',
+    data: {
+      labels:   typeData.labels,
+      datasets: [{
+        data:            typeData.data,
+        backgroundColor: '#0d6efd33',
+        borderColor:     '#0d6efd',
+        borderWidth:     1,
+        borderRadius:    4,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f0f0f0' } },
+        y: { grid: { display: false } },
+      },
+    },
+  });
+}
+
+const actEl = document.getElementById('activityChart');
+if (actEl) {
+  new Chart(actEl, {
+    type: 'line',
+    data: {
+      labels:   activityData.labels,
+      datasets: [{
+        data:            activityData.data,
+        borderColor:     '#0d6efd',
+        backgroundColor: '#0d6efd18',
+        fill:            true,
+        tension:         0.35,
+        pointRadius:     3,
+        pointBackgroundColor: '#0d6efd',
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 0, font: { size: 10 } } },
+        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f0f0f0' } },
+      },
+    },
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %}Tasks{% endblock %}
+{% block page_title %}Tasks{% endblock %}
+
+{% block content %}
+
+<!-- Alert strip -->
+{% if overdue_count or due_soon_count %}
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  {% if overdue_count %}
+  <a href="?due=overdue" class="btn btn-sm btn-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ overdue_count }} Overdue
+  </a>
+  {% endif %}
+  {% if due_soon_count %}
+  <a href="?due=soon" class="btn btn-sm btn-warning">
+    <i class="bi bi-calendar-event me-1"></i>{{ due_soon_count }} Due This Week
+  </a>
+  {% endif %}
+  <a href="?due=open" class="btn btn-sm btn-outline-secondary">All Open</a>
+</div>
+{% endif %}
+
+<!-- Header + Add button -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <span class="text-muted small">{{ tasks | length }} task{{ 's' if tasks | length != 1 }}</span>
+  <a href="{{ url_for('tasks.new_task') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>New Task
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-6 col-md-3">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Statuses</option>
+          <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+          <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="done" {% if status_filter == 'done' %}selected{% endif %}>Done</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="assignee" class="form-select form-select-sm">
+          <option value="">All Assignees</option>
+          {% for u in users %}
+          <option value="{{ u.id }}" {% if assignee_filter == u.id %}selected{% endif %}>{{ u.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="due" class="form-select form-select-sm">
+          <option value="">Any Due Date</option>
+          <option value="overdue" {% if due_filter == 'overdue' %}selected{% endif %}>Overdue</option>
+          <option value="soon" {% if due_filter == 'soon' %}selected{% endif %}>Due This Week</option>
+          <option value="open" {% if due_filter == 'open' %}selected{% endif %}>All Open</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-3 d-flex gap-1">
+        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+          <i class="bi bi-funnel me-1"></i>Filter
+        </button>
+        <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Task table -->
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>
+            <a href="?status={{ status_filter }}&assignee={{ assignee_filter or '' }}&due={{ due_filter }}&sort=title&order={{ 'desc' if sort == 'title' and order == 'asc' else 'asc' }}"
+               class="text-decoration-none text-dark d-flex align-items-center gap-1">
+              Task
+              {% if sort == 'title' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+            </a>
+          </th>
+          <th>Related Asset</th>
+          <th>Assigned To</th>
+          <th>
+            <a href="?status={{ status_filter }}&assignee={{ assignee_filter or '' }}&due={{ due_filter }}&sort=status&order={{ 'desc' if sort == 'status' and order == 'asc' else 'asc' }}"
+               class="text-decoration-none text-dark d-flex align-items-center gap-1">
+              Status
+              {% if sort == 'status' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="?status={{ status_filter }}&assignee={{ assignee_filter or '' }}&due={{ due_filter }}&sort=due_date&order={{ 'desc' if sort == 'due_date' and order == 'asc' else 'asc' }}"
+               class="text-decoration-none text-dark d-flex align-items-center gap-1">
+              Due Date
+              {% if sort == 'due_date' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+            </a>
+          </th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        <tr class="{{ 'table-danger' if task.is_overdue else ('table-light opacity-75' if task.status == 'done') }}">
+          <td>
+            <div class="fw-semibold small">{{ task.title }}</div>
+            {% if task.notes %}
+            <div class="text-muted x-small text-truncate" style="max-width:280px;">{{ task.notes }}</div>
+            {% endif %}
+          </td>
+          <td class="small">
+            {% if task.asset %}
+            <a href="{{ url_for('assets.detail', id=task.asset.id) }}" class="font-monospace text-decoration-none">
+              {{ task.asset.serial_number }}
+            </a>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ task.assignee.name if task.assignee else '—' }}</td>
+          <td>
+            <span class="badge bg-{{ task.status_color }} bg-opacity-15 text-{{ task.status_color }} border border-{{ task.status_color }} border-opacity-25">
+              {{ task.status_label }}
+            </span>
+          </td>
+          <td class="small">
+            {% if task.due_date %}
+              {% if task.is_overdue %}
+                <span class="text-danger fw-semibold">
+                  <i class="bi bi-exclamation-circle me-1"></i>{{ task.due_date.strftime('%d %b %Y') }}
+                </span>
+              {% else %}
+                {{ task.due_date.strftime('%d %b %Y') }}
+              {% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if task.status != 'done' %}
+            <form method="POST" action="{{ url_for('tasks.mark_done', id=task.id) }}" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-success" title="Mark Done">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('tasks.reopen', id=task.id) }}" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reopen">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% if current_user.is_admin %}
+            <form method="POST" action="{{ url_for('tasks.delete', id=task.id) }}" class="d-inline"
+                  onsubmit="return confirm('Delete this task?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-5">
+            <i class="bi bi-check2-all fs-3 d-block mb-2"></i>
+            No tasks found. <a href="{{ url_for('tasks.new_task') }}">Create one?</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="row g-3">
+            <!-- Serial Number -->
+            <div class="col-md-6">
+              {{ form.serial_number.label(class="form-label fw-semibold") }}
+              <div class="input-group">
+                {{ form.serial_number(class="form-control text-uppercase" + (" is-invalid" if form.serial_number.errors else ""),
+                                      placeholder="e.g. FTX1234A5BC", id="serialInput") }}
+                <button class="btn btn-outline-secondary" type="button" id="scanSerial" title="Scan">
+                  <i class="bi bi-upc-scan"></i>
+                </button>
+              </div>
+              {% for e in form.serial_number.errors %}
+                <div class="invalid-feedback d-block">{{ e }}</div>
+              {% endfor %}
+              <div class="form-text" id="serialHint"></div>
+            </div>
+
+            <!-- Barcode -->
+            <div class="col-md-6">
+              {{ form.barcode.label(class="form-label fw-semibold") }}
+              {{ form.barcode(class="form-control" + (" is-invalid" if form.barcode.errors else ""),
+                              placeholder="Optional secondary barcode") }}
+              {% for e in form.barcode.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <!-- Asset Type -->
+            <div class="col-md-6">
+              {{ form.asset_type_id.label(class="form-label fw-semibold") }}
+              {{ form.asset_type_id(class="form-select" + (" is-invalid" if form.asset_type_id.errors else "")) }}
+              {% for e in form.asset_type_id.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <!-- Status -->
+            <div class="col-md-6">
+              {{ form.status.label(class="form-label fw-semibold") }}
+              {{ form.status(class="form-select" + (" is-invalid" if form.status.errors else "")) }}
+              {% for e in form.status.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <!-- Model -->
+            <div class="col-md-6">
+              {{ form.model.label(class="form-label fw-semibold") }}
+              {{ form.model(class="form-control", placeholder="e.g. GLC-SX-MMD") }}
+            </div>
+
+            <!-- Manufacturer -->
+            <div class="col-md-6">
+              {{ form.manufacturer.label(class="form-label fw-semibold") }}
+              {{ form.manufacturer(class="form-control", placeholder="e.g. Cisco") }}
+            </div>
+
+            <!-- Site -->
+            <div class="col-md-6">
+              {{ form.current_site_id.label(class="form-label fw-semibold") }}
+              {{ form.current_site_id(class="form-select") }}
+            </div>
+
+            <!-- Assigned To -->
+            <div class="col-md-6">
+              {{ form.assigned_to_id.label(class="form-label fw-semibold") }}
+              {{ form.assigned_to_id(class="form-select") }}
+            </div>
+
+            <!-- Due Date -->
+            <div class="col-md-6">
+              {{ form.due_date.label(class="form-label fw-semibold") }}
+              {{ form.due_date(class="form-control", type="date") }}
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              {{ form.notes.label(class="form-label fw-semibold") }}
+              {{ form.notes(class="form-control", rows=3, placeholder="Any additional information…") }}
+            </div>
+          </div>
+
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            {% if asset %}
+            <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-outline-secondary">Cancel</a>
+            {% else %}
+            <a href="{{ url_for('assets.list_assets') }}" class="btn btn-outline-secondary">Cancel</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+<script>
+  const input       = document.getElementById('serialInput');
+  const hint        = document.getElementById('serialHint');
+  const ciscoPattern = /^[A-Z]{3}[0-9]{4}[A-Z0-9]{4}$/;
+
+  // Cisco SN validation hint
+  if (input) {
+    input.addEventListener('input', function () {
+      const val = this.value.trim().toUpperCase();
+      this.value = val;
+      if (!val) { hint.textContent = ''; return; }
+      if (ciscoPattern.test(val)) {
+        hint.innerHTML = '<span class="text-success">✓ Valid Cisco serial format</span>';
+      } else {
+        hint.textContent = 'Cisco format: 3 letters + 4 digits + 4 alphanumeric (e.g. FTX1234A5BC)';
+        hint.className = 'form-text text-muted';
+      }
+    });
+  }
+
+  // Inline scanner widget
+  const scanner = new NetstockScanner({
+    triggerBtn:  document.getElementById('scanSerial'),
+    targetInput: input,
+    lookupUrl:   '{{ url_for("scan.lookup") }}',
+    onResult: function(data) {
+      if (data.found) {
+        // Flash a warning: this serial is already registered
+        const a = data.asset;
+        hint.innerHTML = `<span class="text-warning fw-semibold">
+          ⚠ Already registered as
+          <a href="${a.detail_url}" target="_blank">${a.serial_number}</a>
+          (${a.status_label})
+        </span>`;
+      }
+    }
+  });
+</script>
+{% endblock %}

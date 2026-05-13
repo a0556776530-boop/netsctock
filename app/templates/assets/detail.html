@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% block title %}{{ asset.serial_number }}{% endblock %}
+{% block page_title %}פרטי ציוד{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+  <div>
+    <h5 class="mb-0 fw-bold">{{ asset.serial_number }}</h5>
+    <span class="text-muted small">{{ asset.asset_type.name if asset.asset_type else '' }}
+      {% if asset.model %} · {{ asset.model }}{% endif %}
+      {% if asset.manufacturer %} · {{ asset.manufacturer }}{% endif %}
+    </span>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if current_user.can_edit %}
+    <a href="{{ url_for('assets.edit', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-pencil me-1"></i>עריכה
+    </a>
+    <a href="{{ url_for('tasks.new_task', asset_id=asset.id) }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-plus me-1"></i>הוסף משימה
+    </a>
+    {% endif %}
+    <a href="{{ url_for('assets.list_assets') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-right me-1"></i>חזרה
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- שמאל: פרטי ציוד -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span class="badge bg-{{ asset.status_color }} fs-6 px-3 py-2">{{ asset.status_label }}</span>
+          {% if asset.is_overdue %}
+          <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>באיחור</span>
+          {% endif %}
+        </div>
+
+        <table class="table table-sm table-borderless mb-0 small">
+          <tr>
+            <td class="text-muted fw-semibold" style="width:40%">מ"ס</td>
+            <td class="font-monospace">{{ asset.serial_number }}</td>
+          </tr>
+          {% if asset.barcode %}
+          <tr>
+            <td class="text-muted fw-semibold">ברקוד</td>
+            <td class="font-monospace">{{ asset.barcode }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td class="text-muted fw-semibold">סוג</td>
+            <td>{{ asset.asset_type.name if asset.asset_type else '—' }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">דגם</td>
+            <td>{{ asset.model or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">יצרן</td>
+            <td>{{ asset.manufacturer or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">אתר נוכחי</td>
+            <td>
+              {% if asset.current_site %}
+              <a href="{{ url_for('sites.detail', id=asset.current_site.id) }}">{{ asset.current_site.name }}</a>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">מוקצה ל</td>
+            <td>{{ asset.assignee.name if asset.assignee else '—' }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">תאריך יעד</td>
+            <td>
+              {% if asset.due_date %}
+                <span class="{{ 'text-danger fw-semibold' if asset.is_overdue }}">
+                  {{ asset.due_date.strftime('%d %b %Y') }}
+                </span>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">נרשם</td>
+            <td>{{ asset.created_at.strftime('%d %b %Y') }}</td>
+          </tr>
+        </table>
+
+        {% if asset.notes %}
+        <hr class="my-2">
+        <div class="small text-muted">{{ asset.notes }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- כפתורי פעולה -->
+    {% if current_user.can_edit and asset.status != 'retired' %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent small fw-semibold">פעולות</div>
+      <div class="card-body d-grid gap-2">
+        {% if asset.status not in ['dismantled'] %}
+        <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#dismantleModal">
+          <i class="bi bi-tools me-1"></i>פרק
+        </button>
+        {% endif %}
+        {% if asset.status in ['in_storage', 'dismantled', 'in_use'] %}
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignModal">
+          <i class="bi bi-person-check me-1"></i>הקצה
+        </button>
+        {% endif %}
+        <button class="btn btn-info btn-sm text-white" data-bs-toggle="modal" data-bs-target="#moveModal">
+          <i class="bi bi-arrow-left-right me-1"></i>העבר לאתר
+        </button>
+        {% if asset.status == 'assigned' %}
+        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#returnModal">
+          <i class="bi bi-arrow-return-left me-1"></i>החזר
+        </button>
+        {% endif %}
+        <hr class="my-1">
+        <form method="POST" action="{{ url_for('assets.retire', id=asset.id) }}"
+              onsubmit="return confirm('להוציא את {{ asset.serial_number }} משירות? לא ניתן לבטל בקלות.')">
+          {{ retire_form.hidden_tag() }}
+          <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+            <i class="bi bi-archive me-1"></i>הוצא משירות
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ימין: ציר אירועים -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent fw-semibold">
+        <i class="bi bi-clock-history me-2"></i>היסטוריית אירועים
+      </div>
+      <div class="card-body">
+        {% if events %}
+        <div class="timeline">
+          {% for event in events %}
+          <div class="timeline-item d-flex gap-3 mb-3">
+            <div class="timeline-icon rounded-circle bg-light border d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:36px;height:36px;">
+              <i class="bi {{ event.event_icon }} small text-muted"></i>
+            </div>
+            <div class="flex-grow-1 border-bottom pb-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <span class="fw-semibold small">{{ event.event_label }}</span>
+                  {% if event.from_site or event.to_site %}
+                  <span class="text-muted small">
+                    {% if event.from_site %}מ-{{ event.from_site.name }}{% endif %}
+                    {% if event.to_site %} ← {{ event.to_site.name }}{% endif %}
+                  </span>
+                  {% endif %}
+                </div>
+                <span class="text-muted x-small text-nowrap">{{ event.event_date.strftime('%d %b %Y %H:%M') }}</span>
+              </div>
+              <div class="text-muted x-small mt-1">על ידי {{ event.performed_by_user.name }}</div>
+              {% if event.notes %}
+              <div class="small mt-1 text-secondary">{{ event.notes }}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center small py-4">אין אירועים רשומים עדיין.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── מודאלים ────────────────────────────────────────────────────────────── -->
+
+<!-- פירוק -->
+<div class="modal fade" id="dismantleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('assets.dismantle', id=asset.id) }}">
+        {{ dismantle_form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-tools me-2"></i>פירוק ציוד</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">פעולה זו תסמן את <strong>{{ asset.serial_number }}</strong> כפורק ותנקה את שיוך האתר.</p>
+          <div class="mb-3">
+            {{ dismantle_form.from_site_id.label(class="form-label") }}
+            {{ dismantle_form.from_site_id(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ dismantle_form.notes.label(class="form-label") }}
+            {{ dismantle_form.notes(class="form-control", rows=2, placeholder="הערות אופציונליות…") }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+          {{ dismantle_form.submit(class="btn btn-warning") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- הקצאה -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('assets.assign', id=asset.id) }}">
+        {{ assign_form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person-check me-2"></i>הקצאת ציוד</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            {{ assign_form.assigned_to_id.label(class="form-label") }}
+            {{ assign_form.assigned_to_id(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ assign_form.to_site_id.label(class="form-label") }}
+            {{ assign_form.to_site_id(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ assign_form.due_date.label(class="form-label") }}
+            {{ assign_form.due_date(class="form-control", type="date") }}
+          </div>
+          <div class="mb-3">
+            {{ assign_form.notes.label(class="form-label") }}
+            {{ assign_form.notes(class="form-control", rows=2) }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+          {{ assign_form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- העברה -->
+<div class="modal fade" id="moveModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('assets.move', id=asset.id) }}">
+        {{ move_form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i>העברה לאתר</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            {{ move_form.to_site_id.label(class="form-label") }}
+            {{ move_form.to_site_id(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ move_form.notes.label(class="form-label") }}
+            {{ move_form.notes(class="form-control", rows=2) }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+          {{ move_form.submit(class="btn btn-info text-white") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- החזרה -->
+<div class="modal fade" id="returnModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('assets.return_asset', id=asset.id) }}">
+        {{ return_form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-arrow-return-left me-2"></i>החזרת ציוד</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">פעולה זו תנקה את ההקצאה ותגדיר את הסטטוס ל<strong>באחסון</strong>.</p>
+          <div class="mb-3">
+            {{ return_form.to_site_id.label(class="form-label") }}
+            {{ return_form.to_site_id(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ return_form.notes.label(class="form-label") }}
+            {{ return_form.notes(class="form-control", rows=2) }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+          {{ return_form.submit(class="btn btn-success") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

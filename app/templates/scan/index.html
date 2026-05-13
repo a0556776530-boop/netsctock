@@ -1,0 +1,410 @@
+{% extends 'base.html' %}
+{% block title %}Scan{% endblock %}
+{% block page_title %}Scan Asset{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center g-3">
+  <!-- Scanner column -->
+  <div class="col-12 col-lg-6">
+
+    <!-- Camera card -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-camera-video me-2"></i>Camera Scanner</span>
+        <span id="scanStatus" class="badge bg-secondary">Idle</span>
+      </div>
+      <div class="card-body p-0">
+        <!-- Camera preview area -->
+        <div id="cameraWrapper" class="position-relative bg-dark" style="min-height:240px;">
+          <div id="qr-reader" style="width:100%;"></div>
+          <!-- Scanning overlay shown while camera is active -->
+          <div id="scanOverlay" class="d-none position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="pointer-events:none;">
+            <div class="scan-frame">
+              <div class="scan-line"></div>
+            </div>
+          </div>
+          <!-- Placeholder when camera is off -->
+          <div id="cameraPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white text-center p-4" style="min-height:240px;">
+            <i class="bi bi-upc-scan fs-1 mb-2 opacity-50"></i>
+            <p class="small opacity-75 mb-0">Press Start to activate the camera.<br>Hold a barcode or QR code in front of the lens.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer bg-transparent d-flex gap-2">
+        <button id="btnStart" class="btn btn-primary flex-grow-1">
+          <i class="bi bi-play-fill me-1"></i>Start Camera
+        </button>
+        <button id="btnStop" class="btn btn-secondary flex-grow-1 d-none">
+          <i class="bi bi-stop-fill me-1"></i>Stop Camera
+        </button>
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Camera">
+            <i class="bi bi-camera"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" id="cameraMenu">
+            <li><h6 class="dropdown-header">Select Camera</h6></li>
+            <li><span class="dropdown-item text-muted small">Loading cameras…</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manual lookup -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent fw-semibold">
+        <i class="bi bi-keyboard me-2"></i>Manual Lookup
+      </div>
+      <div class="card-body">
+        <div class="input-group">
+          <input type="text" id="manualInput" class="form-control text-uppercase font-monospace"
+                 placeholder="Type or paste serial / barcode…" autocomplete="off" spellcheck="false">
+          <button id="btnLookup" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i>Look Up
+          </button>
+        </div>
+        <div class="form-text">Cisco format: <span class="font-monospace">FTX1234A5BC</span> (3 letters + 4 digits + 4 alphanumeric)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results column -->
+  <div class="col-12 col-lg-6">
+
+    <!-- Result panel -->
+    <div id="resultPanel" class="card border-0 shadow-sm mb-3 d-none">
+      <div class="card-body" id="resultBody"></div>
+    </div>
+
+    <!-- Scan history -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-clock-history me-2"></i>Scan History</span>
+        <button id="btnClearHistory" class="btn btn-sm btn-link text-muted p-0">Clear</button>
+      </div>
+      <div id="historyList" class="list-group list-group-flush">
+        <div class="list-group-item text-muted text-center small py-4" id="historyEmpty">
+          No scans yet this session.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+const LOOKUP_URL = "{{ url_for('scan.lookup') }}";
+const CISCO_RE   = /^[A-Z]{3}[0-9]{4}[A-Z0-9]{4}$/;
+
+let html5Qrcode   = null;
+let selectedCamera = null;
+let scanHistory   = [];
+let lastScanned   = null;
+let scanCooldown  = false;
+
+// ── Library init ────────────────────────────────────────────────────────────
+
+async function loadCameraList() {
+  try {
+    const devices = await Html5Qrcode.getCameras();
+    const menu = document.getElementById('cameraMenu');
+    menu.innerHTML = '<li><h6 class="dropdown-header">Select Camera</h6></li>';
+    if (!devices.length) {
+      menu.innerHTML += '<li><span class="dropdown-item text-muted small">No cameras found</span></li>';
+      return;
+    }
+    devices.forEach((d, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<a class="dropdown-item small" href="#" data-id="${d.id}">${d.label || 'Camera ' + (i+1)}</a>`;
+      li.querySelector('a').addEventListener('click', e => {
+        e.preventDefault();
+        selectedCamera = d.id;
+        if (html5Qrcode) restartScanner();
+      });
+      menu.appendChild(li);
+    });
+    selectedCamera = devices.find(d => /back|rear|environment/i.test(d.label))?.id || devices[0].id;
+  } catch (err) {
+    console.warn('Camera list error:', err);
+  }
+}
+
+function getScanConfig() {
+  return {
+    fps: 12,
+    qrbox: { width: 300, height: 120 },
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.DATA_MATRIX,
+      Html5QrcodeSupportedFormats.EAN_13,
+    ],
+    aspectRatio: 1.5,
+  };
+}
+
+async function startScanner() {
+  setStatus('starting');
+  document.getElementById('qr-reader').innerHTML = '';
+  html5Qrcode = new Html5Qrcode('qr-reader');
+  const cameraId = selectedCamera ? { deviceId: selectedCamera } : { facingMode: 'environment' };
+  try {
+    await html5Qrcode.start(cameraId, getScanConfig(), onScanSuccess, () => {});
+    document.getElementById('cameraPlaceholder').classList.add('d-none');
+    document.getElementById('scanOverlay').classList.remove('d-none');
+    document.getElementById('btnStart').classList.add('d-none');
+    document.getElementById('btnStop').classList.remove('d-none');
+    setStatus('scanning');
+  } catch (err) {
+    setStatus('error');
+    showError('Camera error: ' + (err.message || err));
+    html5Qrcode = null;
+    document.getElementById('cameraPlaceholder').classList.remove('d-none');
+  }
+}
+
+async function stopScanner() {
+  if (html5Qrcode) {
+    try { await html5Qrcode.stop(); } catch (_) {}
+    html5Qrcode = null;
+  }
+  document.getElementById('cameraPlaceholder').classList.remove('d-none');
+  document.getElementById('scanOverlay').classList.add('d-none');
+  document.getElementById('btnStart').classList.remove('d-none');
+  document.getElementById('btnStop').classList.add('d-none');
+  document.getElementById('qr-reader').innerHTML = '';
+  setStatus('idle');
+}
+
+async function restartScanner() {
+  await stopScanner();
+  await startScanner();
+}
+
+// ── Scan handlers ────────────────────────────────────────────────────────────
+
+async function onScanSuccess(decodedText) {
+  if (scanCooldown) return;
+  const value = decodedText.trim().toUpperCase();
+  if (value === lastScanned) return;
+
+  scanCooldown = true;
+  lastScanned = value;
+  setTimeout(() => { scanCooldown = false; lastScanned = null; }, 2500);
+
+  // Flash border
+  const wrapper = document.getElementById('cameraWrapper');
+  wrapper.style.outline = '3px solid #0d6efd';
+  setTimeout(() => { wrapper.style.outline = ''; }, 600);
+
+  await performLookup(value);
+}
+
+async function performLookup(query) {
+  query = query.trim().toUpperCase();
+  if (!query) return;
+
+  setStatus('looking up…');
+  showLoading(query);
+
+  try {
+    const res = await fetch(LOOKUP_URL + '?q=' + encodeURIComponent(query));
+    const data = await res.json();
+    renderResult(data, query);
+    addHistory(query, data.found);
+  } catch (err) {
+    showError('Lookup failed. Check your connection.');
+  } finally {
+    if (html5Qrcode) setStatus('scanning');
+    else setStatus('idle');
+  }
+}
+
+// ── Result rendering ─────────────────────────────────────────────────────────
+
+function renderResult(data, query) {
+  const panel = document.getElementById('resultPanel');
+  const body  = document.getElementById('resultBody');
+  panel.classList.remove('d-none', 'border-success', 'border-warning', 'border-danger');
+
+  if (data.found) {
+    const a = data.asset;
+    panel.classList.add('border', 'border-success');
+    body.innerHTML = `
+      <div class="d-flex align-items-start gap-3">
+        <div class="rounded-circle bg-success bg-opacity-10 p-2 flex-shrink-0">
+          <i class="bi bi-check-circle-fill text-success fs-5"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-bold font-monospace">${a.serial_number}</div>
+          <div class="text-muted small">${[a.type, a.model, a.manufacturer].filter(Boolean).join(' · ')}</div>
+          <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
+            <span class="badge bg-${a.status_color} bg-opacity-15 text-${a.status_color} border border-${a.status_color} border-opacity-25">
+              ${a.status_label}
+            </span>
+            ${a.site ? `<span class="small text-muted"><i class="bi bi-geo-alt me-1"></i>${a.site}</span>` : ''}
+            ${a.assignee ? `<span class="small text-muted"><i class="bi bi-person me-1"></i>${a.assignee}</span>` : ''}
+          </div>
+          <a href="${a.detail_url}" class="btn btn-sm btn-primary mt-3">
+            <i class="bi bi-arrow-right me-1"></i>View Asset
+          </a>
+        </div>
+      </div>`;
+  } else {
+    panel.classList.add('border', 'border-warning');
+    const isCisco = CISCO_RE.test(query);
+    body.innerHTML = `
+      <div class="d-flex align-items-start gap-3">
+        <div class="rounded-circle bg-warning bg-opacity-10 p-2 flex-shrink-0">
+          <i class="bi bi-question-circle-fill text-warning fs-5"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-bold font-monospace">${escHtml(query)}</div>
+          <div class="text-muted small mt-1">Not found in the system.</div>
+          ${isCisco ? `<div class="small text-success mt-1"><i class="bi bi-check me-1"></i>Looks like a valid Cisco serial number.</div>` : ''}
+          <a href="${data.register_url}" class="btn btn-sm btn-warning mt-3">
+            <i class="bi bi-plus me-1"></i>Register This Asset
+          </a>
+        </div>
+      </div>`;
+  }
+}
+
+function showLoading(query) {
+  const panel = document.getElementById('resultPanel');
+  const body  = document.getElementById('resultBody');
+  panel.classList.remove('d-none', 'border-success', 'border-warning', 'border-danger');
+  body.innerHTML = `<div class="d-flex align-items-center gap-2 text-muted">
+    <div class="spinner-border spinner-border-sm"></div>
+    <span>Looking up <span class="font-monospace">${escHtml(query)}</span>…</span>
+  </div>`;
+}
+
+function showError(msg) {
+  const panel = document.getElementById('resultPanel');
+  const body  = document.getElementById('resultBody');
+  panel.classList.remove('d-none', 'border-success', 'border-warning');
+  panel.classList.add('border', 'border-danger');
+  body.innerHTML = `<div class="text-danger small"><i class="bi bi-exclamation-triangle me-2"></i>${escHtml(msg)}</div>`;
+}
+
+// ── History ──────────────────────────────────────────────────────────────────
+
+function addHistory(query, found) {
+  scanHistory.unshift({ query, found, time: new Date() });
+  if (scanHistory.length > 20) scanHistory.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  if (!scanHistory.length) {
+    empty.classList.remove('d-none');
+    list.querySelectorAll('.history-item').forEach(el => el.remove());
+    return;
+  }
+  empty.classList.add('d-none');
+  list.querySelectorAll('.history-item').forEach(el => el.remove());
+  scanHistory.forEach(item => {
+    const el = document.createElement('button');
+    el.className = 'list-group-item list-group-item-action history-item d-flex justify-content-between align-items-center py-2';
+    el.innerHTML = `
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-${item.found ? 'check-circle text-success' : 'question-circle text-warning'}"></i>
+        <span class="font-monospace small">${escHtml(item.query)}</span>
+      </div>
+      <span class="text-muted x-small">${item.time.toLocaleTimeString()}</span>`;
+    el.addEventListener('click', () => performLookup(item.query));
+    list.appendChild(el);
+  });
+}
+
+// ── UI helpers ───────────────────────────────────────────────────────────────
+
+function setStatus(text) {
+  const el = document.getElementById('scanStatus');
+  const map = {
+    'idle':       ['bg-secondary', 'Idle'],
+    'starting':   ['bg-info',      'Starting…'],
+    'scanning':   ['bg-success',   'Scanning'],
+    'error':      ['bg-danger',    'Error'],
+    'looking up…':['bg-primary',  'Looking up…'],
+  };
+  const [cls, label] = map[text] || ['bg-secondary', text];
+  el.className = `badge ${cls}`;
+  el.textContent = label;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Event listeners ──────────────────────────────────────────────────────────
+
+document.getElementById('btnStart').addEventListener('click', startScanner);
+document.getElementById('btnStop').addEventListener('click', stopScanner);
+
+document.getElementById('btnLookup').addEventListener('click', () => {
+  const val = document.getElementById('manualInput').value.trim().toUpperCase();
+  if (val) performLookup(val);
+});
+
+document.getElementById('manualInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const val = e.target.value.trim().toUpperCase();
+    if (val) performLookup(val);
+  }
+  // Auto-uppercase
+  setTimeout(() => { e.target.value = e.target.value.toUpperCase(); }, 0);
+});
+
+document.getElementById('btnClearHistory').addEventListener('click', () => {
+  scanHistory = [];
+  renderHistory();
+});
+
+// Init
+loadCameraList();
+document.getElementById('manualInput').focus();
+</script>
+
+<style>
+#qr-reader video { width: 100% !important; border-radius: 0; }
+#qr-reader { border: none !important; }
+#qr-reader img { display: none !important; }
+#qr-reader__dashboard { display: none !important; }
+
+.scan-frame {
+  width: 280px; height: 110px;
+  border: 2px solid rgba(255,255,255,0.7);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.scan-frame::before, .scan-frame::after {
+  content: '';
+  position: absolute;
+  width: 20px; height: 20px;
+  border-color: #0d6efd;
+  border-style: solid;
+}
+.scan-frame::before { top: -1px; left: -1px; border-width: 3px 0 0 3px; }
+.scan-frame::after  { bottom: -1px; right: -1px; border-width: 0 3px 3px 0; }
+
+.scan-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #0d6efd, transparent);
+  animation: scanMove 1.8s linear infinite;
+}
+@keyframes scanMove {
+  0%   { top: 0; }
+  50%  { top: calc(100% - 2px); }
+  100% { top: 0; }
+}
+</style>
+{% endblock %}
