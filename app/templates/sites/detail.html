@@ -56,13 +56,12 @@
           <th>Type / Model</th>
           <th>Status</th>
           <th>Assigned To</th>
-          <th>Due Date</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for asset in assets %}
-        <tr class="{{ 'table-danger' if asset.is_overdue }}">
+        <tr>
           <td>
             <a href="{{ url_for('assets.detail', id=asset.id) }}" class="fw-semibold text-decoration-none font-monospace">
               {{ asset.serial_number }}
@@ -78,13 +77,6 @@
             </span>
           </td>
           <td class="small">{{ asset.assignee.name if asset.assignee else '—' }}</td>
-          <td class="small">
-            {% if asset.due_date %}
-            <span class="{{ 'text-danger fw-semibold' if asset.is_overdue }}">
-              {{ asset.due_date.strftime('%d %b %Y') }}
-            </span>
-            {% else %}—{% endif %}
-          </td>
           <td>
             <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-eye"></i>
@@ -93,7 +85,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="text-center text-muted py-4">No assets at this site.</td>
+          <td colspan="5" class="text-center text-muted py-4">No assets at this site.</td>
         </tr>
         {% endfor %}
       </tbody>
