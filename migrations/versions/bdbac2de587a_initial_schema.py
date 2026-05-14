@@ -51,7 +51,6 @@ def upgrade():
     sa.Column('status', sa.Enum('in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired', name='asset_status'), nullable=False),
     sa.Column('current_site_id', sa.Integer(), nullable=True),
     sa.Column('assigned_to_id', sa.Integer(), nullable=True),
-    sa.Column('due_date', sa.Date(), nullable=True),
     sa.Column('notes', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),

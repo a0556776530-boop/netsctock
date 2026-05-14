@@ -56,6 +56,26 @@ def _first_run_setup(app):
     with app.app_context():
         db.create_all()
 
+        # Schema migrations for existing databases
+        from sqlalchemy import text
+        cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(assets)")).fetchall()]
+
+        if 'component_id' not in cols:
+            db.session.execute(text("ALTER TABLE assets ADD COLUMN component_id VARCHAR(50)"))
+            db.session.commit()
+
+        # Fill in placeholder component_id for any asset still missing one
+        db.session.execute(text(
+            "UPDATE assets SET component_id = 'SN-' || printf('%04d', abs(random() % 10000))"
+            " WHERE component_id IS NULL OR component_id = ''"
+        ))
+
+        # Drop the legacy due_date column if it still exists
+        if 'due_date' in cols:
+            db.session.execute(text("ALTER TABLE assets DROP COLUMN due_date"))
+
+        db.session.commit()
+
         if not User.query.first():
             print('[NetStock] First run detected — seeding database …')
 
