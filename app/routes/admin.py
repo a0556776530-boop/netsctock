@@ -2,7 +2,7 @@ import csv
 from io import StringIO
 from datetime import datetime
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, abort, g
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, PasswordField, SubmitField
@@ -13,6 +13,7 @@ from app.models.user import User
 from app.models.asset import Asset, AssetEvent
 from app.models.site import Site
 from app.models.task import Task
+from app.utils.translations import localize_form
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -25,19 +26,33 @@ def _admin_required():
 # ── Forms ─────────────────────────────────────────────────────────────────────
 
 class NewUserForm(FlaskForm):
-    name     = StringField('שם מלא',  validators=[DataRequired(), Length(max=100)])
-    email    = StringField('אימייל',      validators=[DataRequired(), Email(check_deliverability=False)])
-    role     = SelectField('תפקיד', choices=[('technician','טכנאי'),('viewer','צופה'),('admin','מנהל')])
-    password = PasswordField('סיסמה ראשונית', validators=[DataRequired(), Length(min=8)])
-    submit   = SubmitField('צור משתמש')
+    name     = StringField('Full Name',  validators=[DataRequired(), Length(max=100)])
+    email    = StringField('Email',      validators=[DataRequired(), Email(check_deliverability=False)])
+    role     = SelectField('Role', choices=[('technician','Technician'),('viewer','Viewer'),('admin','Admin')])
+    password = PasswordField('Initial Password', validators=[DataRequired(), Length(min=8)])
+    submit   = SubmitField('Create User')
 
 
 class EditUserForm(FlaskForm):
-    name  = StringField('שם מלא', validators=[DataRequired(), Length(max=100)])
-    role  = SelectField('תפקיד', choices=[('technician','טכנאי'),('viewer','צופה'),('admin','מנהל')])
-    new_password = PasswordField('סיסמה חדשה (השאר ריק לשמירת הנוכחית)',
+    name  = StringField('Full Name', validators=[DataRequired(), Length(max=100)])
+    role  = SelectField('Role', choices=[('technician','Technician'),('viewer','Viewer'),('admin','Admin')])
+    new_password = PasswordField('New Password (leave blank to keep current)',
                                  validators=[Optional(), Length(min=8)])
-    submit = SubmitField('שמור')
+    submit = SubmitField('Save')
+
+
+def _localize_user_form(form, t, is_new=True):
+    localize_form(form, t,
+                  submit_key='form_create_user' if is_new else 'form_save',
+                  extra={'password': 'form_initial_password'} if is_new else
+                        {'new_password': 'form_new_password_optional'})
+    role_choices = [
+        ('technician', t.get('role_technician', 'Technician')),
+        ('viewer',     t.get('role_viewer',     'Viewer')),
+        ('admin',      t.get('role_admin',       'Admin')),
+    ]
+    form.role.choices = role_choices
+    return form
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -60,10 +75,12 @@ def users():
 @login_required
 def new_user():
     _admin_required()
+    t = getattr(g, 't', {})
     form = NewUserForm()
+    _localize_user_form(form, t, is_new=True)
     if form.validate_on_submit():
         if User.query.filter_by(email=form.email.data.lower().strip()).first():
-            flash('משתמש עם אימייל זה כבר קיים.', 'danger')
+            flash(t.get('flash_user_exists', 'A user with this email already exists.'), 'danger')
         else:
             u = User(
                 name=form.name.data.strip(),
@@ -73,7 +90,7 @@ def new_user():
             )
             db.session.add(u)
             db.session.commit()
-            flash(f'המשתמש {u.name} נוצר בהצלחה.', 'success')
+            flash(t.get('flash_user_created', 'User {name} created successfully.').format(name=u.name), 'success')
             return redirect(url_for('admin.users'))
     return render_template('admin/new_user.html', form=form)
 
@@ -82,15 +99,17 @@ def new_user():
 @login_required
 def edit_user(id):
     _admin_required()
+    t = getattr(g, 't', {})
     user = User.query.get_or_404(id)
     form = EditUserForm(obj=user)
+    _localize_user_form(form, t, is_new=False)
     if form.validate_on_submit():
         user.name = form.name.data.strip()
         user.role = form.role.data
         if form.new_password.data:
             user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
         db.session.commit()
-        flash(f'{user.name} עודכן בהצלחה.', 'success')
+        flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
         return redirect(url_for('admin.users'))
     return render_template('admin/edit_user.html', form=form, user=user)
 
@@ -99,17 +118,17 @@ def edit_user(id):
 @login_required
 def delete_user(id):
     _admin_required()
+    t = getattr(g, 't', {})
     user = User.query.get_or_404(id)
     if user.id == current_user.id:
-        flash('לא ניתן למחוק את החשבון שלך.', 'danger')
+        flash(t.get('flash_cannot_delete_self', 'You cannot delete your own account.'), 'danger')
         return redirect(url_for('admin.users'))
     name = user.name
-    # Unlink references before deleting
     Asset.query.filter_by(assigned_to_id=user.id).update({'assigned_to_id': None})
     Task.query.filter_by(assigned_to_id=user.id).update({'assigned_to_id': None})
     db.session.delete(user)
     db.session.commit()
-    flash(f'המשתמש {name} נמחק.', 'warning')
+    flash(t.get('flash_user_deleted', 'User {name} deleted.').format(name=name), 'warning')
     return redirect(url_for('admin.users'))
 
 
@@ -134,11 +153,12 @@ def export():
 @login_required
 def export_assets():
     _admin_required()
-    headers = ['Serial Number','Barcode','Type','Category','Model','Manufacturer',
-               'Status','Current Site','Assigned To','Due Date','Notes','Created At']
+    headers = ['Asset ID','Serial Number','Barcode','Type','Category','Model','Manufacturer',
+               'Status','Current Site','Assigned To','Notes','Created At']
     rows = []
     for a in Asset.query.order_by(Asset.serial_number).all():
         rows.append([
+            a.component_id or '',
             a.serial_number,
             a.barcode or '',
             a.asset_type.name if a.asset_type else '',
@@ -148,7 +168,6 @@ def export_assets():
             a.status_label,
             a.current_site.name if a.current_site else '',
             a.assignee.name if a.assignee else '',
-            a.due_date.strftime('%d/%m/%Y') if a.due_date else '',
             (a.notes or '').replace('\n', ' '),
             a.created_at.strftime('%d/%m/%Y %H:%M') if a.created_at else '',
         ])
@@ -204,17 +223,17 @@ def export_tasks():
 def export_site_csv(id):
     _admin_required()
     site = Site.query.get_or_404(id)
-    headers = ['Serial Number','Type','Model','Manufacturer','Status','Assigned To','Due Date']
+    headers = ['Asset ID','Serial Number','Type','Model','Manufacturer','Status','Assigned To']
     rows = []
     for a in Asset.query.filter_by(current_site_id=id).order_by(Asset.serial_number).all():
         rows.append([
+            a.component_id or '',
             a.serial_number,
             a.asset_type.name if a.asset_type else '',
             a.model or '',
             a.manufacturer or '',
             a.status_label,
             a.assignee.name if a.assignee else '',
-            a.due_date.strftime('%d/%m/%Y') if a.due_date else '',
         ])
     filename = f'netstock_site_{site.name.replace(" ","_")}.csv'
     return _csv_response(rows, headers, filename)
