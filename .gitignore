@@ -5,16 +5,13 @@ __pycache__/
 *.pyd
 .Python
 *.egg-info/
-dist/
-build/
-*.spec.bak
 
 # Virtual environments
 venv/
 .venv/
 env/
 
-# Database files
+# Database files — auto-created on first run, never commit real data
 *.db
 *.sqlite
 *.sqlite3
@@ -23,9 +20,12 @@ env/
 .env
 *.env
 
-# PyInstaller output (keep .spec, exclude binaries)
-dist/NetStock.exe
-dist/NetStock
+# PyInstaller output — keep the .spec, exclude binaries and build artefacts
+dist/
+build/
+
+# Machine-specific one-off scripts (contain absolute paths)
+inspect_db.py
 
 # IDE / editor
 .vscode/
@@ -41,7 +41,7 @@ desktop.ini
 # Flask instance folder
 instance/
 
-# Migrations cache
+# Migrations pycache
 migrations/__pycache__/
 migrations/versions/__pycache__/
 

@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime, date
+from datetime import datetime
 
 
 class Task(db.Model):
@@ -21,7 +21,6 @@ class Task(db.Model):
     title = db.Column(db.String(255), nullable=False)
     asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=True)
     assigned_to_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    due_date = db.Column(db.Date, nullable=True)
     status = db.Column(
         db.Enum(*STATUSES, name='task_status'),
         nullable=False,
@@ -40,7 +39,3 @@ class Task(db.Model):
     @property
     def status_color(self):
         return self.STATUS_COLORS.get(self.status, 'secondary')
-
-    @property
-    def is_overdue(self):
-        return self.due_date and self.due_date < date.today() and self.status != 'done'

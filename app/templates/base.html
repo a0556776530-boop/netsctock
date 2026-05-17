@@ -1,12 +1,17 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="{{ lang }}" dir="{{ dir_html }}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}Netstock{% endblock %} — מעקב ציוד רשת</title>
+  <title>{% block title %}Inventory{% endblock %} — {{ t.app_subtitle }}</title>
+  {% if lang == 'he' %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" />
+  {% else %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  {% endif %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
 
@@ -14,52 +19,52 @@
   <!-- Sidebar -->
   <nav id="sidebar" class="bg-dark text-white d-flex flex-column p-3">
     <a href="{{ url_for('main.dashboard') }}" class="navbar-brand text-white fw-bold fs-5 mb-4 d-flex align-items-center gap-2">
-      <i class="bi bi-hdd-network-fill text-primary"></i> Netstock
+      <i class="bi bi-hdd-network-fill text-primary"></i> Inventory
     </a>
 
     <ul class="nav nav-pills flex-column gap-1 flex-grow-1">
       <li class="nav-item">
         <a href="{{ url_for('main.dashboard') }}"
            class="nav-link text-white {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
-          <i class="bi bi-speedometer2 me-2"></i>לוח בקרה
+          <i class="bi bi-speedometer2 me-2"></i>{{ t.nav_dashboard }}
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('assets.list_assets') }}"
            class="nav-link text-white {% if request.blueprint == 'assets' %}active{% endif %}">
-          <i class="bi bi-cpu me-2"></i>ציוד
+          <i class="bi bi-cpu me-2"></i>{{ t.nav_assets }}
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('scan.index') }}" class="nav-link text-white {% if request.blueprint == 'scan' %}active{% endif %}">
-          <i class="bi bi-upc-scan me-2"></i>סריקה
+          <i class="bi bi-upc-scan me-2"></i>{{ t.nav_scan }}
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('sites.list_sites') }}"
            class="nav-link text-white {% if request.blueprint == 'sites' %}active{% endif %}">
-          <i class="bi bi-geo-alt me-2"></i>אתרים
+          <i class="bi bi-geo-alt me-2"></i>{{ t.nav_sites }}
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('tasks.list_tasks') }}" class="nav-link text-white {% if request.blueprint == 'tasks' %}active{% endif %}">
-          <i class="bi bi-check2-square me-2"></i>משימות
+          <i class="bi bi-check2-square me-2"></i>{{ t.nav_tasks }}
         </a>
       </li>
       {% if current_user.is_admin %}
       <li class="nav-item mt-2">
-        <span class="nav-link text-secondary small text-uppercase px-2">ניהול</span>
+        <span class="nav-link text-secondary small text-uppercase px-2">{{ t.nav_admin_label }}</span>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('admin.users') }}"
-           class="nav-link text-white {% if request.endpoint == 'admin.users' or request.endpoint == 'admin.new_user' or request.endpoint == 'admin.edit_user' %}active{% endif %}">
-          <i class="bi bi-people me-2"></i>משתמשים
+           class="nav-link text-white {% if request.endpoint in ('admin.users','admin.new_user','admin.edit_user') %}active{% endif %}">
+          <i class="bi bi-people me-2"></i>{{ t.nav_users }}
         </a>
       </li>
       <li class="nav-item">
         <a href="{{ url_for('admin.export') }}"
            class="nav-link text-white {% if request.endpoint == 'admin.export' %}active{% endif %}">
-          <i class="bi bi-download me-2"></i>ייצוא
+          <i class="bi bi-download me-2"></i>{{ t.nav_export }}
         </a>
       </li>
       {% endif %}
@@ -74,10 +79,10 @@
         </div>
       </div>
       <a href="{{ url_for('auth.change_password') }}" class="nav-link text-secondary small">
-        <i class="bi bi-key me-1"></i>שינוי סיסמה
+        <i class="bi bi-key me-1"></i>{{ t.nav_change_password }}
       </a>
       <a href="{{ url_for('auth.logout') }}" class="nav-link text-secondary small">
-        <i class="bi bi-box-arrow-right me-1"></i>התנתקות
+        <i class="bi bi-box-arrow-right me-1"></i>{{ t.nav_logout }}
       </a>
     </div>
   </nav>
@@ -90,8 +95,15 @@
         <i class="bi bi-list"></i>
       </button>
       <h6 class="mb-0 text-muted fw-normal">{% block page_title %}{% endblock %}</h6>
-      <div class="d-flex align-items-center gap-2 small text-muted">
-        <i class="bi bi-calendar3"></i>{{ now.strftime('%d %b %Y') }}
+      <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('main.set_lang', code='he' if lang == 'en' else 'en') }}"
+           class="btn btn-sm btn-outline-secondary fw-semibold"
+           title="{{ 'Switch to Hebrew' if lang == 'en' else 'Switch to English' }}">
+          {{ t.lang_toggle_label }}
+        </a>
+        <span class="small text-muted">
+          <i class="bi bi-calendar3"></i> {{ now.strftime('%d %b %Y') }}
+        </span>
       </div>
     </header>
 
@@ -113,7 +125,7 @@
     </main>
 
     <footer class="text-center text-muted small py-3 border-top">
-      Netstock &copy; {{ now.year }}
+      Inventory &copy; {{ now.year }}
     </footer>
   </div>
 </div>

@@ -1,7 +1,7 @@
 import json
 from datetime import date, timedelta, datetime
 
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, jsonify, redirect, request, session, url_for
 from flask_login import login_required
 from sqlalchemy import func
 
@@ -11,7 +11,6 @@ from app.models.task import Task
 
 main_bp = Blueprint('main', __name__)
 
-# Bootstrap colour map (background hex)
 _STATUS_COLORS = {
     'in_use':     '#198754',
     'dismantled': '#ffc107',
@@ -26,34 +25,65 @@ _STATUS_LABELS = {
 }
 
 
+@main_bp.route('/set-lang/<code>')
+def set_lang(code):
+    if code in ('en', 'he'):
+        session['lang'] = code
+        session.permanent = True
+    return redirect(request.referrer or url_for('main.dashboard'))
+
+
+@main_bp.route('/api/rate')
+@login_required
+def exchange_rate():
+    from app.utils.exchange import get_usd_to_nis
+    rate = get_usd_to_nis()
+    return jsonify({'rate': rate, 'base': 'USD', 'target': 'ILS'})
+
+
+@main_bp.route('/api/settings', methods=['GET'])
+@login_required
+def get_settings():
+    from app.models.settings import AppSetting
+    return jsonify(AppSetting.all_as_dict())
+
+
+@main_bp.route('/api/settings', methods=['POST'])
+@login_required
+def save_settings():
+    from app.models.settings import AppSetting
+    data = request.get_json(silent=True) or {}
+    allowed = ('usd_rate', 'conversion_fee', 'bynet_factor')
+    for key in allowed:
+        if key in data:
+            try:
+                AppSetting.set(key, float(data[key]))
+            except (ValueError, TypeError):
+                pass
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 @main_bp.route('/')
 @login_required
 def dashboard():
     today = date.today()
-    soon  = today + timedelta(days=7)
 
-    # ── Core counts ───────────────────────────────────────────────────────────
     total_assets = Asset.query.count()
     status_counts = dict(
         db.session.query(Asset.status, func.count(Asset.id))
         .group_by(Asset.status).all()
     )
 
-    overdue_assets = Asset.query.filter(
-        Asset.due_date < today, Asset.status != 'retired'
-    ).order_by(Asset.due_date).limit(10).all()
-
-    due_soon_assets = Asset.query.filter(
-        Asset.due_date >= today, Asset.due_date <= soon, Asset.status != 'retired'
-    ).order_by(Asset.due_date).limit(10).all()
-
     recent_events = (
         AssetEvent.query.order_by(AssetEvent.event_date.desc()).limit(15).all()
     )
 
-    overdue_tasks = Task.query.filter(
-        Task.due_date < today, Task.status != 'done'
-    ).order_by(Task.due_date).limit(10).all()
+    open_tasks_count = Task.query.filter(Task.status != 'done').count()
+
+    low_stock_assets = Asset.query.filter(
+        Asset.quantity != None, Asset.quantity < 5
+    ).order_by(Asset.quantity.asc()).limit(20).all()
 
     # ── Chart: assets by status (doughnut) ───────────────────────────────────
     all_statuses = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
@@ -95,10 +125,9 @@ def dashboard():
         'dashboard.html',
         total_assets=total_assets,
         status_counts=status_counts,
-        overdue_assets=overdue_assets,
-        due_soon_assets=due_soon_assets,
         recent_events=recent_events,
-        overdue_tasks=overdue_tasks,
+        open_tasks_count=open_tasks_count,
+        low_stock_assets=low_stock_assets,
         today=today,
         status_chart=json.dumps(status_chart),
         type_chart=json.dumps(type_chart),

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, abort, g
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SubmitField
@@ -7,15 +7,16 @@ from wtforms.validators import DataRequired, Optional, Length
 from app import db
 from app.models.site import Site
 from app.models.asset import Asset
+from app.utils.translations import localize_form
 
 sites_bp = Blueprint('sites', __name__, url_prefix='/sites')
 
 
 class SiteForm(FlaskForm):
-    name = StringField('שם האתר', validators=[DataRequired(), Length(max=150)])
-    address = TextAreaField('כתובת', validators=[Optional()])
-    notes = TextAreaField('הערות', validators=[Optional()])
-    submit = SubmitField('שמור אתר')
+    name = StringField('Site Name', validators=[DataRequired(), Length(max=150)])
+    address = TextAreaField('Address', validators=[Optional()])
+    notes = TextAreaField('Notes', validators=[Optional()])
+    submit = SubmitField('Save Site')
 
 
 @sites_bp.route('/')
@@ -34,7 +35,9 @@ def list_sites():
 def new_site():
     if not current_user.is_admin:
         abort(403)
+    t = getattr(g, 't', {})
     form = SiteForm()
+    localize_form(form, t, submit_key='form_save_site')
     if form.validate_on_submit():
         site = Site(
             name=form.name.data.strip(),
@@ -43,9 +46,10 @@ def new_site():
         )
         db.session.add(site)
         db.session.commit()
-        flash(f'האתר "{site.name}" נוצר בהצלחה.', 'success')
+        flash(t.get('flash_site_created', 'Site "{name}" created successfully.').format(name=site.name), 'success')
         return redirect(url_for('sites.detail', id=site.id))
-    return render_template('sites/form.html', form=form, site=None, title='הוספת אתר חדש')
+    return render_template('sites/form.html', form=form, site=None,
+                           title=t.get('form_title_add_site', 'Add New Site'))
 
 
 @sites_bp.route('/<int:id>')
@@ -64,13 +68,16 @@ def detail(id):
 def edit(id):
     if not current_user.is_admin:
         abort(403)
+    t = getattr(g, 't', {})
     site = Site.query.get_or_404(id)
     form = SiteForm(obj=site)
+    localize_form(form, t, submit_key='form_save_site')
     if form.validate_on_submit():
         site.name = form.name.data.strip()
         site.address = form.address.data.strip() or None
         site.notes = form.notes.data.strip() or None
         db.session.commit()
-        flash('האתר עודכן בהצלחה.', 'success')
+        flash(t.get('flash_site_updated', 'Site updated successfully.'), 'success')
         return redirect(url_for('sites.detail', id=site.id))
-    return render_template('sites/form.html', form=form, site=site, title='עריכת אתר')
+    return render_template('sites/form.html', form=form, site=site,
+                           title=t.get('form_title_edit_site', 'Edit Site'))

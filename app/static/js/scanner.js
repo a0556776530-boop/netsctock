@@ -1,16 +1,16 @@
 /**
- * NetstockScanner — reusable inline scanner widget.
+ * InventoryScanner — reusable inline scanner widget.
  * Requires html5-qrcode and Bootstrap 5 to be loaded on the page.
  *
  * Usage:
- *   const scanner = new NetstockScanner({
+ *   const scanner = new InventoryScanner({
  *     triggerBtn:  document.getElementById('scanSerial'),
  *     targetInput: document.getElementById('serialInput'),
  *     lookupUrl:   '/scan/api/lookup',
  *     onResult:    (data) => {}   // optional
  *   });
  */
-class NetstockScanner {
+class InventoryScanner {
   constructor({ triggerBtn, targetInput, lookupUrl, onResult }) {
     this.targetInput = targetInput;
     this.lookupUrl   = lookupUrl;

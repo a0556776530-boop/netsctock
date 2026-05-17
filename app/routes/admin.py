@@ -171,7 +171,7 @@ def export_assets():
             (a.notes or '').replace('\n', ' '),
             a.created_at.strftime('%d/%m/%Y %H:%M') if a.created_at else '',
         ])
-    return _csv_response(rows, headers, 'netstock_assets.csv')
+    return _csv_response(rows, headers, 'inventory_assets.csv')
 
 
 @admin_bp.route('/export/events.csv')
@@ -194,26 +194,25 @@ def export_events():
             e.performed_by_user.name if e.performed_by_user else '',
             (e.notes or '').replace('\n', ' '),
         ])
-    return _csv_response(rows, headers, 'netstock_events.csv')
+    return _csv_response(rows, headers, 'inventory_events.csv')
 
 
 @admin_bp.route('/export/tasks.csv')
 @login_required
 def export_tasks():
     _admin_required()
-    headers = ['Title','Status','Due Date','Assigned To','Related Asset','Notes','Created At']
+    headers = ['Title','Status','Assigned To','Related Asset','Notes','Created At']
     rows = []
-    for t in Task.query.order_by(Task.due_date).all():
+    for t in Task.query.order_by(Task.created_at.desc()).all():
         rows.append([
             t.title,
             t.status_label,
-            t.due_date.strftime('%d/%m/%Y') if t.due_date else '',
             t.assignee.name if t.assignee else '',
             t.asset.serial_number if t.asset else '',
             (t.notes or '').replace('\n', ' '),
             t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '',
         ])
-    return _csv_response(rows, headers, 'netstock_tasks.csv')
+    return _csv_response(rows, headers, 'inventory_tasks.csv')
 
 
 # ── Site report ────────────────────────────────────────────────────────────────
@@ -235,7 +234,7 @@ def export_site_csv(id):
             a.status_label,
             a.assignee.name if a.assignee else '',
         ])
-    filename = f'netstock_site_{site.name.replace(" ","_")}.csv'
+    filename = f'inventory_site_{site.name.replace(" ","_")}.csv'
     return _csv_response(rows, headers, filename)
 
 

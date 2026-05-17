@@ -11,7 +11,15 @@
           {{ form.hidden_tag() }}
 
           <div class="row g-3">
-            <!-- Serial Number -->
+            <!-- Asset ID -->
+            <div class="col-md-6">
+              {{ form.component_id.label(class="form-label fw-semibold") }}
+              {{ form.component_id(class="form-control font-monospace",
+                                   placeholder="e.g. SN-0042") }}
+              <div class="form-text">{{ t.field_asset_id }} — internal tracking ID</div>
+            </div>
+
+            <!-- Serial Number (Mfr. Part No.) -->
             <div class="col-md-6">
               {{ form.serial_number.label(class="form-label fw-semibold") }}
               <div class="input-group">
@@ -42,14 +50,7 @@
               {% for e in form.asset_type_id.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
             </div>
 
-            <!-- Status -->
-            <div class="col-md-6">
-              {{ form.status.label(class="form-label fw-semibold") }}
-              {{ form.status(class="form-select" + (" is-invalid" if form.status.errors else "")) }}
-              {% for e in form.status.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
-            </div>
-
-            <!-- Model -->
+            <!-- Description (model field) -->
             <div class="col-md-6">
               {{ form.model.label(class="form-label fw-semibold") }}
               {{ form.model(class="form-control", placeholder="e.g. GLC-SX-MMD") }}
@@ -61,28 +62,76 @@
               {{ form.manufacturer(class="form-control", placeholder="e.g. Cisco") }}
             </div>
 
-            <!-- Site -->
-            <div class="col-md-6">
-              {{ form.current_site_id.label(class="form-label fw-semibold") }}
-              {{ form.current_site_id(class="form-select") }}
-            </div>
-
-            <!-- Assigned To -->
-            <div class="col-md-6">
-              {{ form.assigned_to_id.label(class="form-label fw-semibold") }}
-              {{ form.assigned_to_id(class="form-select") }}
-            </div>
-
-            <!-- Due Date -->
-            <div class="col-md-6">
-              {{ form.due_date.label(class="form-label fw-semibold") }}
-              {{ form.due_date(class="form-control", type="date") }}
-            </div>
-
             <!-- Notes -->
             <div class="col-12">
               {{ form.notes.label(class="form-label fw-semibold") }}
               {{ form.notes(class="form-control", rows=3, placeholder="Any additional information…") }}
+            </div>
+
+            <!-- ── Pricing & Inventory section header ──────────────────────── -->
+            <div class="col-12 mt-1">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="fw-semibold small">{{ t.pricing_inventory_section }}</span>
+
+                <!-- Rate badge: click pencil to reveal edit group -->
+                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
+                  <i class="bi bi-currency-exchange me-1"></i>
+                  1 USD = ₪<span id="rateValueLabel">3.00</span>
+                </span>
+                <button type="button" class="btn btn-link btn-sm p-0 text-muted lh-1"
+                        id="rateEditBtn" title="Set exchange rate">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+
+                <!-- Inline rate editor (hidden by default) -->
+                <div class="input-group input-group-sm d-none" id="rateEditGroup" style="width:170px;">
+                  <span class="input-group-text">₪</span>
+                  <input type="number" class="form-control" id="rateInput"
+                         step="0.01" min="0.01" placeholder="3.00">
+                  <button class="btn btn-outline-primary" type="button" id="rateConfirmBtn">Set</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- USD price -->
+            <div class="col-md-3">
+              {{ form.price_usd.label(class="form-label fw-semibold") }}
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                {{ form.price_usd(class="form-control", type="number", step="1", min="0",
+                                   id="priceUsd", placeholder="0") }}
+              </div>
+            </div>
+
+            <!-- Conversion Fee % -->
+            <div class="col-md-3">
+              {{ form.conversion_fee.label(class="form-label fw-semibold") }}
+              <div class="input-group">
+                {{ form.conversion_fee(class="form-control", type="number", step="0.01", min="0",
+                                        id="convFee", placeholder="0") }}
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+
+            <!-- NIS price (read-only, auto-computed) -->
+            <div class="col-md-3">
+              {{ form.price_nis.label(class="form-label fw-semibold") }}
+              <div class="input-group">
+                <span class="input-group-text">₪</span>
+                {{ form.price_nis(class="form-control bg-secondary bg-opacity-10 text-muted",
+                                   type="number", step="1", min="0",
+                                   id="priceNis", placeholder="auto", readonly=true) }}
+              </div>
+              <div class="form-text text-muted small">
+                USD × rate × 1.048 × (1 + fee%) × 1.18 VAT
+              </div>
+            </div>
+
+            <!-- Stock Qty -->
+            <div class="col-md-3">
+              {{ form.quantity.label(class="form-label fw-semibold") }}
+              {{ form.quantity(class="form-control", type="number", step="1", min="0",
+                               id="quantityInput", placeholder="0") }}
             </div>
           </div>
 
@@ -106,11 +155,11 @@
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
 <script>
-  const input       = document.getElementById('serialInput');
-  const hint        = document.getElementById('serialHint');
+  // ── Cisco SN validation hint ────────────────────────────────────────────────
+  const input        = document.getElementById('serialInput');
+  const hint         = document.getElementById('serialHint');
   const ciscoPattern = /^[A-Z]{3}[0-9]{4}[A-Z0-9]{4}$/;
 
-  // Cisco SN validation hint
   if (input) {
     input.addEventListener('input', function () {
       const val = this.value.trim().toUpperCase();
@@ -125,14 +174,86 @@
     });
   }
 
-  // Inline scanner widget
-  const scanner = new NetstockScanner({
+  // ── Exchange rate & calculation constants ────────────────────────────────────
+  // Defaults come from global settings; user can still override rate per-session
+  // via the rate edit button (stored in localStorage for this browser).
+  const VAT = 1.18;
+  let BYNET       = 1.048;
+  let currentRate = 3.0;
+
+  const rateValueLabel = document.getElementById('rateValueLabel');
+  const rateEditBtn    = document.getElementById('rateEditBtn');
+  const rateEditGroup  = document.getElementById('rateEditGroup');
+  const rateInput      = document.getElementById('rateInput');
+  const rateConfirmBtn = document.getElementById('rateConfirmBtn');
+  const usdInput       = document.getElementById('priceUsd');
+  const nisInput       = document.getElementById('priceNis');
+  const feeInput       = document.getElementById('convFee');
+
+  // Load global settings from server, then override with any localStorage rate
+  fetch('/api/settings')
+    .then(r => r.json())
+    .then(data => {
+      BYNET = data.bynet_factor || 1.048;
+      // localStorage rate wins over global (per-session override)
+      const localRate = parseFloat(localStorage.getItem('usdRate'));
+      currentRate = isNaN(localRate) ? data.usd_rate : localRate;
+      if (rateValueLabel) rateValueLabel.textContent = currentRate.toFixed(2);
+      if (rateInput)      rateInput.value            = currentRate.toFixed(2);
+      // Pre-fill fee from global settings only if field is currently empty
+      if (feeInput && !feeInput.value) feeInput.value = data.conversion_fee ?? 0;
+      recalcNis();
+    })
+    .catch(() => { recalcNis(); });
+
+  if (rateEditBtn) {
+    rateEditBtn.addEventListener('click', () => {
+      rateEditGroup.classList.toggle('d-none');
+      if (!rateEditGroup.classList.contains('d-none')) rateInput.focus();
+    });
+  }
+
+  function applyRate() {
+    const v = parseFloat(rateInput.value);
+    if (!isNaN(v) && v > 0) {
+      currentRate = v;
+      localStorage.setItem('usdRate', v.toString());
+      if (rateValueLabel) rateValueLabel.textContent = v.toFixed(2);
+      rateEditGroup.classList.add('d-none');
+      recalcNis();
+    }
+  }
+
+  if (rateConfirmBtn) rateConfirmBtn.addEventListener('click', applyRate);
+  if (rateInput) {
+    rateInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); applyRate(); }
+    });
+  }
+
+  // ── NIS auto-calculation ─────────────────────────────────────────────────────
+  // Formula: NIS = USD × rate × Bynet × (1 + convFee%) × VAT(1.18)
+  function recalcNis() {
+    const usd = parseFloat(usdInput ? usdInput.value : '') || 0;
+    if (!usd) { if (nisInput) nisInput.value = ''; return; }
+    const fee = parseFloat(feeInput ? feeInput.value : '') || 0;
+    const nis = Math.round(usd * currentRate * BYNET * (1 + fee / 100) * VAT);
+    if (nisInput) nisInput.value = nis;
+  }
+
+  if (usdInput) usdInput.addEventListener('input', recalcNis);
+  if (feeInput) feeInput.addEventListener('input', recalcNis);
+
+  // Initial recalc (will be called again after global settings load)
+  recalcNis();
+
+  // ── Inline scanner widget ─────────────────────────────────────────────────────
+  const scanner = new InventoryScanner({
     triggerBtn:  document.getElementById('scanSerial'),
     targetInput: input,
     lookupUrl:   '{{ url_for("scan.lookup") }}',
     onResult: function(data) {
       if (data.found) {
-        // Flash a warning: this serial is already registered
         const a = data.asset;
         hint.innerHTML = `<span class="text-warning fw-semibold">
           ⚠ Already registered as

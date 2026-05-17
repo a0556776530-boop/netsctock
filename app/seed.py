@@ -12,15 +12,15 @@ def register_commands(app):
         """Create initial admin user and seed reference data."""
         db.create_all()
 
-        if not User.query.filter_by(email='admin@netstock.app').first():
+        if not User.query.filter_by(email='admin@inventory.app').first():
             admin = User(
                 name='Admin',
-                email='admin@netstock.app',
+                email='admin@inventory.app',
                 password_hash=bcrypt.generate_password_hash('admin1234').decode('utf-8'),
                 role='admin',
             )
             db.session.add(admin)
-            click.echo('  Created admin user: admin@netstock.app / admin1234')
+            click.echo('  Created admin user: admin@inventory.app / admin1234')
 
         sites = ['Beit VaGan', 'Tel Aviv HQ', 'Haifa DC', 'Storage Warehouse']
         for name in sites:

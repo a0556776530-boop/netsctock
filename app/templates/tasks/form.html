@@ -31,12 +31,6 @@
               {{ form.assigned_to_id(class="form-select") }}
             </div>
 
-            <!-- Due date -->
-            <div class="col-md-6">
-              {{ form.due_date.label(class="form-label fw-semibold") }}
-              {{ form.due_date(class="form-control", type="date") }}
-            </div>
-
             <!-- Status -->
             <div class="col-md-6">
               {{ form.status.label(class="form-label fw-semibold") }}
@@ -53,7 +47,7 @@
           <hr class="my-4">
           <div class="d-flex gap-2">
             {{ form.submit(class="btn btn-primary") }}
-            <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary">Cancel</a>
+            <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
             {% if task and current_user.is_admin %}
             <form method="POST" action="{{ url_for('tasks.delete', id=task.id) }}" class="ms-auto"
                   onsubmit="return confirm('Delete this task?')">

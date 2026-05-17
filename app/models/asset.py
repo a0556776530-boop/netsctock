@@ -37,6 +37,7 @@ class Asset(db.Model):
     }
 
     id = db.Column(db.Integer, primary_key=True)
+    component_id = db.Column(db.String(50), nullable=True)
     serial_number = db.Column(db.String(100), unique=True, nullable=False)
     barcode = db.Column(db.String(100), unique=True, nullable=True)
     asset_type_id = db.Column(db.Integer, db.ForeignKey('asset_types.id'), nullable=False)
@@ -49,8 +50,12 @@ class Asset(db.Model):
     )
     current_site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)
     assigned_to_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    due_date = db.Column(db.Date, nullable=True)
     notes = db.Column(db.Text)
+    price          = db.Column(db.Numeric(12, 2), nullable=True)
+    price_nis      = db.Column(db.Numeric(12, 2), nullable=True)
+    price_usd      = db.Column(db.Numeric(12, 2), nullable=True)
+    conversion_fee = db.Column(db.Numeric(5, 2), nullable=True)
+    quantity       = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -69,10 +74,6 @@ class Asset(db.Model):
     def status_color(self):
         return self.STATUS_COLORS.get(self.status, 'secondary')
 
-    @property
-    def is_overdue(self):
-        from datetime import date
-        return self.due_date and self.due_date < date.today()
 
 
 class AssetEvent(db.Model):

@@ -1,7 +1,7 @@
 """
-NetStock launcher — used as PyInstaller entry point.
+Inventory launcher — used as PyInstaller entry point.
 
-When frozen: sets DATABASE_URL to <exe_dir>/netstock.db before any app
+When frozen: sets DATABASE_URL to <exe_dir>/inventory.db before any app
 import so SQLAlchemy never writes into the ephemeral sys._MEIPASS temp dir.
 Also handles first-run DB creation, seeding, port selection, and
 auto-opening the browser.
@@ -24,7 +24,7 @@ def _exe_dir():
 def _set_db_path():
     """Point DATABASE_URL at a file next to the EXE / project root."""
     if 'DATABASE_URL' not in os.environ:
-        db_path = os.path.join(_exe_dir(), 'netstock.db')
+        db_path = os.path.join(_exe_dir(), 'inventory.db')
         os.environ['DATABASE_URL'] = 'sqlite:///' + db_path
 
 
@@ -64,24 +64,34 @@ def _first_run_setup(app):
             db.session.execute(text("ALTER TABLE assets ADD COLUMN component_id VARCHAR(50)"))
             db.session.commit()
 
+        if 'conversion_fee' not in cols:
+            db.session.execute(text("ALTER TABLE assets ADD COLUMN conversion_fee NUMERIC(5,2)"))
+            db.session.commit()
+
         # Fill in placeholder component_id for any asset still missing one
         db.session.execute(text(
             "UPDATE assets SET component_id = 'SN-' || printf('%04d', abs(random() % 10000))"
             " WHERE component_id IS NULL OR component_id = ''"
         ))
 
-        # Drop the legacy due_date column if it still exists
+        # Drop the legacy due_date column from assets if it still exists
         if 'due_date' in cols:
             db.session.execute(text("ALTER TABLE assets DROP COLUMN due_date"))
 
         db.session.commit()
 
+        # Drop due_date from tasks if it still exists
+        task_cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(tasks)")).fetchall()]
+        if 'due_date' in task_cols:
+            db.session.execute(text("ALTER TABLE tasks DROP COLUMN due_date"))
+            db.session.commit()
+
         if not User.query.first():
-            print('[NetStock] First run detected — seeding database …')
+            print('[Inventory] First run detected — seeding database …')
 
             admin = User(
                 name='Admin',
-                email='admin@netstock.app',
+                email='admin@inventory.app',
                 password_hash=bcrypt.generate_password_hash('admin1234').decode('utf-8'),
                 role='admin',
             )
@@ -99,7 +109,7 @@ def _first_run_setup(app):
                 db.session.add(AssetType(name=name, category=category))
 
             db.session.commit()
-            print('[NetStock] Seed complete. Login: admin@netstock.app / admin1234')
+            print('[Inventory] Seed complete. Login: admin@inventory.app / admin1234')
 
 
 def main():
@@ -122,8 +132,8 @@ def main():
     # 5. Choose a free port and open the browser
     port = _find_free_port()
     url = f'http://127.0.0.1:{port}'
-    print(f'[NetStock] Starting server on {url}')
-    print('[NetStock] Press Ctrl+C to quit.')
+    print(f'[Inventory] Starting server on {url}')
+    print('[Inventory] Press Ctrl+C to quit.')
     _open_browser(url)
 
     # 6. Run Flask (threaded so the browser-open thread doesn't block it)

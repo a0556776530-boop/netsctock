@@ -68,13 +68,13 @@ def send_due_reminders():
 
 
 def _send_user_digest(user, overdue_tasks, soon_tasks, overdue_assets, soon_assets, today):
-    subject = f'[Netstock] Due Date Reminder — {today.strftime("%d %b %Y")}'
+    subject = f'[Inventory] Due Date Reminder — {today.strftime("%d %b %Y")}'
     html = _build_user_html(user, overdue_tasks, soon_tasks, overdue_assets, soon_assets)
     _send(user.email, subject, html)
 
 
 def _send_admin_summary(admin, all_overdue_tasks, all_overdue_assets, today):
-    subject = f'[Netstock] System Overdue Summary — {today.strftime("%d %b %Y")}'
+    subject = f'[Inventory] System Overdue Summary — {today.strftime("%d %b %Y")}'
     html = _build_admin_html(all_overdue_tasks, all_overdue_assets, today)
     _send(admin.email, subject, html)
 
@@ -116,14 +116,14 @@ _BASE = """
 <body>
 <div class="wrap">
   <div class="header">
-    <h1>&#128276; Netstock — Due Date Reminder</h1>
+    <h1>&#128276; Inventory — Due Date Reminder</h1>
     <p>{date_str}</p>
   </div>
   <div class="body">
     {greeting}
     {sections}
   </div>
-  <div class="footer">Netstock Hardware Asset Tracker &mdash; This is an automated reminder.</div>
+  <div class="footer">Inventory Hardware Asset Tracker &mdash; This is an automated reminder.</div>
 </div>
 </body>
 </html>
