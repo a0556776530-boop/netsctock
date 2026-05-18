@@ -53,8 +53,15 @@
       </li>
       <li class="nav-item">
         <a href="{{ url_for('estimates.list_estimates') }}"
-           class="nav-link text-white {% if request.blueprint == 'estimates' %}active{% endif %}">
+           class="nav-link text-white {% if request.blueprint == 'estimates' and request.endpoint != 'estimates.history' %}active{% endif %}">
           <i class="bi bi-clipboard2-data me-2"></i>Estimates
+        </a>
+      </li>
+      <li class="nav-item ps-2">
+        <a href="{{ url_for('estimates.history') }}"
+           class="nav-link text-white {% if request.endpoint == 'estimates.history' %}active{% endif %}"
+           style="font-size:.9em; opacity:.85;">
+          <i class="bi bi-clock-history me-2"></i>היסטוריה
         </a>
       </li>
       {% if current_user.is_admin %}

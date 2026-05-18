@@ -109,6 +109,14 @@
               {{ form.quantity(class="form-control", type="number", step="1", min="0",
                                id="quantityInput", placeholder="0") }}
             </div>
+
+            <!-- Min Threshold (Red Line) -->
+            <div class="col-md-4">
+              {{ form.min_threshold.label(class="form-label fw-semibold") }}
+              {{ form.min_threshold(class="form-control", type="number", step="1", min="0",
+                                    placeholder="e.g. 5") }}
+              <div class="form-text text-muted small">Red alert if stock falls at or below this</div>
+            </div>
           </div>
 
           <hr class="my-4">

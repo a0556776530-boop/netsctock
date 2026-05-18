@@ -7,6 +7,7 @@ class Estimate(db.Model):
 
     id                = db.Column(db.Integer, primary_key=True)
     allocation_number = db.Column(db.Integer, nullable=True, unique=True)
+    status            = db.Column(db.String(20), nullable=False, default='pending')
     task_name         = db.Column(db.String(200), nullable=False)
     project_name      = db.Column(db.String(200), nullable=True)
     created_date  = db.Column(db.Date,     nullable=False)

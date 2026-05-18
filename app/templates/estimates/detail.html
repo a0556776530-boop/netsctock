@@ -14,13 +14,31 @@
     </div>
     <span class="text-muted small">{{ estimate.project_name or 'No project' }}</span>
   </div>
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2 flex-wrap">
     <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-arrow-left me-1"></i>All Estimates
     </a>
     <a href="{{ url_for('estimates.export_csv', id=estimate.id) }}" class="btn btn-sm btn-outline-success">
       <i class="bi bi-filetype-csv me-1"></i>Export CSV
     </a>
+    {% if estimate.status == 'pending' %}
+    <form method="POST" action="{{ url_for('estimates.withdraw', id=estimate.id) }}"
+          onsubmit="return confirm('Mark this assignment as ongoing and move it to History?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-success fw-semibold">
+        <i class="bi bi-check2-circle me-1"></i>{% if lang == 'he' %}סמן כנמשך{% else %}Mark as ongoing{% endif %}
+      </button>
+    </form>
+    {% endif %}
+    {% if estimate.status == 'withdrawn' %}
+    <form method="POST" action="{{ url_for('estimates.restore', id=estimate.id) }}"
+          onsubmit="return confirm('Restore this assignment back to Pending?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-outline-primary fw-semibold">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+      </button>
+    </form>
+    {% endif %}
     {% if current_user.is_admin %}
     <form method="POST" action="{{ url_for('estimates.delete', id=estimate.id) }}"
           onsubmit="return confirm('Delete this estimate?')">
@@ -43,7 +61,17 @@
         </h6>
         <table class="table table-sm table-borderless mb-0 small">
           <tr>
-            <td class="text-muted fw-semibold" style="width:45%">מספר הקצאה</td>
+            <td class="text-muted fw-semibold" style="width:45%">Status</td>
+            <td>
+              {% if estimate.status == 'withdrawn' %}
+              <span class="badge bg-secondary">נמשך · Withdrawn</span>
+              {% else %}
+              <span class="badge bg-success">ממתין · Pending</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">Assignment No.</td>
             <td>
               <span class="badge bg-primary font-monospace fs-6 px-2 py-1">
                 {{ estimate.allocation_number or '—' }}

@@ -1,12 +1,15 @@
 {% extends 'base.html' %}
-{% block title %}Allocations & Estimates{% endblock %}
+{% block title %}History — Allocations{% endblock %}
 {% block page_title %}Allocations & Estimates{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <span class="text-muted small">{{ estimates | length }} estimate(s)</span>
-  <a href="{{ url_for('estimates.new_estimate') }}" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus-lg me-1"></i>New Estimate
+  <div>
+    <h6 class="mb-0 fw-bold">היסטוריה · History</h6>
+    <span class="text-muted small">{{ estimates | length }} withdrawn assignment(s)</span>
+  </div>
+  <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Active
   </a>
 </div>
 
@@ -26,7 +29,7 @@
           <th>Requester Name</th>
           <th>Project</th>
           <th>Date</th>
-          <th>Valid Until</th>
+          <th>Status</th>
           <th class="text-end">Total (ILS)</th>
           <th></th>
         </tr>
@@ -35,18 +38,15 @@
         {% for e in estimates %}
         <tr data-assignment="{{ e.allocation_number or '' }}">
           <td>
-            <span class="badge bg-primary font-monospace">{{ e.allocation_number or '—' }}</span>
+            <span class="badge bg-secondary font-monospace">{{ e.allocation_number or '—' }}</span>
           </td>
           <td class="fw-semibold">
             <a href="{{ url_for('estimates.detail', id=e.id) }}" class="text-decoration-none">{{ e.task_name }}</a>
           </td>
           <td class="small text-muted">{{ e.project_name or '—' }}</td>
           <td class="small">{{ e.created_date.strftime('%d %b %Y') }}</td>
-          <td class="small {% if e.valid_until < now.date() %}text-danger fw-semibold{% endif %}">
-            {{ e.valid_until.strftime('%d %b %Y') }}
-            {% if e.valid_until < now.date() %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small ms-1">Expired</span>{% endif %}
-          </td>
-          <td class="text-end font-monospace fw-semibold text-success">{{ e.formatted_total }}</td>
+          <td><span class="badge bg-secondary small">נמשך · Withdrawn</span></td>
+          <td class="text-end font-monospace fw-semibold text-muted">{{ e.formatted_total }}</td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="View">
               <i class="bi bi-eye"></i>
@@ -54,6 +54,13 @@
             <a href="{{ url_for('estimates.edit', id=e.id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
               <i class="bi bi-pencil"></i>
             </a>
+            <form method="POST" action="{{ url_for('estimates.restore', id=e.id) }}" class="d-inline"
+                  onsubmit="return confirm('Restore assignment {{ e.allocation_number }} back to Pending?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-success" title="Restore to Pending">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+            </form>
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('estimates.delete', id=e.id) }}" class="d-inline"
                   onsubmit="return confirm('Delete estimate \'{{ e.task_name }}\'?')">
@@ -66,11 +73,10 @@
           </td>
         </tr>
         {% else %}
-        <tr id="emptyRow">
+        <tr>
           <td colspan="7" class="text-center text-muted py-5">
-            <i class="bi bi-clipboard2-x fs-3 d-block mb-2"></i>
-            No estimates yet.
-            <a href="{{ url_for('estimates.new_estimate') }}">Create the first one?</a>
+            <i class="bi bi-clock-history fs-3 d-block mb-2"></i>
+            No withdrawn assignments yet.
           </td>
         </tr>
         {% endfor %}
@@ -96,7 +102,7 @@ function filterTable(q) {
   if (!noResult) {
     noResult = document.createElement('tr');
     noResult.id = 'noResultRow';
-    noResult.innerHTML = '<td colspan="7" class="text-center text-muted py-4 small">No estimates match your search.</td>';
+    noResult.innerHTML = '<td colspan="7" class="text-center text-muted py-4 small">No assignments match your search.</td>';
     document.querySelector('#estimatesTable tbody').appendChild(noResult);
   }
   noResult.style.display = (q && visible === 0) ? '' : 'none';

@@ -61,7 +61,8 @@ class AssetForm(FlaskForm):
     notes     = TextAreaField('Notes', validators=[Optional()])
     price_usd = DecimalField('Price USD ($)', validators=[Optional(), NumberRange(min=0)], places=0)
     price_nis = DecimalField('Price NIS (₪)', validators=[Optional(), NumberRange(min=0)], places=0)
-    quantity       = IntegerField('Stock Qty',          validators=[Optional(), NumberRange(min=0)])
+    quantity       = IntegerField('Stock Qty',       validators=[Optional(), NumberRange(min=0)])
+    min_threshold  = IntegerField('Min Threshold',   validators=[Optional(), NumberRange(min=0)])
     submit         = SubmitField('Save Asset')
 
     def populate_choices(self):
@@ -180,6 +181,19 @@ def list_assets():
     from app.models.settings import AppSetting
     global_settings = json.dumps(AppSetting.all_as_dict())
 
+    # Commitments: sum of quantities in PENDING estimate items per asset
+    from app.models.estimate import EstimateItem, Estimate
+    from sqlalchemy import func as sa_func
+    commitment_rows = (
+        db.session.query(EstimateItem.asset_id,
+                         sa_func.sum(EstimateItem.quantity).label('total'))
+        .join(Estimate, EstimateItem.estimate_id == Estimate.id)
+        .filter(Estimate.status == 'pending')
+        .group_by(EstimateItem.asset_id)
+        .all()
+    )
+    commitments = {row.asset_id: int(row.total) for row in commitment_rows}
+
     return render_template(
         'assets/list.html',
         assets=assets,
@@ -193,6 +207,7 @@ def list_assets():
         sort=sort,
         order=order,
         global_settings=global_settings,
+        commitments=commitments,
     )
 
 
@@ -238,6 +253,7 @@ def new_asset():
                 price_usd=form.price_usd.data,
                 price_nis=form.price_nis.data,
                 quantity=form.quantity.data,
+                min_threshold=form.min_threshold.data,
             )
             db.session.add(asset)
             db.session.flush()
@@ -320,9 +336,10 @@ def edit(id):
         asset.manufacturer = (form.manufacturer.data or '').strip() or None
         # status / current_site_id / assigned_to_id are managed via action buttons, not this form
         asset.notes          = (form.notes.data or '').strip() or None
-        asset.price_usd = form.price_usd.data
-        asset.price_nis = form.price_nis.data
+        asset.price_usd      = form.price_usd.data
+        asset.price_nis      = form.price_nis.data
         asset.quantity       = form.quantity.data
+        asset.min_threshold  = form.min_threshold.data
 
         db.session.commit()
         flash(t.get('flash_asset_updated', 'Asset updated successfully.'), 'success')

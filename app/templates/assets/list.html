@@ -5,8 +5,8 @@
 {% block content %}
 <div class="row g-4 align-items-start">
 
-  <!-- ── Main column ──────────────────────────────────────────────────────── -->
-  <div class="col-lg-9">
+  <!-- ── Main column (wider now) ──────────────────────────────────────────── -->
+  <div class="col-lg-10">
 
     <!-- Title / action buttons -->
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -100,7 +100,7 @@
               </th>
 
               <!-- 3. Description -->
-              <th style="min-width:220px;">{{ t.col_feature }}</th>
+              <th style="min-width:200px;">{{ t.col_feature }}</th>
 
               <!-- 4. Stock Qty -->
               <th class="text-center">
@@ -111,10 +111,18 @@
                 </a>
               </th>
 
-              <!-- 5. Red Line Alert -->
+              <!-- 5. Commitments -->
+              <th class="text-center" title="Sum of quantities in open Pending estimates">
+                Commitments
+              </th>
+
+              <!-- 6. After Commitments -->
+              <th class="text-center">After Commitments</th>
+
+              <!-- 7. Red Line Alert -->
               <th class="text-center">{{ t.col_alert }}</th>
 
-              <!-- 6. Final Price (₪) — eye toggle + sort -->
+              <!-- 8. Final Price (₪) -->
               <th>
                 <div class="d-flex align-items-center gap-1">
                   <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=price_usd&order={{ 'desc' if sort == 'price_usd' and order == 'asc' else 'asc' }}"
@@ -134,7 +142,7 @@
                 </div>
               </th>
 
-              <!-- 7. Actions -->
+              <!-- 9. Actions -->
               <th></th>
             </tr>
           </thead>
@@ -142,13 +150,16 @@
           <tbody>
             {% for group_label, group_assets in grouped_assets %}
             <tr class="table-light">
-              <td colspan="7" class="py-2 px-3 border-top border-2">
+              <td colspan="9" class="py-2 px-3 border-top border-2">
                 <span class="fw-semibold small">{{ group_label }}</span>
                 <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2">{{ group_assets | length }}</span>
               </td>
             </tr>
 
             {% for asset in group_assets %}
+            {% set committed = commitments.get(asset.id, 0) %}
+            {% set stock = asset.quantity if asset.quantity is not none else 0 %}
+            {% set after = stock - committed %}
             <tr class="{{ 'table-warning' if (asset.quantity is not none and asset.quantity < 5) else '' }}">
 
               <!-- 1. Asset ID -->
@@ -167,7 +178,7 @@
               </td>
 
               <!-- 3. Description -->
-              <td style="min-width:220px;">
+              <td style="min-width:200px;">
                 <div class="small fw-semibold">{{ asset.asset_type.name if asset.asset_type else '—' }}</div>
                 <div class="text-muted x-small">
                   {{ asset.model or '' }}{% if asset.model and asset.manufacturer %} · {% endif %}{{ asset.manufacturer or '' }}
@@ -187,7 +198,31 @@
                 {% endif %}
               </td>
 
-              <!-- 5. Red Line Alert -->
+              <!-- 5. Commitments -->
+              <td class="text-center small">
+                {% if committed > 0 %}
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle fw-semibold">{{ committed }}</span>
+                {% else %}
+                <span class="text-muted">0</span>
+                {% endif %}
+              </td>
+
+              <!-- 6. After Commitments -->
+              <td class="text-center small fw-bold">
+                {% if asset.quantity is not none %}
+                  {% if after <= 0 %}
+                    <span class="badge bg-danger">{{ after }}</span>
+                  {% elif after < 5 %}
+                    <span class="fw-bold text-danger">{{ after }}</span>
+                  {% else %}
+                    {{ after }}
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+
+              <!-- 7. Red Line Alert -->
               <td class="text-center">
                 {% if asset.quantity is not none and asset.quantity < 5 %}
                 <div class="fw-bold text-danger fs-5 lh-1">{{ asset.quantity }}</div>
@@ -199,7 +234,7 @@
                 {% endif %}
               </td>
 
-              <!-- 6. Final Price (₪) — computed live from global settings -->
+              <!-- 8. Final Price (₪) -->
               <td class="small font-monospace">
                 {% if asset.price_usd %}
                 <span class="price-cell" data-usd="{{ asset.price_usd|float }}">****</span>
@@ -208,7 +243,7 @@
                 {% endif %}
               </td>
 
-              <!-- 7. Actions -->
+              <!-- 9. Actions -->
               <td class="text-end text-nowrap">
                 <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
                   <i class="bi bi-eye"></i>
@@ -224,7 +259,7 @@
 
             {% else %}
             <tr>
-              <td colspan="7" class="text-center text-muted py-5">
+              <td colspan="9" class="text-center text-muted py-5">
                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                 {{ t.no_assets_found }} <a href="{{ url_for('assets.new_asset') }}">{{ t.register_one_link }}</a>
               </td>
@@ -235,45 +270,27 @@
       </div>
     </div>
 
-  </div><!-- /col-lg-9 -->
+  </div><!-- /col-lg-10 -->
 
-  <!-- ── Right sidebar: Price Settings ────────────────────────────────────── -->
-  <div class="col-lg-3">
-    <div class="card border-0 shadow sticky-top" style="top: 76px; border-radius: 12px;">
-      <div class="card-body p-4">
-
-        <p class="text-uppercase fw-semibold small text-muted mb-4"
-           style="letter-spacing: .08em;">
-          <i class="bi bi-currency-exchange me-1"></i>Price Settings
+  <!-- ── Right sidebar: compact rate widget ───────────────────────────────── -->
+  <div class="col-lg-2">
+    <div class="card border-0 shadow sticky-top" style="top: 76px; border-radius: 10px;">
+      <div class="card-body p-3">
+        <p class="text-uppercase fw-semibold x-small text-muted mb-2" style="letter-spacing:.08em;">
+          <i class="bi bi-currency-exchange me-1"></i>USD Rate
         </p>
-
-        <!-- Rate input -->
-        <div class="mb-4">
-          <label class="form-label small fw-semibold" for="gsRate">USD Exchange Rate</label>
-          <input type="number" id="gsRate"
-                 class="form-control form-control-lg text-center fw-semibold"
-                 style="font-size: 1.15rem;"
-                 step="0.01" autocomplete="off" placeholder="3.00">
+        <input type="number" id="gsRate"
+               class="form-control form-control-sm text-center fw-semibold font-monospace mb-2"
+               step="0.01" autocomplete="off" placeholder="3.00">
+        <div class="text-center small" style="color:#1a5fa8;">
+          1$ = <span id="rateDisplayVal" class="fw-bold">—</span> ₪
         </div>
-
-        <!-- Confirmed rate display -->
-        <div class="rounded-3 py-3 px-2 mb-3 text-center"
-             style="background: linear-gradient(135deg,#e0f0ff,#d6eaff); border:1px solid #b6d8f7;">
-          <div class="x-small fw-semibold text-uppercase text-muted mb-1"
-               style="letter-spacing:.07em;">Current Rate</div>
-          <div class="fw-bold" style="font-size:1.3rem; color:#1a5fa8;">
-            1 USD = <span id="rateDisplayVal">—</span> ₪
-          </div>
+        <div class="text-center mt-1" style="min-height:1rem;">
+          <span class="x-small fst-italic" id="gsSaveStatus"></span>
         </div>
-
-        <!-- Save feedback -->
-        <div class="text-center" style="min-height:1.3rem;">
-          <span class="small fst-italic" id="gsSaveStatus"></span>
-        </div>
-
       </div>
     </div>
-  </div><!-- /col-lg-3 -->
+  </div><!-- /col-lg-2 -->
 
 </div><!-- /row -->
 {% endblock %}
@@ -281,7 +298,6 @@
 {% block scripts %}
 <script>
 (function () {
-  // ── Rate: single source of truth ──────────────────────────────────────────
   var rate = 3.0;
   try {
     var srv = {{ global_settings|safe }};
@@ -293,21 +309,13 @@
   var saveTimer = null;
   var csrf      = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
-  // ── HARDCODED FORMULA ─────────────────────────────────────────────────────
-  // Final Price (ILS) = (Base_USD × Rate) × 1.7 × 1.18
-  // Example: $100 @ rate 3 → (100 × 3) × 1.7 × 1.18 = 601.80 ₪
   function calcILS(usd) {
     return Math.round(usd * rate * 1.7 * 1.18 * 100) / 100;
   }
-
   function fmt(n) {
-    return n.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }) + ' ₪';
+    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₪';
   }
 
-  // ── Repaint all price cells in the table ──────────────────────────────────
   function repaint() {
     document.querySelectorAll('.price-cell').forEach(function (el) {
       var usd = parseFloat(el.getAttribute('data-usd')) || 0;
@@ -317,16 +325,14 @@
     });
   }
 
-  // ── Update sidebar display card ────────────────────────────────────────────
   function showRate(r) {
     var el = document.getElementById('rateDisplayVal');
     if (el) el.textContent = r.toFixed(2);
   }
 
-  // ── Persist to server (debounced 700 ms) ──────────────────────────────────
   function persist(r) {
     var el = document.getElementById('gsSaveStatus');
-    if (el) { el.textContent = 'Saving…'; el.className = 'small text-muted fst-italic'; }
+    if (el) { el.textContent = 'Saving…'; el.className = 'x-small text-muted fst-italic'; }
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       fetch('/api/settings', {
@@ -335,33 +341,30 @@
         body:    JSON.stringify({ usd_rate: r }),
       })
       .then(function () {
-        if (el) { el.textContent = 'Saved ✓'; el.className = 'small text-success'; }
+        if (el) { el.textContent = 'Saved ✓'; el.className = 'x-small text-success'; }
         setTimeout(function () { if (el) el.textContent = ''; }, 2000);
       })
       .catch(function () {
-        if (el) { el.textContent = 'Save failed'; el.className = 'small text-danger'; }
+        if (el) { el.textContent = 'Failed'; el.className = 'x-small text-danger'; }
       });
     }, 700);
   }
 
-  // ── Rate input ─────────────────────────────────────────────────────────────
   var input = document.getElementById('gsRate');
   if (input) {
     input.value = rate.toFixed(2);
-
     input.addEventListener('input', function () {
       var r = parseFloat(this.value);
-      if (isNaN(r) || r <= 0) return;  // skip mid-type invalids, don't reset
+      if (isNaN(r) || r <= 0) return;
       rate = r;
       showRate(r);
       repaint();
       persist(r);
     });
-
     input.addEventListener('blur', function () {
       var r = parseFloat(this.value);
       if (isNaN(r) || r <= 0) {
-        this.value = rate.toFixed(2);   // restore last valid on empty/invalid
+        this.value = rate.toFixed(2);
       } else {
         rate = r;
         this.value = r.toFixed(2);
@@ -371,7 +374,6 @@
     });
   }
 
-  // ── Price visibility toggle ────────────────────────────────────────────────
   function syncToggle() {
     var icon = document.getElementById('priceToggleIcon');
     var btn  = document.getElementById('priceToggleBtn');
@@ -386,7 +388,6 @@
     repaint();
   };
 
-  // ── Boot ──────────────────────────────────────────────────────────────────
   showRate(rate);
   syncToggle();
   repaint();

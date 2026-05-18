@@ -56,6 +56,7 @@ class Asset(db.Model):
     price_usd      = db.Column(db.Numeric(12, 2), nullable=True)
     conversion_fee = db.Column(db.Numeric(5, 2), nullable=True)
     quantity       = db.Column(db.Integer, nullable=True)
+    min_threshold  = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

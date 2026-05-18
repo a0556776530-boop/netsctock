@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% block title %}Edit Estimate {{ estimate.allocation_number }}{% endblock %}
+{% block page_title %}Allocations & Estimates{% endblock %}
+
+{% block content %}
+<form method="POST" id="estimateForm" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="items_json" id="itemsJson" value="[]">
+
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h6 class="fw-bold mb-4 d-flex align-items-center gap-2">
+        <i class="bi bi-pencil-square text-primary"></i>
+        Edit Estimate —
+        <span class="badge bg-primary font-monospace">{{ estimate.allocation_number or estimate.id }}</span>
+      </h6>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Requester Name <span class="text-danger">*</span></label>
+          <input type="text" name="task_name" class="form-control" required
+                 value="{{ estimate.task_name }}" placeholder="e.g. John Smith">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Project Name</label>
+          <input type="text" name="project_name" class="form-control"
+                 value="{{ estimate.project_name or '' }}" placeholder="e.g. Tel Aviv HQ">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Asset Catalogue ──────────────────────────────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+        <i class="bi bi-search text-primary"></i>
+        Select Assets from Inventory
+      </h6>
+      <input type="text" id="assetSearch" class="form-control mb-3"
+             placeholder="Search by Part No., Description, Manufacturer, Asset ID…">
+      <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
+        <table class="table table-hover table-sm align-middle mb-0">
+          <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+            <tr>
+              <th class="small">Asset ID</th>
+              <th class="small">Part No.</th>
+              <th class="small">Description</th>
+              <th class="small">Type</th>
+              <th class="small text-center">In Stock</th>
+              <th class="small text-end">Base (USD)</th>
+              <th class="small text-end">Price (ILS)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="assetTableBody">
+            <tr><td colspan="8" class="text-center text-muted py-3 small">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Selected Items & Total ────────────────────────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+        <i class="bi bi-cart3 text-primary"></i>
+        Selected Items
+      </h6>
+
+      <div id="noItemsMsg" class="text-center text-muted py-4 small">
+        <i class="bi bi-inbox fs-4 d-block mb-2 opacity-50"></i>
+        No items selected yet — use the table above to add assets.
+      </div>
+
+      <div id="selectedSection" class="d-none">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Part No.</th>
+                <th>Description</th>
+                <th class="text-center" style="width:100px;">Qty</th>
+                <th class="text-end">Unit (ILS)</th>
+                <th class="text-end">Line Total (ILS)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="selectedBody"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="6">
+                  <div class="rounded-3 p-3 mt-2 d-flex justify-content-between align-items-center"
+                       style="background: linear-gradient(135deg,#e0f0ff,#d6eaff); border:1px solid #b6d8f7;">
+                    <span class="fw-bold text-uppercase small" style="letter-spacing:.06em; color:#1a5fa8;">
+                      Total Estimated Cost
+                    </span>
+                    <span class="fw-bold font-monospace" style="font-size:1.4rem; color:#1a5fa8;" id="grandTotal">—</span>
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Actions ───────────────────────────────────────────────────────────── -->
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-floppy me-1"></i>Save Changes
+    </button>
+    <a href="{{ url_for('estimates.detail', id=estimate.id) }}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var RATE     = {{ usd_rate }};
+  var ASSETS   = {{ assets_json|safe }};
+  var SELECTED = {{ selected_json|safe }};
+  var sel      = {};
+
+  // Pre-populate from existing items
+  SELECTED.forEach(function(s) {
+    var a = ASSETS.find(function(x) { return x.id === s.asset_id; });
+    if (a) sel[a.id] = { asset: a, qty: s.quantity };
+  });
+
+  function calcILS(usd, qty) {
+    return Math.round(usd * RATE * 1.7 * 1.18 * (qty || 1) * 100) / 100;
+  }
+  function fmt(n) {
+    return n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₪';
+  }
+
+  function renderCatalogue(q) {
+    q = (q || '').toLowerCase();
+    var tbody = document.getElementById('assetTableBody');
+    var html  = '';
+    var shown = 0;
+    ASSETS.forEach(function (a) {
+      if (q && !(
+        a.serial_number.toLowerCase().includes(q) ||
+        a.model.toLowerCase().includes(q) ||
+        a.manufacturer.toLowerCase().includes(q) ||
+        a.component_id.toLowerCase().includes(q) ||
+        a.type.toLowerCase().includes(q)
+      )) return;
+      shown++;
+      var added = !!sel[a.id];
+      var stockBadge = a.quantity > 0
+        ? '<span class="badge bg-success-subtle text-success border border-success-subtle">' + a.quantity + '</span>'
+        : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">0</span>';
+      html +=
+        '<tr>' +
+        '<td class="x-small font-monospace text-muted">'   + (a.component_id || '—') + '</td>' +
+        '<td class="small font-monospace fw-semibold">'    + a.serial_number + '</td>' +
+        '<td class="small">'                               + (a.model || '') + (a.model && a.manufacturer ? ' · ' : '') + (a.manufacturer || '') + '</td>' +
+        '<td class="x-small text-muted">'                 + (a.type || '') + '</td>' +
+        '<td class="text-center">'                        + stockBadge + '</td>' +
+        '<td class="text-end small font-monospace">$'     + a.price_usd.toFixed(2) + '</td>' +
+        '<td class="text-end small font-monospace">'      + fmt(calcILS(a.price_usd, 1)) + '</td>' +
+        '<td class="text-end">' +
+        (added
+          ? '<span class="badge bg-success-subtle text-success border border-success-subtle small">Added</span>'
+          : '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="addAsset(' + a.id + ')">' +
+            '<i class="bi bi-plus-lg"></i></button>') +
+        '</td></tr>';
+    });
+    if (!shown) {
+      html = '<tr><td colspan="8" class="text-center text-muted py-3 small">No assets match your search.</td></tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  window.addAsset = function (id) {
+    var a = ASSETS.find(function (x) { return x.id === id; });
+    if (!a) return;
+    sel[id] = { asset: a, qty: 1 };
+    renderAll();
+  };
+
+  window.removeAsset = function (id) {
+    delete sel[id];
+    renderAll();
+  };
+
+  window.changeQty = function (id, val) {
+    var qty = Math.max(1, parseInt(val) || 1);
+    if (sel[id]) sel[id].qty = qty;
+    renderSelectedTotal();
+    updateHidden();
+  };
+
+  function renderSelected() {
+    var ids   = Object.keys(sel);
+    var noMsg = document.getElementById('noItemsMsg');
+    var sec   = document.getElementById('selectedSection');
+    var tbody = document.getElementById('selectedBody');
+
+    if (!ids.length) {
+      noMsg.classList.remove('d-none');
+      sec.classList.add('d-none');
+      document.getElementById('grandTotal').textContent = '—';
+      return;
+    }
+    noMsg.classList.add('d-none');
+    sec.classList.remove('d-none');
+
+    var html = '';
+    ids.forEach(function (id) {
+      var s = sel[id];
+      var a = s.asset;
+      html +=
+        '<tr id="selRow_' + id + '">' +
+        '<td class="small font-monospace fw-semibold">' + a.serial_number + '</td>' +
+        '<td class="small">' + (a.model || '—') + '</td>' +
+        '<td class="text-center">' +
+          '<input type="number" class="form-control form-control-sm text-center" min="1" value="' + s.qty + '"' +
+          ' style="width:75px; margin:auto;"' +
+          ' oninput="changeQty(' + id + ',this.value)">' +
+        '</td>' +
+        '<td class="text-end small font-monospace">' + fmt(calcILS(a.price_usd, 1)) + '</td>' +
+        '<td class="text-end small font-monospace fw-semibold" id="line_' + id + '">' + fmt(calcILS(a.price_usd, s.qty)) + '</td>' +
+        '<td class="text-end">' +
+          '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="removeAsset(' + id + ')">' +
+            '<i class="bi bi-trash3"></i>' +
+          '</button>' +
+        '</td></tr>';
+    });
+    tbody.innerHTML = html;
+    renderSelectedTotal();
+  }
+
+  function renderSelectedTotal() {
+    var total = 0;
+    Object.keys(sel).forEach(function (id) {
+      var s   = sel[id];
+      var nis = calcILS(s.asset.price_usd, s.qty);
+      total += nis;
+      var el = document.getElementById('line_' + id);
+      if (el) el.textContent = fmt(nis);
+    });
+    var gt = document.getElementById('grandTotal');
+    if (gt) gt.textContent = Object.keys(sel).length
+      ? fmt(Math.round(total * 100) / 100)
+      : '—';
+  }
+
+  function updateHidden() {
+    var items = Object.keys(sel).map(function (id) {
+      return { asset_id: parseInt(id), quantity: sel[id].qty };
+    });
+    document.getElementById('itemsJson').value = JSON.stringify(items);
+  }
+
+  function renderAll() {
+    renderCatalogue(document.getElementById('assetSearch').value);
+    renderSelected();
+    updateHidden();
+  }
+
+  document.getElementById('assetSearch').addEventListener('input', function () {
+    renderCatalogue(this.value);
+  });
+
+  document.getElementById('estimateForm').addEventListener('submit', function () {
+    updateHidden();
+  });
+
+  renderAll();
+})();
+</script>
+{% endblock %}

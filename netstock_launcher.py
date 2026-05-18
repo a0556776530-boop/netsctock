@@ -68,6 +68,10 @@ def _first_run_setup(app):
             db.session.execute(text("ALTER TABLE assets ADD COLUMN conversion_fee NUMERIC(5,2)"))
             db.session.commit()
 
+        if 'min_threshold' not in cols:
+            db.session.execute(text("ALTER TABLE assets ADD COLUMN min_threshold INTEGER"))
+            db.session.commit()
+
         # Fill in placeholder component_id for any asset still missing one
         db.session.execute(text(
             "UPDATE assets SET component_id = 'SN-' || printf('%04d', abs(random() % 10000))"
@@ -86,13 +90,15 @@ def _first_run_setup(app):
             db.session.execute(text("ALTER TABLE tasks DROP COLUMN due_date"))
             db.session.commit()
 
-        # Add allocation_number to estimates if it doesn't exist
+        # Add columns to estimates if they don't exist
         est_cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(estimates)")).fetchall()]
-        if 'allocation_number' in est_cols:
-            pass  # already migrated
-        elif est_cols:  # table exists but column missing
-            db.session.execute(text("ALTER TABLE estimates ADD COLUMN allocation_number INTEGER"))
-            db.session.commit()
+        if est_cols:
+            if 'allocation_number' not in est_cols:
+                db.session.execute(text("ALTER TABLE estimates ADD COLUMN allocation_number INTEGER"))
+                db.session.commit()
+            if 'status' not in est_cols:
+                db.session.execute(text("ALTER TABLE estimates ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'"))
+                db.session.commit()
 
         # Ensure usd_rate default exists in app_settings
         from app.models.settings import AppSetting
