@@ -33,7 +33,7 @@ def create_app(config_class=Config):
     login_manager.login_message_category = 'warning'
 
     # Import models so Flask-Migrate detects them
-    from .models import user, asset, site, task, settings  # noqa: F401
+    from .models import user, asset, site, task, settings, estimate  # noqa: F401
 
     from .routes.auth import auth_bp
     from .routes.main import main_bp
@@ -42,6 +42,7 @@ def create_app(config_class=Config):
     from .routes.scan import scan_bp
     from .routes.tasks import tasks_bp
     from .routes.admin import admin_bp
+    from .routes.estimates import estimates_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -50,6 +51,7 @@ def create_app(config_class=Config):
     app.register_blueprint(scan_bp)
     app.register_blueprint(tasks_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(estimates_bp)
 
     from datetime import datetime
     from .utils.translations import TRANSLATIONS

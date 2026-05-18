@@ -1,7 +1,7 @@
 TRANSLATIONS = {
     'en': {
         # App
-        'app_subtitle': 'Network Asset Tracker',
+        'app_subtitle': 'Inventory Management',
         'lang_toggle_label': 'עב',
         # Navigation
         'nav_dashboard': 'Dashboard',
@@ -179,7 +179,7 @@ TRANSLATIONS = {
         'modal_return_desc': 'This will clear the assignment and set the status to <strong>In Storage</strong>.',
         # Auth pages
         'login_page_title': 'Login',
-        'app_login_subtitle': 'Network Asset Tracker',
+        'app_login_subtitle': 'Inventory Management',
         'change_password_page_title': 'Change Password',
         'min_chars_hint': 'Minimum 8 characters.',
         # Flash messages
@@ -212,7 +212,7 @@ TRANSLATIONS = {
     },
     'he': {
         # App
-        'app_subtitle': 'מעקב ציוד רשת',
+        'app_subtitle': 'ניהול מלאי',
         'lang_toggle_label': 'EN',
         # Navigation
         'nav_dashboard': 'לוח בקרה',
@@ -390,7 +390,7 @@ TRANSLATIONS = {
         'modal_return_desc': 'פעולה זו תנקה את ההקצאה ותגדיר את הסטטוס ל<strong>באחסון</strong>.',
         # Auth pages
         'login_page_title': 'כניסה',
-        'app_login_subtitle': 'מעקב ציוד רשת',
+        'app_login_subtitle': 'ניהול מלאי',
         'change_password_page_title': 'שינוי סיסמא',
         'min_chars_hint': 'מינימום 8 תווים.',
         # Flash messages

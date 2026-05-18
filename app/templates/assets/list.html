@@ -3,319 +3,376 @@
 {% block page_title %}{{ t.assets_title }}{% endblock %}
 
 {% block content %}
+<div class="row g-4 align-items-start">
 
-<!-- ── Global Price Settings bar ─────────────────────────────────────────── -->
-<div class="card border-0 shadow-sm mb-3 border-start border-primary border-3">
-  <div class="card-body py-2 px-3">
-    <div class="d-flex align-items-center gap-3 flex-wrap">
-      <span class="fw-semibold small text-primary text-nowrap">
-        <i class="bi bi-sliders me-1"></i>Global Price Settings
-      </span>
+  <!-- ── Main column ──────────────────────────────────────────────────────── -->
+  <div class="col-lg-9">
 
-      <div class="d-flex align-items-center gap-1">
-        <label class="form-label mb-0 small text-nowrap fw-semibold" for="gsRate">USD Rate (₪)</label>
-        <input type="number" id="gsRate" class="form-control form-control-sm"
-               step="0.01" min="0.01" style="width:80px;" autocomplete="off">
+    <!-- Title / action buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <span class="text-muted small">{{ assets | length }} {{ t.assets_count_suffix }}</span>
       </div>
-
-      <div class="d-flex align-items-center gap-1">
-        <label class="form-label mb-0 small text-nowrap fw-semibold" for="gsFee">Conv. Fee (%)</label>
-        <input type="number" id="gsFee" class="form-control form-control-sm"
-               step="0.01" min="0" style="width:80px;" autocomplete="off">
-      </div>
-
-      <div class="d-flex align-items-center gap-1">
-        <label class="form-label mb-0 small text-nowrap fw-semibold" for="gsBynet">Bynet Factor</label>
-        <input type="number" id="gsBynet" class="form-control form-control-sm"
-               step="0.001" min="0.001" style="width:90px;" autocomplete="off">
-      </div>
-
-      <span class="small text-muted fst-italic" id="gsSaveStatus"></span>
-    </div>
-  </div>
-</div>
-
-<!-- ── Title / action buttons ─────────────────────────────────────────────── -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <span class="text-muted small">{{ assets | length }} {{ t.assets_count_suffix }}</span>
-  </div>
-  <div class="d-flex gap-2">
-    {% if current_user.is_admin %}
-    <a href="{{ url_for('admin.export_assets') }}" class="btn btn-outline-secondary btn-sm" title="{{ t.export_csv_tooltip }}">
-      <i class="bi bi-download me-1"></i>CSV
-    </a>
-    {% endif %}
-    {% if current_user.can_edit %}
-    <a href="{{ url_for('assets.new_asset') }}" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-lg me-1"></i>{{ t.register_asset_btn }}
-    </a>
-    {% endif %}
-  </div>
-</div>
-
-<!-- ── Filters ────────────────────────────────────────────────────────────── -->
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-body py-2">
-    <form method="GET" class="row g-2 align-items-end">
-      <div class="col-12 col-md-4">
-        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
-               placeholder="{{ t.search_placeholder }}">
-      </div>
-      <div class="col-6 col-md-2">
-        <select name="status" class="form-select form-select-sm">
-          <option value="">{{ t.all_statuses }}</option>
-          {% for val, label in [
-            ('in_use', t.status_in_use), ('dismantled', t.status_dismantled),
-            ('in_storage', t.status_in_storage), ('assigned', t.status_assigned),
-            ('faulty', t.status_faulty), ('retired', t.status_retired)
-          ] %}
-          <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-6 col-md-2">
-        <select name="type" class="form-select form-select-sm">
-          <option value="">{{ t.all_types }}</option>
-          {% for tp in asset_types %}
-          <option value="{{ tp.id }}" {% if type_filter == tp.id %}selected{% endif %}>{{ tp.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-6 col-md-2">
-        <select name="site" class="form-select form-select-sm">
-          <option value="">{{ t.all_sites }}</option>
-          {% for s in sites %}
-          <option value="{{ s.id }}" {% if site_filter == s.id %}selected{% endif %}>{{ s.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-6 col-md-2 d-flex gap-1">
-        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
-          <i class="bi bi-search"></i>
-        </button>
-        <a href="{{ url_for('assets.list_assets') }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-x"></i>
+      <div class="d-flex gap-2">
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.export_assets') }}" class="btn btn-outline-secondary btn-sm" title="{{ t.export_csv_tooltip }}">
+          <i class="bi bi-download me-1"></i>CSV
         </a>
+        {% endif %}
+        {% if current_user.can_edit %}
+        <a href="{{ url_for('assets.new_asset') }}" class="btn btn-primary btn-sm">
+          <i class="bi bi-plus-lg me-1"></i>{{ t.register_asset_btn }}
+        </a>
+        {% endif %}
       </div>
-    </form>
-  </div>
-</div>
+    </div>
 
-<!-- ── Table ──────────────────────────────────────────────────────────────── -->
-<div class="card border-0 shadow-sm">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-        <tr>
-          <!-- 1. Asset ID -->
-          <th>
-            <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=component_id&order={{ 'desc' if sort == 'component_id' and order == 'asc' else 'asc' }}"
-               class="text-decoration-none text-dark d-flex align-items-center gap-1">
-              {{ t.col_asset_id }}
-              {% if sort == 'component_id' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body py-2">
+        <form method="GET" class="row g-2 align-items-end">
+          <div class="col-12 col-md-4">
+            <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+                   placeholder="{{ t.search_placeholder }}">
+          </div>
+          <div class="col-6 col-md-2">
+            <select name="status" class="form-select form-select-sm">
+              <option value="">{{ t.all_statuses }}</option>
+              {% for val, label in [
+                ('in_use', t.status_in_use), ('dismantled', t.status_dismantled),
+                ('in_storage', t.status_in_storage), ('assigned', t.status_assigned),
+                ('faulty', t.status_faulty), ('retired', t.status_retired)
+              ] %}
+              <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <select name="type" class="form-select form-select-sm">
+              <option value="">{{ t.all_types }}</option>
+              {% for tp in asset_types %}
+              <option value="{{ tp.id }}" {% if type_filter == tp.id %}selected{% endif %}>{{ tp.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <select name="site" class="form-select form-select-sm">
+              <option value="">{{ t.all_sites }}</option>
+              {% for s in sites %}
+              <option value="{{ s.id }}" {% if site_filter == s.id %}selected{% endif %}>{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-md-2 d-flex gap-1">
+            <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+              <i class="bi bi-search"></i>
+            </button>
+            <a href="{{ url_for('assets.list_assets') }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-x"></i>
             </a>
-          </th>
+          </div>
+        </form>
+      </div>
+    </div>
 
-          <!-- 2. Mfr. Part No. -->
-          <th>
-            <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=serial_number&order={{ 'desc' if sort == 'serial_number' and order == 'asc' else 'asc' }}"
-               class="text-decoration-none text-dark d-flex align-items-center gap-1">
-              {{ t.col_model }}
-              {% if sort == 'serial_number' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
-            </a>
-          </th>
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <!-- 1. Asset ID -->
+              <th>
+                <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=component_id&order={{ 'desc' if sort == 'component_id' and order == 'asc' else 'asc' }}"
+                   class="text-decoration-none text-dark d-flex align-items-center gap-1">
+                  {{ t.col_asset_id }}
+                  {% if sort == 'component_id' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+                </a>
+              </th>
 
-          <!-- 3. Description -->
-          <th style="min-width:220px;">{{ t.col_feature }}</th>
+              <!-- 2. Mfr. Part No. -->
+              <th>
+                <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=serial_number&order={{ 'desc' if sort == 'serial_number' and order == 'asc' else 'asc' }}"
+                   class="text-decoration-none text-dark d-flex align-items-center gap-1">
+                  {{ t.col_model }}
+                  {% if sort == 'serial_number' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+                </a>
+              </th>
 
-          <!-- 4. Stock Qty -->
-          <th class="text-center">
-            <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=quantity&order={{ 'desc' if sort == 'quantity' and order == 'asc' else 'asc' }}"
-               class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
-              {{ t.col_stock_qty }}
-              {% if sort == 'quantity' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
-            </a>
-          </th>
+              <!-- 3. Description -->
+              <th style="min-width:220px;">{{ t.col_feature }}</th>
 
-          <!-- 5. Red Line Alert -->
-          <th class="text-center">{{ t.col_alert }}</th>
+              <!-- 4. Stock Qty -->
+              <th class="text-center">
+                <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=quantity&order={{ 'desc' if sort == 'quantity' and order == 'asc' else 'asc' }}"
+                   class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
+                  {{ t.col_stock_qty }}
+                  {% if sort == 'quantity' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+                </a>
+              </th>
 
-          <!-- 6. Final Price (₪) — eye toggle + sort -->
-          <th>
-            <div class="d-flex align-items-center gap-1">
-              <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=price_usd&order={{ 'desc' if sort == 'price_usd' and order == 'asc' else 'asc' }}"
-                 class="text-decoration-none text-dark d-flex align-items-center gap-1">
-                {{ t.col_nis }}
-                {% if sort == 'price_usd' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
-              </a>
-              <button class="btn btn-link btn-sm p-0 ms-1 text-muted border-0 lh-1"
-                      id="priceToggleBtn"
-                      data-show-label="{{ t.price_toggle_show }}"
-                      data-hide-label="{{ t.price_toggle_hide }}"
-                      title="{{ t.price_toggle_show }}"
-                      onclick="togglePrices()"
-                      type="button">
-                <i class="bi bi-eye" id="priceToggleIcon"></i>
-              </button>
-            </div>
-          </th>
+              <!-- 5. Red Line Alert -->
+              <th class="text-center">{{ t.col_alert }}</th>
 
-          <!-- 7. Actions -->
-          <th></th>
-        </tr>
-      </thead>
+              <!-- 6. Final Price (₪) — eye toggle + sort -->
+              <th>
+                <div class="d-flex align-items-center gap-1">
+                  <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=price_usd&order={{ 'desc' if sort == 'price_usd' and order == 'asc' else 'asc' }}"
+                     class="text-decoration-none text-dark d-flex align-items-center gap-1">
+                    {{ t.col_nis }}
+                    {% if sort == 'price_usd' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
+                  </a>
+                  <button class="btn btn-link btn-sm p-0 ms-1 text-muted border-0 lh-1"
+                          id="priceToggleBtn"
+                          data-show-label="{{ t.price_toggle_show }}"
+                          data-hide-label="{{ t.price_toggle_hide }}"
+                          title="{{ t.price_toggle_show }}"
+                          onclick="togglePrices()"
+                          type="button">
+                    <i class="bi bi-eye" id="priceToggleIcon"></i>
+                  </button>
+                </div>
+              </th>
 
-      <tbody>
-        {% for group_label, group_assets in grouped_assets %}
-        <tr class="table-light">
-          <td colspan="7" class="py-2 px-3 border-top border-2">
-            <span class="fw-semibold small">{{ group_label }}</span>
-            <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2">{{ group_assets | length }}</span>
-          </td>
-        </tr>
+              <!-- 7. Actions -->
+              <th></th>
+            </tr>
+          </thead>
 
-        {% for asset in group_assets %}
-        <tr class="{{ 'table-warning' if (asset.quantity is not none and asset.quantity < 5) else '' }}">
+          <tbody>
+            {% for group_label, group_assets in grouped_assets %}
+            <tr class="table-light">
+              <td colspan="7" class="py-2 px-3 border-top border-2">
+                <span class="fw-semibold small">{{ group_label }}</span>
+                <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2">{{ group_assets | length }}</span>
+              </td>
+            </tr>
 
-          <!-- 1. Asset ID -->
-          <td class="small font-monospace fw-semibold">
-            {{ asset.component_id or '—' }}
-          </td>
+            {% for asset in group_assets %}
+            <tr class="{{ 'table-warning' if (asset.quantity is not none and asset.quantity < 5) else '' }}">
 
-          <!-- 2. Mfr. Part No. -->
-          <td>
-            <a href="{{ url_for('assets.detail', id=asset.id) }}" class="fw-semibold text-decoration-none font-monospace small">
-              {{ asset.serial_number }}
-            </a>
-            {% if asset.barcode %}
-            <div class="text-muted x-small"><i class="bi bi-upc"></i> {{ asset.barcode }}</div>
-            {% endif %}
-          </td>
+              <!-- 1. Asset ID -->
+              <td class="small font-monospace fw-semibold">
+                {{ asset.component_id or '—' }}
+              </td>
 
-          <!-- 3. Description -->
-          <td style="min-width:220px;">
-            <div class="small fw-semibold">{{ asset.asset_type.name if asset.asset_type else '—' }}</div>
-            <div class="text-muted x-small">
-              {{ asset.model or '' }}{% if asset.model and asset.manufacturer %} · {% endif %}{{ asset.manufacturer or '' }}
-            </div>
-          </td>
+              <!-- 2. Mfr. Part No. -->
+              <td>
+                <a href="{{ url_for('assets.detail', id=asset.id) }}" class="fw-semibold text-decoration-none font-monospace small">
+                  {{ asset.serial_number }}
+                </a>
+                {% if asset.barcode %}
+                <div class="text-muted x-small"><i class="bi bi-upc"></i> {{ asset.barcode }}</div>
+                {% endif %}
+              </td>
 
-          <!-- 4. Stock Qty -->
-          <td class="text-center small">
-            {% if asset.quantity is not none %}
-              {% if asset.quantity < 5 %}
-                <span class="fw-bold text-danger">{{ asset.quantity }}</span>
-              {% else %}
-                {{ asset.quantity }}
-              {% endif %}
+              <!-- 3. Description -->
+              <td style="min-width:220px;">
+                <div class="small fw-semibold">{{ asset.asset_type.name if asset.asset_type else '—' }}</div>
+                <div class="text-muted x-small">
+                  {{ asset.model or '' }}{% if asset.model and asset.manufacturer %} · {% endif %}{{ asset.manufacturer or '' }}
+                </div>
+              </td>
+
+              <!-- 4. Stock Qty -->
+              <td class="text-center small">
+                {% if asset.quantity is not none %}
+                  {% if asset.quantity < 5 %}
+                    <span class="fw-bold text-danger">{{ asset.quantity }}</span>
+                  {% else %}
+                    {{ asset.quantity }}
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+
+              <!-- 5. Red Line Alert -->
+              <td class="text-center">
+                {% if asset.quantity is not none and asset.quantity < 5 %}
+                <div class="fw-bold text-danger fs-5 lh-1">{{ asset.quantity }}</div>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small mt-1">
+                  <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ t.red_line_badge }}
+                </span>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+
+              <!-- 6. Final Price (₪) — computed live from global settings -->
+              <td class="small font-monospace">
+                {% if asset.price_usd %}
+                <span class="price-cell" data-usd="{{ asset.price_usd|float }}">****</span>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+
+              <!-- 7. Actions -->
+              <td class="text-end text-nowrap">
+                <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-eye"></i>
+                </a>
+                {% if current_user.can_edit %}
+                <a href="{{ url_for('assets.edit', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+
             {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
+            <tr>
+              <td colspan="7" class="text-center text-muted py-5">
+                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                {{ t.no_assets_found }} <a href="{{ url_for('assets.new_asset') }}">{{ t.register_one_link }}</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-          <!-- 5. Red Line Alert -->
-          <td class="text-center">
-            {% if asset.quantity is not none and asset.quantity < 5 %}
-            <div class="fw-bold text-danger fs-5 lh-1">{{ asset.quantity }}</div>
-            <span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small mt-1">
-              <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ t.red_line_badge }}
-            </span>
-            {% else %}
-            <span class="text-muted small">—</span>
-            {% endif %}
-          </td>
+  </div><!-- /col-lg-9 -->
 
-          <!-- 6. Final Price (₪) — computed live from global settings -->
-          <td class="small font-monospace">
-            {% if asset.price_usd %}
-            <span class="price-cell" data-usd="{{ asset.price_usd|float }}">****</span>
-            {% else %}
-            <span class="text-muted">—</span>
-            {% endif %}
-          </td>
+  <!-- ── Right sidebar: Price Settings ────────────────────────────────────── -->
+  <div class="col-lg-3">
+    <div class="card border-0 shadow sticky-top" style="top: 76px; border-radius: 12px;">
+      <div class="card-body p-4">
 
-          <!-- 7. Actions -->
-          <td class="text-end text-nowrap">
-            <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
-              <i class="bi bi-eye"></i>
-            </a>
-            {% if current_user.can_edit %}
-            <a href="{{ url_for('assets.edit', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
-              <i class="bi bi-pencil"></i>
-            </a>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
+        <p class="text-uppercase fw-semibold small text-muted mb-4"
+           style="letter-spacing: .08em;">
+          <i class="bi bi-currency-exchange me-1"></i>Price Settings
+        </p>
 
-        {% else %}
-        <tr>
-          <td colspan="7" class="text-center text-muted py-5">
-            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-            {{ t.no_assets_found }} <a href="{{ url_for('assets.new_asset') }}">{{ t.register_one_link }}</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+        <!-- Rate input -->
+        <div class="mb-4">
+          <label class="form-label small fw-semibold" for="gsRate">USD Exchange Rate</label>
+          <input type="number" id="gsRate"
+                 class="form-control form-control-lg text-center fw-semibold"
+                 style="font-size: 1.15rem;"
+                 step="0.01" autocomplete="off" placeholder="3.00">
+        </div>
+
+        <!-- Confirmed rate display -->
+        <div class="rounded-3 py-3 px-2 mb-3 text-center"
+             style="background: linear-gradient(135deg,#e0f0ff,#d6eaff); border:1px solid #b6d8f7;">
+          <div class="x-small fw-semibold text-uppercase text-muted mb-1"
+               style="letter-spacing:.07em;">Current Rate</div>
+          <div class="fw-bold" style="font-size:1.3rem; color:#1a5fa8;">
+            1 USD = <span id="rateDisplayVal">—</span> ₪
+          </div>
+        </div>
+
+        <!-- Save feedback -->
+        <div class="text-center" style="min-height:1.3rem;">
+          <span class="small fst-italic" id="gsSaveStatus"></span>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /col-lg-3 -->
+
+</div><!-- /row -->
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
-  // ── Server-provided initial settings (no extra round-trip) ────────────────
-  var gs = {{ global_settings|safe }};
-  var VAT = 1.18;
+  // ── Rate: single source of truth ──────────────────────────────────────────
+  var rate = 3.0;
+  try {
+    var srv = {{ global_settings|safe }};
+    var tmp = parseFloat(srv.usd_rate);
+    if (tmp > 0) rate = tmp;
+  } catch (e) {}
 
-  var visible  = localStorage.getItem('pricesVisible') === 'true';
+  var visible   = localStorage.getItem('pricesVisible') !== 'false';
   var saveTimer = null;
-  var csrf     = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+  var csrf      = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
-  // ── Wire up setting inputs ─────────────────────────────────────────────────
-  var gsRate  = document.getElementById('gsRate');
-  var gsFee   = document.getElementById('gsFee');
-  var gsBynet = document.getElementById('gsBynet');
-  var gsSave  = document.getElementById('gsSaveStatus');
-
-  function initInputs() {
-    if (gsRate)  gsRate.value  = gs.usd_rate;
-    if (gsFee)   gsFee.value   = gs.conversion_fee;
-    if (gsBynet) gsBynet.value = gs.bynet_factor;
-  }
-  initInputs();
-
-  function readInputs() {
-    var r = parseFloat(gsRate  ? gsRate.value  : gs.usd_rate);
-    var f = parseFloat(gsFee   ? gsFee.value   : gs.conversion_fee);
-    var b = parseFloat(gsBynet ? gsBynet.value : gs.bynet_factor);
-    if (!isNaN(r) && r > 0) gs.usd_rate       = r;
-    if (!isNaN(f) && f >= 0) gs.conversion_fee = f;
-    if (!isNaN(b) && b > 0) gs.bynet_factor   = b;
+  // ── HARDCODED FORMULA ─────────────────────────────────────────────────────
+  // Final Price (ILS) = (Base_USD × Rate) × 1.7 × 1.18
+  // Example: $100 @ rate 3 → (100 × 3) × 1.7 × 1.18 = 601.80 ₪
+  function calcILS(usd) {
+    return Math.round(usd * rate * 1.7 * 1.18 * 100) / 100;
   }
 
-  // ── Price calculation ──────────────────────────────────────────────────────
-  function calcNis(usd) {
-    return Math.round(usd * gs.usd_rate * gs.bynet_factor * (1 + gs.conversion_fee / 100) * VAT);
+  function fmt(n) {
+    return n.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }) + ' ₪';
   }
 
-  function updateAllPrices() {
+  // ── Repaint all price cells in the table ──────────────────────────────────
+  function repaint() {
     document.querySelectorAll('.price-cell').forEach(function (el) {
-      var usd = parseFloat(el.dataset.usd) || 0;
+      var usd = parseFloat(el.getAttribute('data-usd')) || 0;
       if (!usd) { el.textContent = '—'; el.classList.add('text-muted'); return; }
       el.classList.remove('text-muted');
-      if (visible) {
-        el.textContent = '₪' + calcNis(usd).toLocaleString();
+      el.textContent = visible ? fmt(calcILS(usd)) : '****';
+    });
+  }
+
+  // ── Update sidebar display card ────────────────────────────────────────────
+  function showRate(r) {
+    var el = document.getElementById('rateDisplayVal');
+    if (el) el.textContent = r.toFixed(2);
+  }
+
+  // ── Persist to server (debounced 700 ms) ──────────────────────────────────
+  function persist(r) {
+    var el = document.getElementById('gsSaveStatus');
+    if (el) { el.textContent = 'Saving…'; el.className = 'small text-muted fst-italic'; }
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      fetch('/api/settings', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+        body:    JSON.stringify({ usd_rate: r }),
+      })
+      .then(function () {
+        if (el) { el.textContent = 'Saved ✓'; el.className = 'small text-success'; }
+        setTimeout(function () { if (el) el.textContent = ''; }, 2000);
+      })
+      .catch(function () {
+        if (el) { el.textContent = 'Save failed'; el.className = 'small text-danger'; }
+      });
+    }, 700);
+  }
+
+  // ── Rate input ─────────────────────────────────────────────────────────────
+  var input = document.getElementById('gsRate');
+  if (input) {
+    input.value = rate.toFixed(2);
+
+    input.addEventListener('input', function () {
+      var r = parseFloat(this.value);
+      if (isNaN(r) || r <= 0) return;  // skip mid-type invalids, don't reset
+      rate = r;
+      showRate(r);
+      repaint();
+      persist(r);
+    });
+
+    input.addEventListener('blur', function () {
+      var r = parseFloat(this.value);
+      if (isNaN(r) || r <= 0) {
+        this.value = rate.toFixed(2);   // restore last valid on empty/invalid
       } else {
-        el.textContent = '****';
+        rate = r;
+        this.value = r.toFixed(2);
+        showRate(r);
+        repaint();
       }
     });
   }
 
   // ── Price visibility toggle ────────────────────────────────────────────────
-  function applyToggleUI() {
+  function syncToggle() {
     var icon = document.getElementById('priceToggleIcon');
     var btn  = document.getElementById('priceToggleBtn');
     if (icon) icon.className = visible ? 'bi bi-eye-slash' : 'bi bi-eye';
@@ -324,48 +381,15 @@
 
   window.togglePrices = function () {
     visible = !visible;
-    localStorage.setItem('pricesVisible', visible);
-    applyToggleUI();
-    updateAllPrices();
+    localStorage.setItem('pricesVisible', visible ? 'true' : 'false');
+    syncToggle();
+    repaint();
   };
 
-  // ── Persist settings to server (debounced 600 ms after last change) ────────
-  function scheduleSave() {
-    if (gsSave) { gsSave.textContent = 'Saving…'; gsSave.className = 'small text-muted fst-italic'; }
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () {
-      fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-        body: JSON.stringify({
-          usd_rate:       gs.usd_rate,
-          conversion_fee: gs.conversion_fee,
-          bynet_factor:   gs.bynet_factor,
-        }),
-      })
-      .then(function () {
-        if (gsSave) { gsSave.textContent = 'Saved ✓'; gsSave.className = 'small text-success'; }
-        setTimeout(function () { if (gsSave) gsSave.textContent = ''; }, 2500);
-      })
-      .catch(function () {
-        if (gsSave) { gsSave.textContent = 'Save failed'; gsSave.className = 'small text-danger'; }
-      });
-    }, 600);
-  }
-
-  // ── Bind input events: live recalc + auto-save ────────────────────────────
-  [gsRate, gsFee, gsBynet].forEach(function (el) {
-    if (!el) return;
-    el.addEventListener('input', function () {
-      readInputs();
-      updateAllPrices();
-      scheduleSave();
-    });
-  });
-
-  // ── Initial render ─────────────────────────────────────────────────────────
-  applyToggleUI();
-  updateAllPrices();
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  showRate(rate);
+  syncToggle();
+  repaint();
 })();
 </script>
 {% endblock %}

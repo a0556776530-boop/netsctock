@@ -72,29 +72,15 @@
             <div class="col-12 mt-1">
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="fw-semibold small">{{ t.pricing_inventory_section }}</span>
-
-                <!-- Rate badge: click pencil to reveal edit group -->
                 <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
                   <i class="bi bi-currency-exchange me-1"></i>
                   1 USD = ₪<span id="rateValueLabel">3.00</span>
                 </span>
-                <button type="button" class="btn btn-link btn-sm p-0 text-muted lh-1"
-                        id="rateEditBtn" title="Set exchange rate">
-                  <i class="bi bi-pencil-square"></i>
-                </button>
-
-                <!-- Inline rate editor (hidden by default) -->
-                <div class="input-group input-group-sm d-none" id="rateEditGroup" style="width:170px;">
-                  <span class="input-group-text">₪</span>
-                  <input type="number" class="form-control" id="rateInput"
-                         step="0.01" min="0.01" placeholder="3.00">
-                  <button class="btn btn-outline-primary" type="button" id="rateConfirmBtn">Set</button>
-                </div>
               </div>
             </div>
 
             <!-- USD price -->
-            <div class="col-md-3">
+            <div class="col-md-4">
               {{ form.price_usd.label(class="form-label fw-semibold") }}
               <div class="input-group">
                 <span class="input-group-text">$</span>
@@ -103,18 +89,8 @@
               </div>
             </div>
 
-            <!-- Conversion Fee % -->
-            <div class="col-md-3">
-              {{ form.conversion_fee.label(class="form-label fw-semibold") }}
-              <div class="input-group">
-                {{ form.conversion_fee(class="form-control", type="number", step="0.01", min="0",
-                                        id="convFee", placeholder="0") }}
-                <span class="input-group-text">%</span>
-              </div>
-            </div>
-
             <!-- NIS price (read-only, auto-computed) -->
-            <div class="col-md-3">
+            <div class="col-md-4">
               {{ form.price_nis.label(class="form-label fw-semibold") }}
               <div class="input-group">
                 <span class="input-group-text">₪</span>
@@ -123,12 +99,12 @@
                                    id="priceNis", placeholder="auto", readonly=true) }}
               </div>
               <div class="form-text text-muted small">
-                USD × rate × 1.048 × (1 + fee%) × 1.18 VAT
+                USD × rate × 1.18 VAT × 1.7 maintenance
               </div>
             </div>
 
             <!-- Stock Qty -->
-            <div class="col-md-3">
+            <div class="col-md-4">
               {{ form.quantity.label(class="form-label fw-semibold") }}
               {{ form.quantity(class="form-control", type="number", step="1", min="0",
                                id="quantityInput", placeholder="0") }}
@@ -174,77 +150,36 @@
     });
   }
 
-  // ── Exchange rate & calculation constants ────────────────────────────────────
-  // Defaults come from global settings; user can still override rate per-session
-  // via the rate edit button (stored in localStorage for this browser).
-  const VAT = 1.18;
-  let BYNET       = 1.048;
-  let currentRate = 3.0;
+  // ── Rate & formula ────────────────────────────────────────────────────────
+  // Final Price (ILS) = (USD × Rate) × 1.7 × 1.18
+  // Example: $20 @ 3.00 → (20 × 3) × 1.7 × 1.18 = 120.36 ₪
+  let rate = 3.0;
 
   const rateValueLabel = document.getElementById('rateValueLabel');
-  const rateEditBtn    = document.getElementById('rateEditBtn');
-  const rateEditGroup  = document.getElementById('rateEditGroup');
-  const rateInput      = document.getElementById('rateInput');
-  const rateConfirmBtn = document.getElementById('rateConfirmBtn');
   const usdInput       = document.getElementById('priceUsd');
   const nisInput       = document.getElementById('priceNis');
-  const feeInput       = document.getElementById('convFee');
 
-  // Load global settings from server, then override with any localStorage rate
+  // Load rate from server (single source of truth — no localStorage)
   fetch('/api/settings')
     .then(r => r.json())
     .then(data => {
-      BYNET = data.bynet_factor || 1.048;
-      // localStorage rate wins over global (per-session override)
-      const localRate = parseFloat(localStorage.getItem('usdRate'));
-      currentRate = isNaN(localRate) ? data.usd_rate : localRate;
-      if (rateValueLabel) rateValueLabel.textContent = currentRate.toFixed(2);
-      if (rateInput)      rateInput.value            = currentRate.toFixed(2);
-      // Pre-fill fee from global settings only if field is currently empty
-      if (feeInput && !feeInput.value) feeInput.value = data.conversion_fee ?? 0;
+      const r = parseFloat(data.usd_rate);
+      if (r > 0) rate = r;
+      if (rateValueLabel) rateValueLabel.textContent = rate.toFixed(2);
       recalcNis();
     })
     .catch(() => { recalcNis(); });
 
-  if (rateEditBtn) {
-    rateEditBtn.addEventListener('click', () => {
-      rateEditGroup.classList.toggle('d-none');
-      if (!rateEditGroup.classList.contains('d-none')) rateInput.focus();
-    });
-  }
-
-  function applyRate() {
-    const v = parseFloat(rateInput.value);
-    if (!isNaN(v) && v > 0) {
-      currentRate = v;
-      localStorage.setItem('usdRate', v.toString());
-      if (rateValueLabel) rateValueLabel.textContent = v.toFixed(2);
-      rateEditGroup.classList.add('d-none');
-      recalcNis();
-    }
-  }
-
-  if (rateConfirmBtn) rateConfirmBtn.addEventListener('click', applyRate);
-  if (rateInput) {
-    rateInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); applyRate(); }
-    });
-  }
-
-  // ── NIS auto-calculation ─────────────────────────────────────────────────────
-  // Formula: NIS = USD × rate × Bynet × (1 + convFee%) × VAT(1.18)
   function recalcNis() {
     const usd = parseFloat(usdInput ? usdInput.value : '') || 0;
     if (!usd) { if (nisInput) nisInput.value = ''; return; }
-    const fee = parseFloat(feeInput ? feeInput.value : '') || 0;
-    const nis = Math.round(usd * currentRate * BYNET * (1 + fee / 100) * VAT);
+    // (USD × Rate) × 1.7 × 1.18 — rounded to 2 decimal places
+    const nis = Math.round(usd * rate * 1.7 * 1.18 * 100) / 100;
     if (nisInput) nisInput.value = nis;
   }
 
   if (usdInput) usdInput.addEventListener('input', recalcNis);
-  if (feeInput) feeInput.addEventListener('input', recalcNis);
 
-  // Initial recalc (will be called again after global settings load)
   recalcNis();
 
   // ── Inline scanner widget ─────────────────────────────────────────────────────

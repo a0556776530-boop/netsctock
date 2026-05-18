@@ -59,9 +59,8 @@ class AssetForm(FlaskForm):
     current_site_id = SelectField('Current Site', coerce=int, validators=[Optional()])
     assigned_to_id = SelectField('Assigned To', coerce=int, validators=[Optional()])
     notes     = TextAreaField('Notes', validators=[Optional()])
-    price_usd      = DecimalField('Price USD ($)',      validators=[Optional(), NumberRange(min=0)], places=0)
-    conversion_fee = DecimalField('Conversion Fee (%)', validators=[Optional(), NumberRange(min=0)], places=2)
-    price_nis      = DecimalField('Price NIS (₪)',      validators=[Optional(), NumberRange(min=0)], places=0)
+    price_usd = DecimalField('Price USD ($)', validators=[Optional(), NumberRange(min=0)], places=0)
+    price_nis = DecimalField('Price NIS (₪)', validators=[Optional(), NumberRange(min=0)], places=0)
     quantity       = IntegerField('Stock Qty',          validators=[Optional(), NumberRange(min=0)])
     submit         = SubmitField('Save Asset')
 
@@ -237,7 +236,6 @@ def new_asset():
                 assigned_to_id=None,
                 notes=(form.notes.data or '').strip() or None,
                 price_usd=form.price_usd.data,
-                conversion_fee=form.conversion_fee.data,
                 price_nis=form.price_nis.data,
                 quantity=form.quantity.data,
             )
@@ -322,14 +320,13 @@ def edit(id):
         asset.manufacturer = (form.manufacturer.data or '').strip() or None
         # status / current_site_id / assigned_to_id are managed via action buttons, not this form
         asset.notes          = (form.notes.data or '').strip() or None
-        asset.price_usd      = form.price_usd.data
-        asset.conversion_fee = form.conversion_fee.data
-        asset.price_nis      = form.price_nis.data
+        asset.price_usd = form.price_usd.data
+        asset.price_nis = form.price_nis.data
         asset.quantity       = form.quantity.data
 
         db.session.commit()
         flash(t.get('flash_asset_updated', 'Asset updated successfully.'), 'success')
-        return redirect(url_for('assets.detail', id=asset.id))
+        return redirect(url_for('assets.list_assets'))
 
     return render_template('assets/form.html', form=form, asset=asset,
                            title=t.get('form_title_edit_asset', 'Edit Asset'))

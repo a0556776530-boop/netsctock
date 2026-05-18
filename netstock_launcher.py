@@ -86,6 +86,20 @@ def _first_run_setup(app):
             db.session.execute(text("ALTER TABLE tasks DROP COLUMN due_date"))
             db.session.commit()
 
+        # Add allocation_number to estimates if it doesn't exist
+        est_cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(estimates)")).fetchall()]
+        if 'allocation_number' in est_cols:
+            pass  # already migrated
+        elif est_cols:  # table exists but column missing
+            db.session.execute(text("ALTER TABLE estimates ADD COLUMN allocation_number INTEGER"))
+            db.session.commit()
+
+        # Ensure usd_rate default exists in app_settings
+        from app.models.settings import AppSetting
+        if not AppSetting.query.get('usd_rate'):
+            AppSetting.set('usd_rate', 3.0)
+            db.session.commit()
+
         if not User.query.first():
             print('[Inventory] First run detected — seeding database …')
 

@@ -78,6 +78,24 @@
             <td class="text-muted fw-semibold">{{ t.field_registered }}</td>
             <td>{{ asset.created_at.strftime('%d %b %Y') }}</td>
           </tr>
+          {% if asset.price_usd %}
+          <tr><td colspan="2"><hr class="my-1"></td></tr>
+          <tr>
+            <td class="text-muted fw-semibold">Base Price</td>
+            <td class="font-monospace">${{ "%.2f"|format(asset.price_usd|float) }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">Final Price</td>
+            <td class="font-monospace fw-bold text-success"
+                id="detailPriceNis"
+                data-usd="{{ asset.price_usd|float }}">—</td>
+          </tr>
+          <tr>
+            <td colspan="2" class="x-small text-muted pt-0">
+              USD × Rate × 1.7 × 1.18
+            </td>
+          </tr>
+          {% endif %}
         </table>
 
         {% if asset.notes %}
@@ -260,6 +278,33 @@
     </div>
   </div>
 </div>
+
+{% block scripts %}
+{% if asset.price_usd %}
+<script>
+(function () {
+  var el  = document.getElementById('detailPriceNis');
+  if (!el) return;
+  var usd = parseFloat(el.getAttribute('data-usd')) || 0;
+  if (!usd) return;
+
+  // Fetch current rate then apply hardcoded formula
+  // Final Price (ILS) = (Base_USD × Rate) × 1.7 × 1.18
+  fetch('/api/settings')
+    .then(function (r) { return r.json(); })
+    .then(function (gs) {
+      var rate = parseFloat(gs.usd_rate) || 3.0;
+      var nis  = Math.round(usd * rate * 1.7 * 1.18 * 100) / 100;
+      el.textContent = nis.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }) + ' ₪';
+    })
+    .catch(function () { el.textContent = '—'; });
+})();
+</script>
+{% endif %}
+{% endblock %}
 
 <!-- Return -->
 <div class="modal fade" id="returnModal" tabindex="-1">

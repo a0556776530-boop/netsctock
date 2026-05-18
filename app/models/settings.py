@@ -9,9 +9,7 @@ class AppSetting(db.Model):
 
     # ── Defaults ──────────────────────────────────────────────────────────────
     DEFAULTS = {
-        'usd_rate':       '3.0',
-        'conversion_fee': '0',
-        'bynet_factor':   '1.048',
+        'usd_rate': '3.0',
     }
 
     @classmethod

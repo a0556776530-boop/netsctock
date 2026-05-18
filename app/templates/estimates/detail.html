@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% block title %}{{ estimate.allocation_number or estimate.id }} — {{ estimate.task_name }}{% endblock %}
+{% block page_title %}Allocations & Estimates{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge bg-primary font-monospace" style="font-size:.95rem; padding:.35em .65em;">
+        {{ estimate.allocation_number or '—' }}
+      </span>
+      <h5 class="mb-0 fw-bold">{{ estimate.task_name }}</h5>
+    </div>
+    <span class="text-muted small">{{ estimate.project_name or 'No project' }}</span>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>All Estimates
+    </a>
+    <a href="{{ url_for('estimates.export_csv', id=estimate.id) }}" class="btn btn-sm btn-outline-success">
+      <i class="bi bi-filetype-csv me-1"></i>Export CSV
+    </a>
+    {% if current_user.is_admin %}
+    <form method="POST" action="{{ url_for('estimates.delete', id=estimate.id) }}"
+          onsubmit="return confirm('Delete this estimate?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-trash3 me-1"></i>Delete
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Meta info -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3 text-muted text-uppercase small" style="letter-spacing:.06em;">
+          Estimate Details
+        </h6>
+        <table class="table table-sm table-borderless mb-0 small">
+          <tr>
+            <td class="text-muted fw-semibold" style="width:45%">מספר הקצאה</td>
+            <td>
+              <span class="badge bg-primary font-monospace fs-6 px-2 py-1">
+                {{ estimate.allocation_number or '—' }}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">Requester Name</td>
+            <td class="fw-semibold">{{ estimate.task_name }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">Project</td>
+            <td>{{ estimate.project_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">Date Created</td>
+            <td>{{ estimate.created_date.strftime('%d %b %Y') }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted fw-semibold">Valid Until</td>
+            <td class="{% if estimate.valid_until < now.date() %}text-danger fw-semibold{% endif %}">
+              {{ estimate.valid_until.strftime('%d %b %Y') }}
+              {% if estimate.valid_until < now.date() %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small ms-1">Expired</span>
+              {% endif %}
+            </td>
+          </tr>
+        </table>
+
+        <!-- Total highlight -->
+        <div class="rounded-3 p-3 mt-3 text-center"
+             style="background: linear-gradient(135deg,#e0f0ff,#d6eaff); border:1px solid #b6d8f7;">
+          <div class="x-small fw-semibold text-uppercase mb-1"
+               style="letter-spacing:.07em; color:#1a5fa8;">Total Estimated Cost</div>
+          <div class="fw-bold font-monospace" style="font-size:1.5rem; color:#1a5fa8;">
+            {{ estimate.formatted_total }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Items table -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-0">
+        <div class="px-4 py-3 border-bottom">
+          <h6 class="fw-bold mb-0">
+            <i class="bi bi-list-check me-2 text-primary"></i>
+            Items ({{ estimate.items | length }})
+          </h6>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Part No.</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th class="text-center">Qty</th>
+                <th class="text-end">Unit USD</th>
+                <th class="text-end">Unit ILS</th>
+                <th class="text-end">Line Total (ILS)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in estimate.items %}
+              {% set unit_ils = (item.unit_price_usd|float * estimate.usd_rate|float * 1.7 * 1.18) %}
+              <tr>
+                <td class="small font-monospace fw-semibold">
+                  {% if item.asset %}
+                  <a href="{{ url_for('assets.detail', id=item.asset.id) }}" class="text-decoration-none">
+                    {{ item.asset.serial_number }}
+                  </a>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="small">{{ item.asset.model if item.asset else '—' }}</td>
+                <td class="x-small text-muted">{{ item.asset.asset_type.name if item.asset and item.asset.asset_type else '—' }}</td>
+                <td class="text-center small">{{ item.quantity }}</td>
+                <td class="text-end small font-monospace">${{ '%.2f'|format(item.unit_price_usd|float) }}</td>
+                <td class="text-end small font-monospace">{{ '%.2f'|format(unit_ils) }} ₪</td>
+                <td class="text-end small font-monospace fw-semibold">{{ '%.2f'|format(unit_ils * item.quantity) }} ₪</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4 small">No items in this estimate.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            {% if estimate.items %}
+            <tfoot class="fw-bold border-top border-2">
+              <tr>
+                <td colspan="6" class="text-end">Total</td>
+                <td class="text-end font-monospace text-success">{{ estimate.formatted_total }}</td>
+              </tr>
+            </tfoot>
+            {% endif %}
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

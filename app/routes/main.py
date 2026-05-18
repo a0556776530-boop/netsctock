@@ -53,7 +53,7 @@ def get_settings():
 def save_settings():
     from app.models.settings import AppSetting
     data = request.get_json(silent=True) or {}
-    allowed = ('usd_rate', 'conversion_fee', 'bynet_factor')
+    allowed = ('usd_rate',)
     for key in allowed:
         if key in data:
             try:
