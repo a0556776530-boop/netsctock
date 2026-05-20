@@ -1,68 +1,48 @@
-from app import db
+import mongoengine as me
 from datetime import datetime
 
 
-class AssetType(db.Model):
-    __tablename__ = 'asset_types'
+class AssetType(me.Document):
+    meta = {'collection': 'asset_types'}
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(100))
-
-    assets = db.relationship('Asset', backref='asset_type', lazy='dynamic')
+    name     = me.StringField(max_length=100, required=True)
+    category = me.StringField(max_length=100)
 
     def __repr__(self):
         return f'<AssetType {self.name}>'
 
 
-class Asset(db.Model):
-    __tablename__ = 'assets'
+class Asset(me.Document):
+    meta = {'collection': 'assets'}
 
     STATUSES = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
     STATUS_LABELS = {
-        'in_use': 'בשימוש',
-        'dismantled': 'פורק',
-        'in_storage': 'באחסון',
-        'assigned': 'מוקצה',
-        'faulty': 'פגום',
-        'retired': 'הוצא משירות',
+        'in_use': 'בשימוש', 'dismantled': 'פורק', 'in_storage': 'באחסון',
+        'assigned': 'מוקצה', 'faulty': 'פגום', 'retired': 'הוצא משירות',
     }
     STATUS_COLORS = {
-        'in_use': 'success',
-        'dismantled': 'warning',
-        'in_storage': 'info',
-        'assigned': 'primary',
-        'faulty': 'danger',
-        'retired': 'secondary',
+        'in_use': 'success', 'dismantled': 'warning', 'in_storage': 'info',
+        'assigned': 'primary', 'faulty': 'danger', 'retired': 'secondary',
     }
 
-    id = db.Column(db.Integer, primary_key=True)
-    component_id = db.Column(db.String(50), nullable=True)
-    serial_number = db.Column(db.String(100), unique=True, nullable=False)
-    barcode = db.Column(db.String(100), unique=True, nullable=True)
-    asset_type_id = db.Column(db.Integer, db.ForeignKey('asset_types.id'), nullable=False)
-    model = db.Column(db.String(150))
-    manufacturer = db.Column(db.String(150))
-    status = db.Column(
-        db.Enum(*STATUSES, name='asset_status'),
-        nullable=False,
-        default='in_storage'
-    )
-    current_site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)
-    assigned_to_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    notes = db.Column(db.Text)
-    price          = db.Column(db.Numeric(12, 2), nullable=True)
-    price_nis      = db.Column(db.Numeric(12, 2), nullable=True)
-    price_usd      = db.Column(db.Numeric(12, 2), nullable=True)
-    conversion_fee = db.Column(db.Numeric(5, 2), nullable=True)
-    quantity       = db.Column(db.Integer, nullable=True)
-    min_threshold  = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    events = db.relationship('AssetEvent', backref='asset', lazy='dynamic',
-                             order_by='AssetEvent.event_date.desc()')
-    tasks = db.relationship('Task', backref='asset', lazy='dynamic')
+    component_id   = me.StringField(max_length=50)
+    serial_number  = me.StringField(max_length=100, required=True, unique=True)
+    barcode        = me.StringField(max_length=100, sparse=True)
+    asset_type     = me.ReferenceField('AssetType')
+    model          = me.StringField(max_length=150)
+    manufacturer   = me.StringField(max_length=150)
+    status         = me.StringField(default='in_storage')
+    current_site   = me.ReferenceField('Site')
+    assignee       = me.ReferenceField('User')
+    notes          = me.StringField()
+    price          = me.FloatField()
+    price_nis      = me.FloatField()
+    price_usd      = me.FloatField()
+    conversion_fee = me.FloatField()
+    quantity       = me.IntField()
+    min_threshold  = me.IntField()
+    created_at     = me.DateTimeField(default=datetime.utcnow)
+    updated_at     = me.DateTimeField(default=datetime.utcnow)
 
     def __repr__(self):
         return f'<Asset {self.serial_number}>'
@@ -76,47 +56,33 @@ class Asset(db.Model):
         return self.STATUS_COLORS.get(self.status, 'secondary')
 
 
-
-class AssetEvent(db.Model):
-    __tablename__ = 'asset_events'
+class AssetEvent(me.Document):
+    meta = {'collection': 'asset_events', 'ordering': ['-event_date']}
 
     EVENT_TYPES = ['dismantled', 'moved', 'assigned', 'returned', 'repaired',
                    'created', 'retired', 'status_change']
     EVENT_LABELS = {
-        'dismantled': 'פורק',
-        'moved': 'הועבר',
-        'assigned': 'הוקצה',
-        'returned': 'הוחזר',
-        'repaired': 'תוקן',
-        'created': 'נוצר',
-        'retired': 'הוצא משירות',
-        'status_change': 'סטטוס שונה',
+        'dismantled': 'פורק', 'moved': 'הועבר', 'assigned': 'הוקצה',
+        'returned': 'הוחזר', 'repaired': 'תוקן', 'created': 'נוצר',
+        'retired': 'הוצא משירות', 'status_change': 'סטטוס שונה',
     }
     EVENT_ICONS = {
-        'dismantled': 'bi-tools',
-        'moved': 'bi-arrow-left-right',
-        'assigned': 'bi-person-check',
-        'returned': 'bi-arrow-return-left',
-        'repaired': 'bi-wrench',
-        'created': 'bi-plus-circle',
-        'retired': 'bi-archive',
-        'status_change': 'bi-arrow-repeat',
+        'dismantled': 'bi-tools', 'moved': 'bi-arrow-left-right',
+        'assigned': 'bi-person-check', 'returned': 'bi-arrow-return-left',
+        'repaired': 'bi-wrench', 'created': 'bi-plus-circle',
+        'retired': 'bi-archive', 'status_change': 'bi-arrow-repeat',
     }
 
-    id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=False)
-    event_type = db.Column(
-        db.Enum(*EVENT_TYPES, name='event_type'),
-        nullable=False
-    )
-    from_site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)
-    to_site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=True)
-    performed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    notes = db.Column(db.Text)
-    event_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    asset             = me.ReferenceField('Asset', required=True)
+    event_type        = me.StringField(required=True)
+    from_site         = me.ReferenceField('Site')
+    to_site           = me.ReferenceField('Site')
+    performed_by_user = me.ReferenceField('User', required=True)
+    notes             = me.StringField()
+    event_date        = me.DateTimeField(default=datetime.utcnow)
 
     def __repr__(self):
-        return f'<AssetEvent {self.event_type} on asset {self.asset_id}>'
+        return f'<AssetEvent {self.event_type}>'
 
     @property
     def event_label(self):

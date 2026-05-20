@@ -18,6 +18,11 @@
     <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-arrow-left me-1"></i>All Estimates
     </a>
+    {% if current_user.can_edit %}
+    <a href="{{ url_for('estimates.edit', id=estimate.id) }}" class="btn btn-sm btn-primary">
+      <i class="bi bi-pencil me-1"></i>Edit Estimate
+    </a>
+    {% endif %}
     <a href="{{ url_for('estimates.export_csv', id=estimate.id) }}" class="btn btn-sm btn-outline-success">
       <i class="bi bi-filetype-csv me-1"></i>Export CSV
     </a>

@@ -22,13 +22,8 @@
             <!-- Serial Number (Mfr. Part No.) -->
             <div class="col-md-6">
               {{ form.serial_number.label(class="form-label fw-semibold") }}
-              <div class="input-group">
-                {{ form.serial_number(class="form-control text-uppercase" + (" is-invalid" if form.serial_number.errors else ""),
-                                      placeholder="e.g. FTX1234A5BC", id="serialInput") }}
-                <button class="btn btn-outline-secondary" type="button" id="scanSerial" title="Scan">
-                  <i class="bi bi-upc-scan"></i>
-                </button>
-              </div>
+              {{ form.serial_number(class="form-control text-uppercase" + (" is-invalid" if form.serial_number.errors else ""),
+                                    placeholder="e.g. FTX1234A5BC", id="serialInput") }}
               {% for e in form.serial_number.errors %}
                 <div class="invalid-feedback d-block">{{ e }}</div>
               {% endfor %}
@@ -136,8 +131,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
 <script>
   // ── Cisco SN validation hint ────────────────────────────────────────────────
   const input        = document.getElementById('serialInput');
@@ -190,21 +183,5 @@
 
   recalcNis();
 
-  // ── Inline scanner widget ─────────────────────────────────────────────────────
-  const scanner = new InventoryScanner({
-    triggerBtn:  document.getElementById('scanSerial'),
-    targetInput: input,
-    lookupUrl:   '{{ url_for("scan.lookup") }}',
-    onResult: function(data) {
-      if (data.found) {
-        const a = data.asset;
-        hint.innerHTML = `<span class="text-warning fw-semibold">
-          ⚠ Already registered as
-          <a href="${a.detail_url}" target="_blank">${a.serial_number}</a>
-          (${a.status_label})
-        </span>`;
-      }
-    }
-  });
 </script>
 {% endblock %}

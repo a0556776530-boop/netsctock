@@ -3,21 +3,15 @@ from datetime import date, timedelta, datetime
 
 from flask import Blueprint, render_template, jsonify, redirect, request, session, url_for
 from flask_login import login_required
-from sqlalchemy import func
 
-from app import db
 from app.models.asset import Asset, AssetEvent, AssetType
 from app.models.task import Task
 
 main_bp = Blueprint('main', __name__)
 
 _STATUS_COLORS = {
-    'in_use':     '#198754',
-    'dismantled': '#ffc107',
-    'in_storage': '#0dcaf0',
-    'assigned':   '#0d6efd',
-    'faulty':     '#dc3545',
-    'retired':    '#adb5bd',
+    'in_use': '#198754', 'dismantled': '#ffc107', 'in_storage': '#0dcaf0',
+    'assigned': '#0d6efd', 'faulty': '#dc3545', 'retired': '#adb5bd',
 }
 _STATUS_LABELS = {
     'in_use': 'In Use', 'dismantled': 'Dismantled', 'in_storage': 'In Storage',
@@ -53,14 +47,12 @@ def get_settings():
 def save_settings():
     from app.models.settings import AppSetting
     data = request.get_json(silent=True) or {}
-    allowed = ('usd_rate',)
-    for key in allowed:
+    for key in ('usd_rate',):
         if key in data:
             try:
                 AppSetting.set(key, float(data[key]))
             except (ValueError, TypeError):
                 pass
-    db.session.commit()
     return jsonify({'ok': True})
 
 
@@ -69,23 +61,25 @@ def save_settings():
 def dashboard():
     today = date.today()
 
-    total_assets = Asset.query.count()
-    status_counts = dict(
-        db.session.query(Asset.status, func.count(Asset.id))
-        .group_by(Asset.status).all()
+    total_assets = Asset.objects.count()
+
+    # Status counts via Python (small dataset)
+    status_counts = {}
+    for a in Asset.objects.only('status'):
+        status_counts[a.status] = status_counts.get(a.status, 0) + 1
+
+    recent_events = list(
+        AssetEvent.objects.order_by('-event_date').limit(15).select_related()
     )
 
-    recent_events = (
-        AssetEvent.query.order_by(AssetEvent.event_date.desc()).limit(15).all()
+    open_tasks_count = Task.objects(status__ne='done').count()
+
+    low_stock_assets = list(
+        Asset.objects(quantity__exists=True, quantity__ne=None, quantity__lt=5)
+        .order_by('quantity').limit(20)
     )
 
-    open_tasks_count = Task.query.filter(Task.status != 'done').count()
-
-    low_stock_assets = Asset.query.filter(
-        Asset.quantity != None, Asset.quantity < 5
-    ).order_by(Asset.quantity.asc()).limit(20).all()
-
-    # ── Chart: assets by status (doughnut) ───────────────────────────────────
+    # Status chart
     all_statuses = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
     status_chart = {
         'labels': [_STATUS_LABELS[s] for s in all_statuses],
@@ -93,28 +87,25 @@ def dashboard():
         'colors': [_STATUS_COLORS[s] for s in all_statuses],
     }
 
-    # ── Chart: top asset types (horizontal bar) ───────────────────────────────
-    type_rows = (
-        db.session.query(AssetType.name, func.count(Asset.id))
-        .outerjoin(Asset, Asset.asset_type_id == AssetType.id)
-        .group_by(AssetType.name)
-        .order_by(func.count(Asset.id).desc())
-        .limit(8).all()
-    )
+    # Type chart via Python aggregation
+    type_counts = {}
+    for a in Asset.objects.select_related(1):
+        t_name = a.asset_type.name if a.asset_type else 'Unknown'
+        type_counts[t_name] = type_counts.get(t_name, 0) + 1
+    type_rows = sorted(type_counts.items(), key=lambda x: x[1], reverse=True)[:8]
     type_chart = {
         'labels': [r[0] for r in type_rows],
         'data':   [r[1] for r in type_rows],
     }
 
-    # ── Chart: events per day — last 14 days (line) ───────────────────────────
+    # Activity chart: events per day last 14 days
     activity_labels, activity_data = [], []
     for i in range(13, -1, -1):
         day = today - timedelta(days=i)
         day_start = datetime.combine(day, datetime.min.time())
         day_end   = datetime.combine(day, datetime.max.time())
-        count = AssetEvent.query.filter(
-            AssetEvent.event_date >= day_start,
-            AssetEvent.event_date <= day_end,
+        count = AssetEvent.objects(
+            event_date__gte=day_start, event_date__lte=day_end
         ).count()
         activity_labels.append(day.strftime('%d %b'))
         activity_data.append(count)

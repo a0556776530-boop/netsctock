@@ -1,23 +1,20 @@
 from flask_login import UserMixin
-from app import db, login_manager
+from app import login_manager
+import mongoengine as me
 from datetime import datetime
 
 
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
+class User(UserMixin, me.Document):
+    meta = {'collection': 'users'}
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.Enum('admin', 'technician', 'viewer', name='user_role'),
-                     nullable=False, default='technician')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    name          = me.StringField(max_length=100, required=True)
+    email         = me.StringField(max_length=150, required=True, unique=True)
+    password_hash = me.StringField(max_length=255, required=True)
+    role          = me.StringField(max_length=20, default='technician')
+    created_at    = me.DateTimeField(default=datetime.utcnow)
 
-    assigned_assets = db.relationship('Asset', foreign_keys='Asset.assigned_to_id',
-                                      backref='assignee', lazy='dynamic')
-    events = db.relationship('AssetEvent', backref='performed_by_user', lazy='dynamic')
-    tasks = db.relationship('Task', backref='assignee', lazy='dynamic')
+    def get_id(self):
+        return str(self.id)
 
     def __repr__(self):
         return f'<User {self.email}>'
@@ -33,4 +30,4 @@ class User(UserMixin, db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return User.objects(id=user_id).first()

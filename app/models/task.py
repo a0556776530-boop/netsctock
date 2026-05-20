@@ -1,33 +1,20 @@
-from app import db
+import mongoengine as me
 from datetime import datetime
 
 
-class Task(db.Model):
-    __tablename__ = 'tasks'
+class Task(me.Document):
+    meta = {'collection': 'tasks'}
 
     STATUSES = ['pending', 'in_progress', 'done']
-    STATUS_LABELS = {
-        'pending': 'ממתין',
-        'in_progress': 'בביצוע',
-        'done': 'הושלם',
-    }
-    STATUS_COLORS = {
-        'pending': 'warning',
-        'in_progress': 'primary',
-        'done': 'success',
-    }
+    STATUS_LABELS = {'pending': 'ממתין', 'in_progress': 'בביצוע', 'done': 'הושלם'}
+    STATUS_COLORS = {'pending': 'warning', 'in_progress': 'primary', 'done': 'success'}
 
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
-    asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=True)
-    assigned_to_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    status = db.Column(
-        db.Enum(*STATUSES, name='task_status'),
-        nullable=False,
-        default='pending'
-    )
-    notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    title      = me.StringField(max_length=255, required=True)
+    asset      = me.ReferenceField('Asset')
+    assignee   = me.ReferenceField('User')
+    status     = me.StringField(default='pending')
+    notes      = me.StringField()
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
     def __repr__(self):
         return f'<Task {self.title}>'

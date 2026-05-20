@@ -5,14 +5,19 @@ load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+MONGO_URI = os.environ.get(
+    'MONGO_URI',
+    'mongodb+srv://a0556776530_db_user:i5pZIvbZfTEzs5P5@cluster0.cc8m6qh.mongodb.net/netstock?appName=Cluster0'
+)
+
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL',
-        'sqlite:///' + os.path.join(basedir, '..', 'inventory.db')
-    )
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    MONGODB_SETTINGS = {
+        'host': MONGO_URI,
+        'db':   'netstock',
+    }
 
     MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
@@ -21,5 +26,4 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_USERNAME')
 
-    # Cisco serial number regex (e.g. FTX1234A5BC, SAL2012XXXX, FOC1234ABCD)
     CISCO_SERIAL_PATTERN = r'^[A-Z]{3}[0-9]{4}[A-Z0-9]{4}$'

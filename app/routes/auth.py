@@ -4,7 +4,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, Email, Length
 
-from app import db, bcrypt
+from app import bcrypt
 from app.models.user import User
 from app.utils.translations import localize_form
 
@@ -12,16 +12,16 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 class LoginForm(FlaskForm):
-    email = StringField('Email', validators=[DataRequired(), Email(check_deliverability=False)])
+    email    = StringField('Email',    validators=[DataRequired(), Email(check_deliverability=False)])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember me')
-    submit = SubmitField('Sign In')
+    submit   = SubmitField('Sign In')
 
 
 class ChangePasswordForm(FlaskForm):
     current_password = PasswordField('Current Password', validators=[DataRequired()])
-    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=8)])
-    submit = SubmitField('Save Password')
+    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8)])
+    submit           = SubmitField('Save Password')
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -32,7 +32,7 @@ def login():
     form = LoginForm()
     localize_form(form, t, submit_key='form_sign_in')
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data.lower().strip()).first()
+        user = User.objects(email=form.email.data.lower().strip()).first()
         if user and bcrypt.check_password_hash(user.password_hash, form.password.data):
             login_user(user, remember=form.remember.data)
             next_page = request.args.get('next')
@@ -64,7 +64,7 @@ def change_password():
             current_user.password_hash = bcrypt.generate_password_hash(
                 form.new_password.data
             ).decode('utf-8')
-            db.session.commit()
+            current_user.save()
             flash(t.get('flash_password_changed', 'Password changed successfully.'), 'success')
             return redirect(url_for('main.dashboard'))
     return render_template('auth/change_password.html', form=form)

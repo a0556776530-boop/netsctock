@@ -13,7 +13,7 @@
 <!-- Search bar -->
 <div class="mb-3">
   <input type="text" id="assignmentSearch" class="form-control"
-         placeholder="Search by Assignment Number…"
+         placeholder="Search by Assignment Number, Requester Name, or Project…"
          oninput="filterTable(this.value)">
 </div>
 
@@ -33,7 +33,9 @@
       </thead>
       <tbody>
         {% for e in estimates %}
-        <tr data-assignment="{{ e.allocation_number or '' }}">
+        <tr data-assignment="{{ e.allocation_number or '' }}"
+            data-requester="{{ e.task_name | lower }}"
+            data-project="{{ (e.project_name or '') | lower }}">
           <td>
             <span class="badge bg-primary font-monospace">{{ e.allocation_number or '—' }}</span>
           </td>
@@ -87,8 +89,10 @@ function filterTable(q) {
   var rows = document.querySelectorAll('#estimatesTable tbody tr[data-assignment]');
   var visible = 0;
   rows.forEach(function(row) {
-    var num = (row.getAttribute('data-assignment') || '').toLowerCase();
-    var show = !q || num.includes(q);
+    var num       = (row.getAttribute('data-assignment') || '').toLowerCase();
+    var requester = (row.getAttribute('data-requester') || '').toLowerCase();
+    var project   = (row.getAttribute('data-project') || '').toLowerCase();
+    var show = !q || num.includes(q) || requester.includes(q) || project.includes(q);
     row.style.display = show ? '' : 'none';
     if (show) visible++;
   });

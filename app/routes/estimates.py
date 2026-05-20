@@ -3,56 +3,58 @@ import io
 import json
 from datetime import date, timedelta
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, Response
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, Response, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func
 
-from app import db
 from app.models.estimate import Estimate, EstimateItem
 from app.models.asset import Asset
 from app.models.settings import AppSetting
+from app.utils.mongo_helpers import get_or_404
 
 estimates_bp = Blueprint('estimates', __name__, url_prefix='/estimates')
+
+
+def _next_allocation_number():
+    used = {e.allocation_number for e in Estimate.objects(allocation_number__exists=True) if e.allocation_number}
+    if not used:
+        return 1001
+    n = min(used)
+    while n in used:
+        n += 1
+    return n
 
 
 @estimates_bp.route('/')
 @login_required
 def list_estimates():
-    estimates = (Estimate.query
-                 .filter_by(status='pending')
-                 .order_by(Estimate.created_at.desc())
-                 .all())
+    estimates = list(Estimate.objects(status='pending').order_by('-created_at'))
     return render_template('estimates/list.html', estimates=estimates)
 
 
 @estimates_bp.route('/history')
 @login_required
 def history():
-    estimates = (Estimate.query
-                 .filter_by(status='withdrawn')
-                 .order_by(Estimate.created_at.desc())
-                 .all())
+    estimates = list(Estimate.objects(status='withdrawn').order_by('-created_at'))
     return render_template('estimates/history.html', estimates=estimates)
 
 
-@estimates_bp.route('/<int:id>/withdraw', methods=['POST'])
+@estimates_bp.route('/check-allocation')
 @login_required
-def withdraw(id):
-    estimate = Estimate.query.get_or_404(id)
-    estimate.status = 'withdrawn'
-    db.session.commit()
-    flash(f'Assignment {estimate.allocation_number} marked as ongoing and moved to History.', 'success')
-    return redirect(url_for('estimates.detail', id=id))
-
-
-@estimates_bp.route('/<int:id>/restore', methods=['POST'])
-@login_required
-def restore(id):
-    estimate = Estimate.query.get_or_404(id)
-    estimate.status = 'pending'
-    db.session.commit()
-    flash(f'Assignment {estimate.allocation_number} restored to Pending.', 'success')
-    return redirect(url_for('estimates.detail', id=id))
+def check_allocation():
+    num        = request.args.get('num', type=int)
+    exclude_id = request.args.get('exclude', '')
+    if not num:
+        return jsonify(exists=False)
+    qs = Estimate.objects(allocation_number=num)
+    conflict = None
+    for est in qs:
+        if exclude_id and str(est.id) == exclude_id:
+            continue
+        conflict = est
+        break
+    if conflict:
+        return jsonify(exists=True, task_name=conflict.task_name)
+    return jsonify(exists=False)
 
 
 @estimates_bp.route('/new', methods=['GET', 'POST'])
@@ -76,8 +78,17 @@ def new_estimate():
         except (json.JSONDecodeError, TypeError):
             items_data = []
 
-        last_num = db.session.query(func.max(Estimate.allocation_number)).scalar()
-        next_num = (last_num or 0) + 1
+        alloc_raw = (request.form.get('allocation_number') or '').strip()
+        next_num  = int(alloc_raw) if alloc_raw.isdigit() and int(alloc_raw) > 0 else _next_allocation_number()
+
+        conflict = Estimate.objects(allocation_number=next_num).first()
+        if conflict:
+            flash(
+                f'Allocation number {next_num} is already in use '
+                f'(assigned to "{conflict.task_name}"). Please choose a different number.',
+                'danger',
+            )
+            return redirect(url_for('estimates.new_estimate'))
 
         estimate = Estimate(
             allocation_number=next_num,
@@ -86,70 +97,78 @@ def new_estimate():
             created_date=today,
             valid_until=validity,
             usd_rate=usd_rate,
-            created_by_id=current_user.id,
+            created_by=current_user._get_current_object(),
         )
-        db.session.add(estimate)
-        db.session.flush()
 
         total_nis = 0.0
         for item in items_data:
             try:
-                asset_id = int(item['asset_id'])
+                asset_id = str(item['asset_id'])
                 qty      = max(1, int(item.get('quantity', 1)))
             except (KeyError, ValueError, TypeError):
                 continue
-            asset = Asset.query.get(asset_id)
+            asset = Asset.objects(id=asset_id).first()
             if not asset or not asset.price_usd:
                 continue
             unit_usd = float(asset.price_usd)
-            line_nis = round(unit_usd * float(usd_rate) * 1.7 * 1.18 * qty, 2)
+            line_nis  = round(unit_usd * float(usd_rate) * 1.7 * 1.18 * qty, 2)
             total_nis += line_nis
-            db.session.add(EstimateItem(
-                estimate_id=estimate.id,
-                asset_id=asset_id,
-                quantity=qty,
-                unit_price_usd=unit_usd,
-            ))
+            estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
 
         estimate.total_nis = round(total_nis, 2)
-        db.session.commit()
+        estimate.save()
         flash(f'Estimate "{task_name}" saved successfully.', 'success')
         return redirect(url_for('estimates.list_estimates'))
 
-    # Build asset catalogue for JS selector (only assets with a USD price)
-    assets = (Asset.query
-              .filter(Asset.price_usd.isnot(None))
-              .order_by(Asset.serial_number)
-              .all())
+    assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())
     assets_json = json.dumps([{
-        'id':           a.id,
-        'component_id': a.component_id or '',
+        'id':            str(a.id),
+        'component_id':  a.component_id or '',
         'serial_number': a.serial_number,
-        'model':        a.model or '',
-        'manufacturer': a.manufacturer or '',
-        'type':         a.asset_type.name if a.asset_type else '',
-        'price_usd':    float(a.price_usd),
-        'quantity':     a.quantity if a.quantity is not None else 0,
+        'model':         a.model or '',
+        'manufacturer':  a.manufacturer or '',
+        'type':          a.asset_type.name if a.asset_type else '',
+        'price_usd':     float(a.price_usd),
+        'quantity':      a.quantity if a.quantity is not None else 0,
     } for a in assets])
 
+    next_num = _next_allocation_number()
     return render_template('estimates/new.html',
-                           assets_json=assets_json,
-                           usd_rate=float(usd_rate),
-                           today=today,
-                           valid_until=validity)
+                           assets_json=assets_json, usd_rate=float(usd_rate),
+                           today=today, valid_until=validity, next_num=next_num)
 
 
-@estimates_bp.route('/<int:id>')
+@estimates_bp.route('/<id>')
 @login_required
 def detail(id):
-    estimate = Estimate.query.get_or_404(id)
+    estimate = get_or_404(Estimate, id)
     return render_template('estimates/detail.html', estimate=estimate)
 
 
-@estimates_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@estimates_bp.route('/<id>/withdraw', methods=['POST'])
+@login_required
+def withdraw(id):
+    estimate = get_or_404(Estimate, id)
+    estimate.status = 'withdrawn'
+    estimate.save()
+    flash(f'Assignment {estimate.allocation_number} marked as ongoing and moved to History.', 'success')
+    return redirect(url_for('estimates.detail', id=str(estimate.id)))
+
+
+@estimates_bp.route('/<id>/restore', methods=['POST'])
+@login_required
+def restore(id):
+    estimate = get_or_404(Estimate, id)
+    estimate.status = 'pending'
+    estimate.save()
+    flash(f'Assignment {estimate.allocation_number} restored to Pending.', 'success')
+    return redirect(url_for('estimates.detail', id=str(estimate.id)))
+
+
+@estimates_bp.route('/<id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(id):
-    estimate = Estimate.query.get_or_404(id)
+    estimate = get_or_404(Estimate, id)
     usd_rate = float(estimate.usd_rate)
 
     if request.method == 'POST':
@@ -159,51 +178,53 @@ def edit(id):
 
         if not task_name:
             flash('Requester name is required.', 'danger')
-            return redirect(url_for('estimates.edit', id=id))
+            return redirect(url_for('estimates.edit', id=str(estimate.id)))
 
         try:
             items_data = json.loads(items_raw)
         except (json.JSONDecodeError, TypeError):
             items_data = []
 
+        alloc_raw = (request.form.get('allocation_number') or '').strip()
+        if alloc_raw.isdigit() and int(alloc_raw) > 0:
+            new_alloc = int(alloc_raw)
+            for e in Estimate.objects(allocation_number=new_alloc):
+                if str(e.id) != str(estimate.id):
+                    flash(
+                        f'Allocation number {new_alloc} is already in use '
+                        f'(assigned to "{e.task_name}"). Please choose a different number.',
+                        'danger',
+                    )
+                    return redirect(url_for('estimates.edit', id=str(estimate.id)))
+            estimate.allocation_number = new_alloc
+
         estimate.task_name    = task_name
         estimate.project_name = project_name or None
-
-        for item in list(estimate.items):
-            db.session.delete(item)
-        db.session.flush()
+        estimate.items        = []
 
         total_nis = 0.0
         for item in items_data:
             try:
-                asset_id = int(item['asset_id'])
+                asset_id = str(item['asset_id'])
                 qty      = max(1, int(item.get('quantity', 1)))
             except (KeyError, ValueError, TypeError):
                 continue
-            asset = Asset.query.get(asset_id)
+            asset = Asset.objects(id=asset_id).first()
             if not asset or not asset.price_usd:
                 continue
-            unit_usd = float(asset.price_usd)
-            line_nis = round(unit_usd * usd_rate * 1.7 * 1.18 * qty, 2)
+            unit_usd  = float(asset.price_usd)
+            line_nis  = round(unit_usd * usd_rate * 1.7 * 1.18 * qty, 2)
             total_nis += line_nis
-            db.session.add(EstimateItem(
-                estimate_id=estimate.id,
-                asset_id=asset_id,
-                quantity=qty,
-                unit_price_usd=unit_usd,
-            ))
+            estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
 
         estimate.total_nis = round(total_nis, 2)
-        db.session.commit()
+        estimate.save()
         flash('Estimate updated successfully.', 'success')
-        return redirect(url_for('estimates.detail', id=id))
+        return redirect(url_for('estimates.detail', id=str(estimate.id)))
 
-    assets = (Asset.query
-              .filter(Asset.price_usd.isnot(None))
-              .order_by(Asset.serial_number)
-              .all())
+    assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())
     assets_json = json.dumps([{
-        'id':            a.id,
+        'id':            str(a.id),
         'component_id':  a.component_id or '',
         'serial_number': a.serial_number,
         'model':         a.model or '',
@@ -214,30 +235,28 @@ def edit(id):
     } for a in assets])
 
     selected_json = json.dumps([{
-        'asset_id': item.asset_id,
+        'asset_id': str(item.asset.id) if item.asset else None,
         'quantity': item.quantity,
     } for item in estimate.items])
 
     return render_template('estimates/edit.html',
-                           estimate=estimate,
-                           assets_json=assets_json,
-                           selected_json=selected_json,
-                           usd_rate=usd_rate)
+                           estimate=estimate, assets_json=assets_json,
+                           selected_json=selected_json, usd_rate=usd_rate)
 
 
-@estimates_bp.route('/<int:id>/export.csv')
+@estimates_bp.route('/<id>/export.csv')
 @login_required
 def export_csv(id):
-    estimate = Estimate.query.get_or_404(id)
+    estimate = get_or_404(Estimate, id)
     buf = io.StringIO()
-    w = csv.writer(buf)
+    w   = csv.writer(buf)
     w.writerow(['Allocation Number', estimate.allocation_number or ''])
     w.writerow(['Requester Name', estimate.task_name])
     w.writerow(['Project', estimate.project_name or ''])
     w.writerow(['Date', estimate.created_date.strftime('%d %b %Y')])
     w.writerow(['Valid Until', estimate.valid_until.strftime('%d %b %Y')])
     w.writerow([])
-    w.writerow(['Part No.', 'Description', 'Type', 'Qty', 'Unit Price (USD)', 'Unit Price (ILS)', 'Line Total (ILS)'])
+    w.writerow(['Part No.','Description','Type','Qty','Unit Price (USD)','Unit Price (ILS)','Line Total (ILS)'])
     rate = float(estimate.usd_rate)
     for item in estimate.items:
         unit_usd = float(item.unit_price_usd) if item.unit_price_usd else 0.0
@@ -248,28 +267,22 @@ def export_csv(id):
             item.asset.model if item.asset else '',
             item.asset.asset_type.name if item.asset and item.asset.asset_type else '',
             item.quantity,
-            f'{unit_usd:.2f}',
-            f'{unit_ils:.2f}',
-            f'{line_ils:.2f}',
+            f'{unit_usd:.2f}', f'{unit_ils:.2f}', f'{line_ils:.2f}',
         ])
     w.writerow([])
     w.writerow(['', '', '', '', '', 'TOTAL (ILS)', estimate.formatted_total.replace(' ₪', '')])
     filename = f"estimate_{estimate.task_name.replace(' ', '_')}_{estimate.created_date}.csv"
-    return Response(
-        buf.getvalue(),
-        mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
-    )
+    return Response(buf.getvalue(), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
 
-@estimates_bp.route('/<int:id>/delete', methods=['POST'])
+@estimates_bp.route('/<id>/delete', methods=['POST'])
 @login_required
 def delete(id):
     if not current_user.is_admin:
         abort(403)
-    estimate = Estimate.query.get_or_404(id)
+    estimate = get_or_404(Estimate, id)
     name = estimate.task_name
-    db.session.delete(estimate)
-    db.session.commit()
+    estimate.delete()
     flash(f'Estimate "{name}" deleted.', 'info')
     return redirect(url_for('estimates.list_estimates'))

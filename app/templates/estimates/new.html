@@ -15,12 +15,30 @@
         New Allocation Request
       </h6>
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">
+            Allocation No.
+            <span class="text-muted fw-normal small ms-1">(auto)</span>
+          </label>
+          <div class="input-group">
+            <span class="input-group-text text-muted">#</span>
+            <input type="number" name="allocation_number" id="allocNum"
+                   class="form-control font-monospace fw-semibold"
+                   min="1" step="1" value="{{ next_num }}"
+                   title="Auto-generated — change only if needed"
+                   autocomplete="off">
+          </div>
+          <div class="form-text">Next available: {{ next_num }}</div>
+          <div id="allocError" class="d-none mt-1 small text-danger fw-semibold">
+            <i class="bi bi-exclamation-circle me-1"></i><span id="allocErrorMsg"></span>
+          </div>
+        </div>
+        <div class="col-md-5">
           <label class="form-label fw-semibold">Requester Name <span class="text-danger">*</span></label>
           <input type="text" name="task_name" class="form-control" required
                  placeholder="e.g. John Smith">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label fw-semibold">Project Name</label>
           <input type="text" name="project_name" class="form-control"
                  placeholder="e.g. Tel Aviv HQ">
@@ -261,7 +279,7 @@
 
   function updateHidden() {
     var items = Object.keys(sel).map(function (id) {
-      return { asset_id: parseInt(id), quantity: sel[id].qty };
+      return { asset_id: id, quantity: sel[id].qty };
     });
     document.getElementById('itemsJson').value = JSON.stringify(items);
   }
@@ -276,6 +294,43 @@
   document.getElementById('assetSearch').addEventListener('input', function () {
     renderCatalogue(this.value);
   });
+
+  // ── Allocation number live check ───────────────────────────────────────────
+  var allocTimer = null;
+  var allocInput = document.getElementById('allocNum');
+  var allocError = document.getElementById('allocError');
+  var allocMsg   = document.getElementById('allocErrorMsg');
+  var submitBtn  = document.querySelector('#estimateForm [type="submit"]');
+
+  if (allocInput) {
+    allocInput.addEventListener('input', function () {
+      clearTimeout(allocTimer);
+      var num = parseInt(this.value);
+      if (!num || num <= 0) { hideAllocError(); return; }
+      allocTimer = setTimeout(function () {
+        fetch('/estimates/check-allocation?num=' + num)
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.exists) {
+              allocMsg.textContent =
+                'Allocation number ' + num + ' is already assigned to "' + data.task_name + '".';
+              allocError.classList.remove('d-none');
+              allocInput.classList.add('is-invalid');
+              if (submitBtn) submitBtn.disabled = true;
+            } else {
+              hideAllocError();
+            }
+          })
+          .catch(function () { hideAllocError(); });
+      }, 400);
+    });
+  }
+
+  function hideAllocError() {
+    if (allocError) allocError.classList.add('d-none');
+    if (allocInput) allocInput.classList.remove('is-invalid');
+    if (submitBtn) submitBtn.disabled = false;
+  }
 
   // ── Ensure hidden field is up to date on submit ────────────────────────────
   document.getElementById('estimateForm').addEventListener('submit', function () {

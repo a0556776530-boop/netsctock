@@ -52,7 +52,7 @@
             {% if user.id != current_user.id %}
             <form method="POST" action="{{ url_for('admin.delete_user', id=user.id) }}" class="d-inline"
                   onsubmit="return confirm('Delete {{ user.name }}? Their assets and tasks will be unlinked.')">
-              {{ csrf_token() }}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-trash"></i>
               </button>
@@ -65,4 +65,5 @@
     </table>
   </div>
 </div>
+
 {% endblock %}

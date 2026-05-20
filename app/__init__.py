@@ -1,28 +1,30 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
+import mongoengine as me
 
 import click
-from .config import Config
+from .config import Config, MONGO_URI
 
-db = SQLAlchemy()
-migrate = Migrate()
 login_manager = LoginManager()
 bcrypt = Bcrypt()
 mail = Mail()
 csrf = CSRFProtect()
+
+# Expose db as the mongoengine module so models can do `from app import db`
+# and call db.Document, db.StringField, etc.
+db = me
 
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    db.init_app(app)
-    migrate.init_app(app, db)
+    # Connect MongoEngine to Atlas
+    me.connect(host=MONGO_URI, alias='default')
+
     login_manager.init_app(app)
     bcrypt.init_app(app)
     mail.init_app(app)
@@ -32,26 +34,23 @@ def create_app(config_class=Config):
     login_manager.login_message = 'Please log in to access this page.'
     login_manager.login_message_category = 'warning'
 
-    # Import models so Flask-Migrate detects them
-    from .models import user, asset, site, task, settings, estimate  # noqa: F401
-
     from .routes.auth import auth_bp
     from .routes.main import main_bp
     from .routes.assets import assets_bp
     from .routes.sites import sites_bp
-    from .routes.scan import scan_bp
     from .routes.tasks import tasks_bp
     from .routes.admin import admin_bp
     from .routes.estimates import estimates_bp
+    from .routes.contacts import contacts_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(assets_bp)
     app.register_blueprint(sites_bp)
-    app.register_blueprint(scan_bp)
     app.register_blueprint(tasks_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(estimates_bp)
+    app.register_blueprint(contacts_bp)
 
     from datetime import datetime
     from .utils.translations import TRANSLATIONS
@@ -78,18 +77,7 @@ def create_app(config_class=Config):
             't': getattr(g, 't', TRANSLATIONS['en']),
         }
 
-    # CLI: flask seed-db / flask send-reminders
     from .seed import register_commands
     register_commands(app)
-    _register_email_commands(app)
 
     return app
-
-
-def _register_email_commands(app):
-    @app.cli.command('send-reminders')
-    def send_reminders():
-        """Send due date reminder emails to all users with overdue/upcoming items."""
-        from .utils.email import send_due_reminders
-        count = send_due_reminders()
-        click.echo(f'Sent {count} reminder email(s).')

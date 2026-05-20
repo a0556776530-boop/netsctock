@@ -1,10 +1,8 @@
 """
 Inventory launcher — used as PyInstaller entry point.
 
-When frozen: sets DATABASE_URL to <exe_dir>/inventory.db before any app
-import so SQLAlchemy never writes into the ephemeral sys._MEIPASS temp dir.
-Also handles first-run DB creation, seeding, port selection, and
-auto-opening the browser.
+Connects to MongoDB Atlas. On first run, seeds the default admin user,
+sites, and asset types. Then starts the Flask server and opens the browser.
 """
 import os
 import sys
@@ -15,17 +13,22 @@ import time
 
 
 def _exe_dir():
-    """Return the directory that contains the running EXE (or run.py in dev)."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
 
-def _set_db_path():
-    """Point DATABASE_URL at a file next to the EXE / project root."""
-    if 'DATABASE_URL' not in os.environ:
-        db_path = os.path.join(_exe_dir(), 'inventory.db')
-        os.environ['DATABASE_URL'] = 'sqlite:///' + db_path
+def _load_dotenv():
+    from dotenv import load_dotenv
+    env_path = os.path.join(_exe_dir(), '.env')
+    load_dotenv(env_path, override=False)
+
+    smtp_email = os.environ.get('SMTP_EMAIL', '')
+    smtp_password = os.environ.get('SMTP_PASSWORD', '')
+    if smtp_email and smtp_password:
+        print(f'[Inventory] SMTP loaded: {smtp_email}')
+    else:
+        print('[Inventory] Warning: SMTP_EMAIL or SMTP_PASSWORD not found in .env')
 
 
 def _find_free_port(start=5000, end=5100):
@@ -47,78 +50,29 @@ def _open_browser(url, delay=2.5):
 
 
 def _first_run_setup(app):
-    """Create tables and seed admin user + reference data on first run."""
-    from app import db, bcrypt
+    from app import bcrypt
     from app.models.user import User
     from app.models.site import Site
     from app.models.asset import AssetType
+    from app.models.settings import AppSetting
 
     with app.app_context():
-        db.create_all()
+        # Ensure default USD rate setting exists
+        if not AppSetting.objects(key='usd_rate').first():
+            AppSetting(key='usd_rate', value='3.0').save()
 
-        # Schema migrations for existing databases
-        from sqlalchemy import text
-        cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(assets)")).fetchall()]
-
-        if 'component_id' not in cols:
-            db.session.execute(text("ALTER TABLE assets ADD COLUMN component_id VARCHAR(50)"))
-            db.session.commit()
-
-        if 'conversion_fee' not in cols:
-            db.session.execute(text("ALTER TABLE assets ADD COLUMN conversion_fee NUMERIC(5,2)"))
-            db.session.commit()
-
-        if 'min_threshold' not in cols:
-            db.session.execute(text("ALTER TABLE assets ADD COLUMN min_threshold INTEGER"))
-            db.session.commit()
-
-        # Fill in placeholder component_id for any asset still missing one
-        db.session.execute(text(
-            "UPDATE assets SET component_id = 'SN-' || printf('%04d', abs(random() % 10000))"
-            " WHERE component_id IS NULL OR component_id = ''"
-        ))
-
-        # Drop the legacy due_date column from assets if it still exists
-        if 'due_date' in cols:
-            db.session.execute(text("ALTER TABLE assets DROP COLUMN due_date"))
-
-        db.session.commit()
-
-        # Drop due_date from tasks if it still exists
-        task_cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(tasks)")).fetchall()]
-        if 'due_date' in task_cols:
-            db.session.execute(text("ALTER TABLE tasks DROP COLUMN due_date"))
-            db.session.commit()
-
-        # Add columns to estimates if they don't exist
-        est_cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(estimates)")).fetchall()]
-        if est_cols:
-            if 'allocation_number' not in est_cols:
-                db.session.execute(text("ALTER TABLE estimates ADD COLUMN allocation_number INTEGER"))
-                db.session.commit()
-            if 'status' not in est_cols:
-                db.session.execute(text("ALTER TABLE estimates ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'"))
-                db.session.commit()
-
-        # Ensure usd_rate default exists in app_settings
-        from app.models.settings import AppSetting
-        if not AppSetting.query.get('usd_rate'):
-            AppSetting.set('usd_rate', 3.0)
-            db.session.commit()
-
-        if not User.query.first():
+        if not User.objects.first():
             print('[Inventory] First run detected — seeding database …')
 
-            admin = User(
+            User(
                 name='Admin',
                 email='admin@inventory.app',
                 password_hash=bcrypt.generate_password_hash('admin1234').decode('utf-8'),
                 role='admin',
-            )
-            db.session.add(admin)
+            ).save()
 
             for name in ['Beit VaGan', 'Tel Aviv HQ', 'Haifa DC', 'Storage Warehouse']:
-                db.session.add(Site(name=name))
+                Site(name=name).save()
 
             for name, category in [
                 ('SFP Module', 'Networking'), ('Switch', 'Networking'),
@@ -126,37 +80,30 @@ def _first_run_setup(app):
                 ('Firewall', 'Security'), ('Server', 'Compute'),
                 ('UPS', 'Power'), ('Cable', 'Cabling'),
             ]:
-                db.session.add(AssetType(name=name, category=category))
+                AssetType(name=name, category=category).save()
 
-            db.session.commit()
             print('[Inventory] Seed complete. Login: admin@inventory.app / admin1234')
 
 
 def main():
-    # 1. Fix DB path BEFORE importing anything from the app package
-    _set_db_path()
+    _load_dotenv()
 
-    # 2. When frozen, add sys._MEIPASS to sys.path so "app" package is found
     if getattr(sys, 'frozen', False):
         meipass = sys._MEIPASS  # type: ignore[attr-defined]
         if meipass not in sys.path:
             sys.path.insert(0, meipass)
 
-    # 3. Create the Flask application
     from app import create_app
     flask_app = create_app()
 
-    # 4. First-run DB initialisation + seed
     _first_run_setup(flask_app)
 
-    # 5. Choose a free port and open the browser
     port = _find_free_port()
-    url = f'http://127.0.0.1:{port}'
+    url  = f'http://127.0.0.1:{port}'
     print(f'[Inventory] Starting server on {url}')
     print('[Inventory] Press Ctrl+C to quit.')
     _open_browser(url)
 
-    # 6. Run Flask (threaded so the browser-open thread doesn't block it)
     flask_app.run(host='127.0.0.1', port=port, debug=False, threaded=True)
 
 

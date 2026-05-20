@@ -1,31 +1,29 @@
-from app import db
+import mongoengine as me
 
 
-class AppSetting(db.Model):
-    __tablename__ = 'app_settings'
+class AppSetting(me.Document):
+    meta = {'collection': 'app_settings'}
 
-    key   = db.Column(db.String(100), primary_key=True)
-    value = db.Column(db.String(500), nullable=False)
+    key   = me.StringField(max_length=100, primary_key=True)
+    value = me.StringField(max_length=500, required=True)
 
-    # ── Defaults ──────────────────────────────────────────────────────────────
-    DEFAULTS = {
-        'usd_rate': '3.0',
-    }
+    DEFAULTS = {'usd_rate': '3.0'}
 
     @classmethod
     def get(cls, key):
-        row = cls.query.get(key)
+        row = cls.objects(key=key).first()
         return float(row.value if row else cls.DEFAULTS.get(key, '0'))
 
     @classmethod
     def set(cls, key, value):
-        row = cls.query.get(key)
+        row = cls.objects(key=key).first()
         if row:
             row.value = str(value)
+            row.save()
         else:
-            db.session.add(cls(key=key, value=str(value)))
+            cls(key=key, value=str(value)).save()
 
     @classmethod
     def all_as_dict(cls):
-        stored = {r.key: r.value for r in cls.query.all()}
+        stored = {r.key: r.value for r in cls.objects}
         return {k: float(stored.get(k, v)) for k, v in cls.DEFAULTS.items()}

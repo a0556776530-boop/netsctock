@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}Contacts{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-4">
+          <i class="bi bi-person-vcard text-primary me-2"></i>{{ title }}
+        </h6>
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="row g-3">
+            <div class="col-12">
+              {{ form.name.label(class="form-label fw-semibold") }}
+              {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""),
+                           placeholder="e.g. John Smith") }}
+              {% for e in form.name.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.email.label(class="form-label fw-semibold") }}
+              {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""),
+                            placeholder="john@example.com") }}
+              {% for e in form.email.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.phone.label(class="form-label fw-semibold") }}
+              {{ form.phone(class="form-control", placeholder="+972501234567") }}
+              <div class="form-text">Include country code, e.g. +972501234567</div>
+            </div>
+            <div class="col-12">
+              {{ form.notes.label(class="form-label fw-semibold") }}
+              {{ form.notes(class="form-control", rows=3, placeholder="Optional notes…") }}
+            </div>
+          </div>
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('contacts.list_contacts') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

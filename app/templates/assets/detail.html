@@ -167,7 +167,9 @@
                   </span>
                   {% endif %}
                 </div>
-                <span class="text-muted x-small text-nowrap">{{ event.event_date.strftime('%d %b %Y %H:%M') }}</span>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="text-muted x-small text-nowrap">{{ event.event_date.strftime('%d %b %Y %H:%M') }}</span>
+                </div>
               </div>
               <div class="text-muted x-small mt-1">{{ t.event_by_prefix }} {{ event.performed_by_user.name }}</div>
               {% if event.notes %}
@@ -235,6 +237,11 @@
           <div class="mb-3">
             {{ assign_form.to_site_id.label(class="form-label") }}
             {{ assign_form.to_site_id(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ assign_form.contact_id.label(class="form-label fw-semibold") }}
+            {{ assign_form.contact_id(class="form-select") }}
+            <div class="form-text">Optional — sends an email notification after assignment.</div>
           </div>
           <div class="mb-3">
             {{ assign_form.notes.label(class="form-label") }}

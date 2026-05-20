@@ -36,14 +36,15 @@
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('scan.index') }}" class="nav-link text-white {% if request.blueprint == 'scan' %}active{% endif %}">
-          <i class="bi bi-upc-scan me-2"></i>{{ t.nav_scan }}
-        </a>
-      </li>
-      <li class="nav-item">
         <a href="{{ url_for('sites.list_sites') }}"
            class="nav-link text-white {% if request.blueprint == 'sites' %}active{% endif %}">
           <i class="bi bi-geo-alt me-2"></i>{{ t.nav_sites }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('contacts.list_contacts') }}"
+           class="nav-link text-white {% if request.blueprint == 'contacts' %}active{% endif %}">
+          <i class="bi bi-people me-2"></i>Contacts
         </a>
       </li>
       <li class="nav-item">
