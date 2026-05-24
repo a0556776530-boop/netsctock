@@ -30,4 +30,7 @@ class User(UserMixin, me.Document):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.objects(id=user_id).first()
+    try:
+        return User.objects(id=user_id).first()
+    except Exception:
+        return None

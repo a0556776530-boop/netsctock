@@ -26,14 +26,14 @@ class Asset(me.Document):
     }
 
     component_id   = me.StringField(max_length=50)
-    serial_number  = me.StringField(max_length=100, required=True, unique=True)
+    serial_number  = me.StringField(max_length=100, required=True, unique=True, sparse=True)
     barcode        = me.StringField(max_length=100, sparse=True)
-    asset_type     = me.ReferenceField('AssetType')
+    asset_type     = me.ReferenceField('AssetType', db_field='asset_type_id')
     model          = me.StringField(max_length=150)
     manufacturer   = me.StringField(max_length=150)
     status         = me.StringField(default='in_storage')
-    current_site   = me.ReferenceField('Site')
-    assignee       = me.ReferenceField('User')
+    current_site   = me.ReferenceField('Site', db_field='current_site_id')
+    assignee       = me.ReferenceField('User', db_field='assigned_to_id')
     notes          = me.StringField()
     price          = me.FloatField()
     price_nis      = me.FloatField()
@@ -73,11 +73,11 @@ class AssetEvent(me.Document):
         'retired': 'bi-archive', 'status_change': 'bi-arrow-repeat',
     }
 
-    asset             = me.ReferenceField('Asset', required=True)
+    asset             = me.ReferenceField('Asset', required=True, db_field='asset_id')
     event_type        = me.StringField(required=True)
-    from_site         = me.ReferenceField('Site')
-    to_site           = me.ReferenceField('Site')
-    performed_by_user = me.ReferenceField('User', required=True)
+    from_site         = me.ReferenceField('Site', db_field='from_site_id')
+    to_site           = me.ReferenceField('Site', db_field='to_site_id')
+    performed_by_user = me.ReferenceField('User', required=True, db_field='performed_by_id')
     notes             = me.StringField()
     event_date        = me.DateTimeField(default=datetime.utcnow)
 

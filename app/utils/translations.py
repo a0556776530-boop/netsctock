@@ -5,9 +5,9 @@ TRANSLATIONS = {
         'lang_toggle_label': 'עב',
         # Navigation
         'nav_dashboard': 'Dashboard',
-        'nav_assets': 'Assets',
+        'nav_assets': 'Inventory',
         'nav_scan': 'Scan',
-        'nav_sites': 'Inventory',
+        'nav_sites': 'Sites',
         'nav_tasks': 'Tasks',
         'nav_admin_label': 'Admin',
         'nav_users': 'Users',
@@ -216,9 +216,9 @@ TRANSLATIONS = {
         'lang_toggle_label': 'EN',
         # Navigation
         'nav_dashboard': 'לוח בקרה',
-        'nav_assets': 'ציוד',
+        'nav_assets': 'מלאי',
         'nav_scan': 'סריקה',
-        'nav_sites': 'מלאי',
+        'nav_sites': 'אתרים',
         'nav_tasks': 'משימות',
         'nav_admin_label': 'ניהול',
         'nav_users': 'משתמשים',
