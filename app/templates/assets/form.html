@@ -79,7 +79,7 @@
               {{ form.price_usd.label(class="form-label fw-semibold") }}
               <div class="input-group">
                 <span class="input-group-text">$</span>
-                {{ form.price_usd(class="form-control", type="number", step="1", min="0",
+                {{ form.price_usd(class="form-control", type="text", inputmode="numeric",
                                    id="priceUsd", placeholder="0") }}
               </div>
             </div>
@@ -90,7 +90,7 @@
               <div class="input-group">
                 <span class="input-group-text">₪</span>
                 {{ form.price_nis(class="form-control bg-secondary bg-opacity-10 text-muted",
-                                   type="number", step="1", min="0",
+                                   type="text", inputmode="numeric",
                                    id="priceNis", placeholder="auto", readonly=true) }}
               </div>
               <div class="form-text text-muted small">
@@ -101,14 +101,14 @@
             <!-- Stock Qty -->
             <div class="col-md-4">
               {{ form.quantity.label(class="form-label fw-semibold") }}
-              {{ form.quantity(class="form-control", type="number", step="1", min="0",
+              {{ form.quantity(class="form-control", type="text", inputmode="numeric",
                                id="quantityInput", placeholder="0") }}
             </div>
 
             <!-- Min Threshold (Red Line) -->
             <div class="col-md-4">
               {{ form.min_threshold.label(class="form-label fw-semibold") }}
-              {{ form.min_threshold(class="form-control", type="number", step="1", min="0",
+              {{ form.min_threshold(class="form-control", type="text", inputmode="numeric",
                                     placeholder="e.g. 5") }}
               <div class="form-text text-muted small">Red alert if stock falls at or below this</div>
             </div>
