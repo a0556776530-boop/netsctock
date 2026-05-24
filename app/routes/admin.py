@@ -137,6 +137,27 @@ def delete_user(id):
     return redirect(url_for('admin.users'))
 
 
+# ── Settings ─────────────────────────────────────────────────────────────────
+
+@admin_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    _admin_required()
+    from app.models.settings import AppSetting
+    if request.method == 'POST':
+        factor = request.form.get('maintenance_factor', '').strip()
+        try:
+            val = float(factor)
+            if val > 0:
+                AppSetting.set('maintenance_factor', val)
+                flash('Markup factor updated.', 'success')
+        except (ValueError, TypeError):
+            flash('Invalid value.', 'danger')
+        return redirect(url_for('admin.settings'))
+    current_factor = AppSetting.get('maintenance_factor')
+    return render_template('admin/settings.html', factor=current_factor)
+
+
 # ── Export ────────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/export')

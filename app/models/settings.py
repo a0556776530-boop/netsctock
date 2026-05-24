@@ -7,7 +7,7 @@ class AppSetting(me.Document):
     key   = me.StringField(max_length=100, primary_key=True)
     value = me.StringField(max_length=500, required=True)
 
-    DEFAULTS = {'usd_rate': '3.0'}
+    DEFAULTS = {'usd_rate': '3.0', 'maintenance_factor': '1.7'}
 
     @classmethod
     def get(cls, key):

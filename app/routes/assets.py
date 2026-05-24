@@ -387,34 +387,6 @@ def assign(id):
                   notes=(form.notes.data or '').strip() or None)
         flash(t.get('flash_assigned', '{sn} assigned successfully.').format(sn=asset.serial_number), 'success')
 
-        contact_id = form.contact_id.data
-        if contact_id:
-            from app.models.contact import Contact
-            from app.utils.email_notify import send_assignment_email
-            import os
-            contact = Contact.objects(id=contact_id).first()
-            if contact and contact.email:
-                if not os.environ.get('SMTP_EMAIL'):
-                    flash(
-                        'Email not sent — SMTP is not configured. '
-                        'Create a <strong>.env</strong> file next to Inventory.exe '
-                        'with your SMTP credentials.',
-                        'warning',
-                    )
-                else:
-                    ok = send_assignment_email(
-                        contact, asset,
-                        assigned_to_name=assignee.name if assignee else 'N/A',
-                        site_name=to_site.name if to_site else None,
-                    )
-                    if ok:
-                        flash(f'Assignment email sent to {contact.email}.', 'info')
-                    else:
-                        flash(
-                            f'Email to {contact.email} could not be delivered. '
-                            'Check your SMTP credentials in the <strong>.env</strong> file.',
-                            'warning',
-                        )
     else:
         flash(t.get('flash_form_error', 'Form error. Please try again.'), 'danger')
 
@@ -499,3 +471,67 @@ def delete(id):
     asset.delete()
     flash(f'{sn} deleted.', 'danger')
     return redirect(url_for('assets.list_assets'))
+
+
+# ── Category (AssetType) management ──────────────────────────────────────────
+
+class CategoryForm(FlaskForm):
+    name     = StringField('Category Name', validators=[DataRequired(), Length(max=100)])
+    category = StringField('Group',         validators=[Optional(), Length(max=100)])
+    submit   = SubmitField('Save')
+
+
+@assets_bp.route('/categories')
+@login_required
+def list_categories():
+    cats = list(AssetType.objects.order_by('category', 'name'))
+    counts = {r['_id']: r['count'] for r in Asset._get_collection().aggregate([
+        {'$group': {'_id': '$asset_type_id', 'count': {'$sum': 1}}}
+    ])}
+    for cat in cats:
+        cat.asset_count = counts.get(cat.id, 0)
+    return render_template('assets/categories.html', categories=cats)
+
+
+@assets_bp.route('/categories/new', methods=['GET', 'POST'])
+@login_required
+def new_category():
+    if not current_user.can_edit:
+        abort(403)
+    form = CategoryForm()
+    if form.validate_on_submit():
+        AssetType(name=form.name.data.strip(), category=form.category.data.strip()).save()
+        flash(f'Category "{form.name.data}" created.', 'success')
+        return redirect(url_for('assets.list_categories'))
+    return render_template('assets/category_form.html', form=form, title='New Category')
+
+
+@assets_bp.route('/categories/<id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_category(id):
+    if not current_user.can_edit:
+        abort(403)
+    cat  = get_or_404(AssetType, id)
+    form = CategoryForm(obj=cat)
+    if form.validate_on_submit():
+        cat.name     = form.name.data.strip()
+        cat.category = form.category.data.strip()
+        cat.save()
+        flash(f'Category "{cat.name}" updated.', 'success')
+        return redirect(url_for('assets.list_categories'))
+    return render_template('assets/category_form.html', form=form, title='Edit Category', cat=cat)
+
+
+@assets_bp.route('/categories/<id>/delete', methods=['POST'])
+@login_required
+def delete_category(id):
+    if not current_user.is_admin:
+        abort(403)
+    cat = get_or_404(AssetType, id)
+    name = cat.name
+    if Asset.objects(asset_type=cat).count():
+        flash(f'Cannot delete "{name}" — it is used by existing assets.', 'danger')
+    else:
+        cat.delete()
+        flash(f'Category "{name}" deleted.', 'warning')
+    return redirect(url_for('assets.list_categories'))

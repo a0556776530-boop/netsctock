@@ -31,8 +31,15 @@
       </li>
       <li class="nav-item">
         <a href="{{ url_for('assets.list_assets') }}"
-           class="nav-link text-white {% if request.blueprint == 'assets' %}active{% endif %}">
+           class="nav-link text-white {% if request.blueprint == 'assets' and request.endpoint != 'assets.list_categories' and 'category' not in request.endpoint %}active{% endif %}">
           <i class="bi bi-cpu me-2"></i>{{ t.nav_assets }}
+        </a>
+      </li>
+      <li class="nav-item ps-2">
+        <a href="{{ url_for('assets.list_categories') }}"
+           class="nav-link text-white {% if 'category' in request.endpoint %}active{% endif %}"
+           style="font-size:.9em; opacity:.85;">
+          <i class="bi bi-tags me-2"></i>Categories
         </a>
       </li>
       <li class="nav-item">
@@ -61,6 +68,12 @@
         <a href="{{ url_for('admin.users') }}"
            class="nav-link text-white {% if request.endpoint in ('admin.users','admin.new_user','admin.edit_user') %}active{% endif %}">
           <i class="bi bi-people me-2"></i>{{ t.nav_users }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('admin.settings') }}"
+           class="nav-link text-white {% if request.endpoint == 'admin.settings' %}active{% endif %}">
+          <i class="bi bi-sliders me-2"></i>Settings
         </a>
       </li>
       <li class="nav-item">

@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-4">
+          <i class="bi bi-sliders text-primary me-2"></i>Pricing Settings
+        </h6>
+
+        <div class="alert alert-info small mb-4">
+          <strong>Formula:</strong> NIS = USD × <strong>3.0</strong> (fixed rate) × <strong>1.18</strong> (VAT) × <strong>Markup Factor</strong>
+        </div>
+
+        <form method="POST" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Markup Factor</label>
+            <div class="input-group" style="max-width: 200px;">
+              <span class="input-group-text">×</span>
+              <input type="number" name="maintenance_factor" class="form-control font-monospace fw-semibold"
+                     value="{{ factor }}" step="0.01" min="0.01" required>
+            </div>
+            <div class="form-text">Default: 1.70 (maintenance + margin)</div>
+          </div>
+
+          <div class="mb-3 p-3 bg-light rounded">
+            <div class="small text-muted mb-1">Example: $20 item</div>
+            <div class="fw-semibold" id="exampleResult">
+              $20 × 3.0 × 1.18 × {{ factor }} = ₪{{ "%.2f"|format(20 * 3.0 * 1.18 * factor) }}
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-floppy me-1"></i>Save
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

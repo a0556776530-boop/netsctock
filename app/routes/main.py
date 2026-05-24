@@ -47,7 +47,7 @@ def get_settings():
 def save_settings():
     from app.models.settings import AppSetting
     data = request.get_json(silent=True) or {}
-    for key in ('usd_rate',):
+    for key in ('usd_rate', 'maintenance_factor'):
         if key in data:
             try:
                 AppSetting.set(key, float(data[key]))

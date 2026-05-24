@@ -68,8 +68,8 @@
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="fw-semibold small">{{ t.pricing_inventory_section }}</span>
                 <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
-                  <i class="bi bi-currency-exchange me-1"></i>
-                  1 USD = ₪<span id="rateValueLabel">3.00</span>
+                  <i class="bi bi-percent me-1"></i>
+                  Markup: ×<span id="factorLabel">1.70</span>
                 </span>
               </div>
             </div>
@@ -151,22 +151,20 @@
     });
   }
 
-  // ── Rate & formula ────────────────────────────────────────────────────────
-  // Final Price (ILS) = (USD × Rate) × 1.7 × 1.18
-  // Example: $20 @ 3.00 → (20 × 3) × 1.7 × 1.18 = 120.36 ₪
-  let rate = 3.0;
+  // ── Formula: USD × 3.0 (fixed) × 1.18 VAT × maintenance_factor ──────────
+  const USD_RATE = 3.0;
+  let   factor   = 1.7;
 
-  const rateValueLabel = document.getElementById('rateValueLabel');
-  const usdInput       = document.getElementById('priceUsd');
-  const nisInput       = document.getElementById('priceNis');
+  const factorLabel = document.getElementById('factorLabel');
+  const usdInput    = document.getElementById('priceUsd');
+  const nisInput    = document.getElementById('priceNis');
 
-  // Load rate from server (single source of truth — no localStorage)
   fetch('/api/settings')
     .then(r => r.json())
     .then(data => {
-      const r = parseFloat(data.usd_rate);
-      if (r > 0) rate = r;
-      if (rateValueLabel) rateValueLabel.textContent = rate.toFixed(2);
+      const f = parseFloat(data.maintenance_factor);
+      if (f > 0) factor = f;
+      if (factorLabel) factorLabel.textContent = factor.toFixed(2);
       recalcNis();
     })
     .catch(() => { recalcNis(); });
@@ -174,13 +172,11 @@
   function recalcNis() {
     const usd = parseFloat(usdInput ? usdInput.value : '') || 0;
     if (!usd) { if (nisInput) nisInput.value = ''; return; }
-    // (USD × Rate) × 1.7 × 1.18 — rounded to 2 decimal places
-    const nis = Math.round(usd * rate * 1.7 * 1.18 * 100) / 100;
+    const nis = Math.round(usd * USD_RATE * 1.18 * factor * 100) / 100;
     if (nisInput) nisInput.value = nis;
   }
 
   if (usdInput) usdInput.addEventListener('input', recalcNis);
-
   recalcNis();
 
 </script>
