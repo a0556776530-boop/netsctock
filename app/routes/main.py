@@ -63,20 +63,21 @@ def dashboard():
 
     total_assets = Asset.objects.count()
 
-    # Status counts via Python (small dataset)
-    status_counts = {}
-    for a in Asset.objects.only('status'):
-        status_counts[a.status] = status_counts.get(a.status, 0) + 1
+    # Status counts — MongoDB aggregation (no Python-side loading)
+    pipeline_status = [{'$group': {'_id': '$status', 'count': {'$sum': 1}}}]
+    status_counts = {r['_id']: r['count'] for r in Asset._get_collection().aggregate(pipeline_status) if r['_id']}
 
+    # Recent events — limit fields fetched
     recent_events = list(
-        AssetEvent.objects.order_by('-event_date').limit(15).select_related()
+        AssetEvent.objects.order_by('-event_date').limit(10).select_related(max_depth=1)
     )
 
     open_tasks_count = Task.objects(status__ne='done').count()
 
     low_stock_assets = list(
         Asset.objects(quantity__exists=True, quantity__ne=None, quantity__lt=5)
-        .order_by('quantity').limit(20)
+        .only('component_id', 'serial_number', 'model', 'quantity', 'min_threshold')
+        .order_by('quantity').limit(10)
     )
 
     # Status chart
@@ -87,29 +88,35 @@ def dashboard():
         'colors': [_STATUS_COLORS[s] for s in all_statuses],
     }
 
-    # Type chart via Python aggregation
-    type_counts = {}
-    for a in Asset.objects.select_related(1):
-        t_name = a.asset_type.name if a.asset_type else 'Unknown'
-        type_counts[t_name] = type_counts.get(t_name, 0) + 1
-    type_rows = sorted(type_counts.items(), key=lambda x: x[1], reverse=True)[:8]
+    # Type chart — MongoDB aggregation via lookup
+    pipeline_type = [
+        {'$group': {'_id': '$asset_type_id', 'count': {'$sum': 1}}},
+        {'$lookup': {'from': 'asset_types', 'localField': '_id', 'foreignField': '_id', 'as': 'type_info'}},
+        {'$sort': {'count': -1}},
+        {'$limit': 8},
+    ]
+    type_rows = []
+    for r in Asset._get_collection().aggregate(pipeline_type):
+        name = r['type_info'][0]['name'] if r.get('type_info') else 'Unknown'
+        type_rows.append((name, r['count']))
     type_chart = {
         'labels': [r[0] for r in type_rows],
         'data':   [r[1] for r in type_rows],
     }
 
-    # Activity chart: events per day last 14 days
+    # Activity chart — one aggregation instead of 14 queries
+    from datetime import timezone
+    day_start_14 = datetime.combine(today - timedelta(days=13), datetime.min.time())
+    pipeline_activity = [
+        {'$match': {'event_date': {'$gte': day_start_14}}},
+        {'$group': {'_id': {'$dateToString': {'format': '%Y-%m-%d', 'date': '$event_date'}}, 'count': {'$sum': 1}}},
+    ]
+    activity_by_day = {r['_id']: r['count'] for r in AssetEvent._get_collection().aggregate(pipeline_activity)}
     activity_labels, activity_data = [], []
     for i in range(13, -1, -1):
         day = today - timedelta(days=i)
-        day_start = datetime.combine(day, datetime.min.time())
-        day_end   = datetime.combine(day, datetime.max.time())
-        count = AssetEvent.objects(
-            event_date__gte=day_start, event_date__lte=day_end
-        ).count()
         activity_labels.append(day.strftime('%d %b'))
-        activity_data.append(count)
-
+        activity_data.append(activity_by_day.get(day.strftime('%Y-%m-%d'), 0))
     activity_chart = {'labels': activity_labels, 'data': activity_data}
 
     return render_template(
