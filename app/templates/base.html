@@ -35,13 +35,6 @@
           <i class="bi bi-cpu me-2"></i>{{ t.nav_assets }}
         </a>
       </li>
-      <li class="nav-item ps-2">
-        <a href="{{ url_for('assets.list_categories') }}"
-           class="nav-link text-white {% if 'category' in request.endpoint %}active{% endif %}"
-           style="font-size:.9em; opacity:.85;">
-          <i class="bi bi-tags me-2"></i>Categories
-        </a>
-      </li>
       <li class="nav-item">
         <a href="{{ url_for('tasks.list_tasks') }}" class="nav-link text-white {% if request.blueprint == 'tasks' %}active{% endif %}">
           <i class="bi bi-check2-square me-2"></i>{{ t.nav_tasks }}

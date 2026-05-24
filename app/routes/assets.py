@@ -502,7 +502,7 @@ def new_category():
     if form.validate_on_submit():
         AssetType(name=form.name.data.strip(), category=form.category.data.strip()).save()
         flash(f'Category "{form.name.data}" created.', 'success')
-        return redirect(url_for('assets.list_categories'))
+        return redirect(url_for('assets.list_assets'))
     return render_template('assets/category_form.html', form=form, title='New Category')
 
 
