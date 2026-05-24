@@ -5,10 +5,7 @@ load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-MONGO_URI = os.environ.get(
-    'MONGO_URI',
-    'mongodb+srv://a0556776530_db_user:i5pZIvbZfTEzs5P5@cluster0.cc8m6qh.mongodb.net/netstock?appName=Cluster0'
-)
+MONGO_URI = os.environ.get('MONGO_URI', '')
 
 
 class Config:
