@@ -34,7 +34,6 @@ def create_app(config_class=Config):
     from .routes.auth import auth_bp
     from .routes.main import main_bp
     from .routes.assets import assets_bp
-    from .routes.sites import sites_bp
     from .routes.tasks import tasks_bp
     from .routes.admin import admin_bp
     from .routes.estimates import estimates_bp
@@ -42,7 +41,6 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(assets_bp)
-    app.register_blueprint(sites_bp)
     app.register_blueprint(tasks_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(estimates_bp)

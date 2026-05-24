@@ -36,12 +36,6 @@
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('sites.list_sites') }}"
-           class="nav-link text-white {% if request.blueprint == 'sites' %}active{% endif %}">
-          <i class="bi bi-geo-alt me-2"></i>{{ t.nav_sites }}
-        </a>
-      </li>
-      <li class="nav-item">
         <a href="{{ url_for('tasks.list_tasks') }}" class="nav-link text-white {% if request.blueprint == 'tasks' %}active{% endif %}">
           <i class="bi bi-check2-square me-2"></i>{{ t.nav_tasks }}
         </a>
