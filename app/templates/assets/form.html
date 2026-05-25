@@ -175,7 +175,7 @@
     const usd = parseFloat(usdInput ? usdInput.value : '') || 0;
     if (!usd) { if (nisInput) nisInput.value = ''; return; }
     const nis = Math.round(usd * USD_BASE * BINA * factor * VAT * 100) / 100;
-    if (nisInput) nisInput.value = nis;
+    if (nisInput) nisInput.value = nis.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   }
 
   if (usdInput) usdInput.addEventListener('input', recalcNis);

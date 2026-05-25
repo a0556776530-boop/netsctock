@@ -178,7 +178,7 @@
         '<td class="small">'                               + (a.model || '') + (a.model && a.manufacturer ? ' · ' : '') + (a.manufacturer || '') + '</td>' +
         '<td class="x-small text-muted">'                 + (a.type || '') + '</td>' +
         '<td class="text-center">'                        + stockBadge + '</td>' +
-        '<td class="text-end small font-monospace">$'     + a.price_usd.toFixed(2) + '</td>' +
+        '<td class="text-end small font-monospace">$'     + a.price_usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>' +
         '<td class="text-end small font-monospace">'      + fmt(calcILS(a.price_usd, 1)) + '</td>' +
         '<td class="text-end">' +
         (added

@@ -286,11 +286,12 @@
               </td>
 
               <!-- 9. Price (USD) -->
-              <td class="small font-monospace usd-cell" dir="ltr"
+              <td class="small font-monospace fw-bold usd-cell" dir="ltr"
+                  style="color:#146c43;"
                   data-val="{{ '%.0f'|format(asset.price_usd|float) if asset.price_usd else '' }}">
                 {% if asset.price_usd %}
-                ${{ '%.0f'|format(asset.price_usd|float) }}
-                {% else %}<span class="text-muted">—</span>
+                ${{ '{:,.0f}'.format(asset.price_usd|float) }}
+                {% else %}<span class="text-muted fw-normal">—</span>
                 {% endif %}
               </td>
 

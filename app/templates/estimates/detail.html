@@ -156,9 +156,9 @@
                 <td class="small">{{ item.asset.model if item.asset else '—' }}</td>
                 <td class="x-small text-muted">{{ item.asset.asset_type.name if item.asset and item.asset.asset_type else '—' }}</td>
                 <td class="text-center small">{{ item.quantity }}</td>
-                <td class="text-end small font-monospace">${{ '%.2f'|format(item.unit_price_usd|float) }}</td>
-                <td class="text-end small font-monospace">{{ '%.2f'|format(unit_ils) }} ₪</td>
-                <td class="text-end small font-monospace fw-semibold">{{ '%.2f'|format(unit_ils * item.quantity) }} ₪</td>
+                <td class="text-end small font-monospace">${{ '{:,.2f}'.format(item.unit_price_usd|float) }}</td>
+                <td class="text-end small font-monospace">{{ '{:,.2f}'.format(unit_ils) }} ₪</td>
+                <td class="text-end small font-monospace fw-semibold">{{ '{:,.2f}'.format(unit_ils * item.quantity) }} ₪</td>
               </tr>
               {% else %}
               <tr>
