@@ -141,7 +141,11 @@ def list_assets():
 
     by_type = defaultdict(list)
     for asset in assets:
-        by_type[asset.asset_type.name if asset.asset_type else 'Other'].append(asset)
+        try:
+            type_name = asset.asset_type.name if asset.asset_type else 'Other'
+        except Exception:
+            type_name = 'Other'
+        by_type[type_name].append(asset)
 
     grouped_assets = []
     seen = set()
