@@ -290,7 +290,7 @@
   var allocError = document.getElementById('allocError');
   var allocMsg   = document.getElementById('allocErrorMsg');
   var submitBtn  = document.querySelector('#estimateForm [type="submit"]');
-  var excludeId  = {{ estimate.id }};
+  var excludeId  = '{{ estimate.id }}';
 
   if (allocInput) {
     allocInput.addEventListener('input', function () {
