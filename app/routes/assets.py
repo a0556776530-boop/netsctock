@@ -16,14 +16,10 @@ from app.utils.mongo_helpers import get_or_404
 assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
 
 CATEGORY_ORDER = [
-    'Router', 'Aggregation', 'Access Switch', 'SFP', 'Cards',
-    'Power Supply', 'Power Cords', 'Console Cables',
+    'Routers', 'Aggregation', 'Access switches', 'Sfp', 'Cards',
+    'Power supplies', 'Power cords', 'Console cables',
 ]
-CATEGORY_LABELS = {
-    'Router': 'Routers', 'Aggregation': 'Aggregation', 'Access Switch': 'Access Switches',
-    'SFP': 'SFP Modules', 'Cards': 'Cards & Modules', 'Power Supply': 'Power Supplies',
-    'Power Cords': 'Power Cords', 'Console Cables': 'Console Cables',
-}
+CATEGORY_LABELS = {c: c for c in CATEGORY_ORDER}
 
 
 def _site_choices():
