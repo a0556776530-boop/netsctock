@@ -149,12 +149,12 @@
 <script>
 (function () {
   var RATE   = {{ usd_rate }};
+  var FACTOR = {{ maint_factor }};
   var ASSETS = {{ assets_json|safe }};
-  var sel    = {};   // { id: { asset, qty } }
+  var sel    = {};
 
-  // ── Formula: (USD × Rate) × 1.7 × 1.18 ──────────────────────────────────
   function calcILS(usd, qty) {
-    return Math.round(usd * RATE * 1.7 * 1.18 * (qty || 1) * 100) / 100;
+    return Math.round(usd * RATE * FACTOR * 1.18 * (qty || 1) * 100) / 100;
   }
   function fmt(n) {
     return n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₪';

@@ -134,9 +134,11 @@ def new_estimate():
         'quantity':      a.quantity if a.quantity is not None else 0,
     } for a in assets])
 
-    next_num = _next_allocation_number()
+    next_num     = _next_allocation_number()
+    maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
     return render_template('estimates/new.html',
                            assets_json=assets_json, usd_rate=float(usd_rate),
+                           maint_factor=maint_factor,
                            today=today, valid_until=validity, next_num=next_num)
 
 
@@ -242,9 +244,11 @@ def edit(id):
         'quantity': item.quantity,
     } for item in estimate.items])
 
+    stored_factor = float(estimate.maintenance_factor or AppSetting.get('maintenance_factor') or 1.7)
     return render_template('estimates/edit.html',
                            estimate=estimate, assets_json=assets_json,
-                           selected_json=selected_json, usd_rate=usd_rate)
+                           selected_json=selected_json, usd_rate=usd_rate,
+                           maint_factor=stored_factor)
 
 
 @estimates_bp.route('/<id>/export.csv')

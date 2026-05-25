@@ -13,7 +13,7 @@ class AssetType(me.Document):
 
 
 class Asset(me.Document):
-    meta = {'collection': 'assets'}
+    meta = {'collection': 'assets', 'strict': False}
 
     STATUSES = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
     STATUS_LABELS = {

@@ -66,20 +66,14 @@ class DismantleForm(FlaskForm):
 
 
 class AssignForm(FlaskForm):
-    assigned_to_id = SelectField('Assign To',       coerce=str, validators=[DataRequired()])
-    to_site_id     = SelectField('Deploy to Site',  coerce=str, validators=[Optional()])
-    contact_id     = SelectField('Notify Contact',  coerce=str, validators=[Optional()])
-    notes          = TextAreaField('Notes',         validators=[Optional()])
+    assigned_to_id = SelectField('Assign To',      coerce=str, validators=[DataRequired()])
+    to_site_id     = SelectField('Deploy to Site', coerce=str, validators=[Optional()])
+    notes          = TextAreaField('Notes',        validators=[Optional()])
     submit         = SubmitField('Confirm Assignment')
 
     def populate_choices(self):
-        from app.models.contact import Contact
         self.assigned_to_id.choices = [(str(u.id), u.name) for u in User.objects.order_by('name')]
         self.to_site_id.choices     = _site_choices()
-        self.contact_id.choices     = [('', '— No notification —')] + [
-            (str(c.id), f'{c.name}' + (f'  ✉ {c.email}' if c.email else '') + (f'  📱 {c.phone}' if c.phone else ''))
-            for c in Contact.objects.order_by('name')
-        ]
 
 
 class MoveForm(FlaskForm):
@@ -518,7 +512,7 @@ def edit_category(id):
         cat.category = form.category.data.strip()
         cat.save()
         flash(f'Category "{cat.name}" updated.', 'success')
-        return redirect(url_for('assets.list_categories'))
+        return redirect(url_for('assets.list_assets'))
     return render_template('assets/category_form.html', form=form, title='Edit Category', cat=cat)
 
 
@@ -534,4 +528,4 @@ def delete_category(id):
     else:
         cat.delete()
         flash(f'Category "{name}" deleted.', 'warning')
-    return redirect(url_for('assets.list_categories'))
+    return redirect(url_for('assets.list_assets'))
