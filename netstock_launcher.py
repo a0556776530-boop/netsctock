@@ -74,11 +74,17 @@ def _first_run_setup(app):
             for name in ['Beit VaGan', 'Tel Aviv HQ', 'Haifa DC', 'Storage Warehouse']:
                 Site(name=name).save()
 
-            for name in [
-                'Routers', 'Aggregation', 'Access switches', 'Sfp', 'Cards',
-                'Power supplies', 'Power cords', 'Console cables',
+            for name, dept in [
+                ('Routers',         'Networking'),
+                ('Aggregation',     'Networking'),
+                ('Access switches', 'Networking'),
+                ('Sfp',             'Networking'),
+                ('Cards',           'Networking'),
+                ('Power supplies',  'Power'),
+                ('Power cords',     'Power'),
+                ('Console cables',  'Cabling'),
             ]:
-                AssetType(name=name).save()
+                AssetType(name=name, category=dept).save()
 
             print('[Inventory] Seed complete. Login: admin@inventory.app / admin1234')
 

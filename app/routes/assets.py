@@ -31,7 +31,10 @@ def _user_choices():
 
 
 def _type_choices():
-    return [(str(t.id), f'{t.name} ({t.category})') for t in AssetType.objects.order_by('name')]
+    return [
+        (str(t.id), f'{t.name} ({t.category})' if t.category else t.name)
+        for t in AssetType.objects.order_by('category', 'name')
+    ]
 
 
 class AssetForm(FlaskForm):
