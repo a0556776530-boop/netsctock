@@ -7,25 +7,26 @@ class EstimateItem(me.EmbeddedDocument):
     quantity       = me.IntField(default=1)
     unit_price_usd = me.FloatField()
 
-    def line_total_nis(self, usd_rate):
+    def line_total_nis(self, usd_rate, maintenance_factor=1.7):
         if not self.unit_price_usd:
             return 0.0
-        return round(self.unit_price_usd * float(usd_rate) * 1.7 * 1.18 * self.quantity, 2)
+        return round(self.unit_price_usd * float(usd_rate) * maintenance_factor * 1.18 * self.quantity, 2)
 
 
 class Estimate(me.Document):
     meta = {'collection': 'estimates'}
 
-    allocation_number = me.IntField(unique=True, sparse=True)
-    status            = me.StringField(default='pending')
-    task_name         = me.StringField(max_length=200, required=True)
-    project_name      = me.StringField(max_length=200)
-    created_date      = me.DateField()
-    valid_until       = me.DateField()
-    usd_rate          = me.FloatField(default=3.0)
-    total_nis         = me.FloatField()
-    created_by        = me.ReferenceField('User')
-    created_at        = me.DateTimeField(default=datetime.utcnow)
+    allocation_number  = me.IntField(unique=True, sparse=True)
+    status             = me.StringField(default='pending')
+    task_name          = me.StringField(max_length=200, required=True)
+    project_name       = me.StringField(max_length=200)
+    created_date       = me.DateField()
+    valid_until        = me.DateField()
+    usd_rate           = me.FloatField(default=3.0)
+    maintenance_factor = me.FloatField(default=1.7)
+    total_nis          = me.FloatField()
+    created_by         = me.ReferenceField('User')
+    created_at         = me.DateTimeField(default=datetime.utcnow)
 
     items = me.EmbeddedDocumentListField(EstimateItem)
 

@@ -144,7 +144,7 @@
             </thead>
             <tbody>
               {% for item in estimate.items %}
-              {% set unit_ils = (item.unit_price_usd|float * estimate.usd_rate|float * 1.7 * 1.18) %}
+              {% set unit_ils = (item.unit_price_usd|float * estimate.usd_rate|float * (estimate.maintenance_factor or 1.7) * 1.18) %}
               <tr>
                 <td class="small font-monospace fw-semibold">
                   {% if item.asset %}

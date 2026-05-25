@@ -90,6 +90,7 @@ def new_estimate():
             )
             return redirect(url_for('estimates.new_estimate'))
 
+        maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
         estimate = Estimate(
             allocation_number=next_num,
             task_name=task_name,
@@ -97,6 +98,7 @@ def new_estimate():
             created_date=today,
             valid_until=validity,
             usd_rate=usd_rate,
+            maintenance_factor=maint_factor,
             created_by=current_user._get_current_object(),
         )
 
@@ -111,7 +113,7 @@ def new_estimate():
             if not asset or not asset.price_usd:
                 continue
             unit_usd = float(asset.price_usd)
-            line_nis  = round(unit_usd * float(usd_rate) * 1.7 * 1.18 * qty, 2)
+            line_nis  = round(unit_usd * float(usd_rate) * maint_factor * 1.18 * qty, 2)
             total_nis += line_nis
             estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
 
@@ -198,6 +200,7 @@ def edit(id):
                     return redirect(url_for('estimates.edit', id=str(estimate.id)))
             estimate.allocation_number = new_alloc
 
+        maint_factor = float(estimate.maintenance_factor or AppSetting.get('maintenance_factor') or 1.7)
         estimate.task_name    = task_name
         estimate.project_name = project_name or None
         estimate.items        = []
@@ -213,7 +216,7 @@ def edit(id):
             if not asset or not asset.price_usd:
                 continue
             unit_usd  = float(asset.price_usd)
-            line_nis  = round(unit_usd * usd_rate * 1.7 * 1.18 * qty, 2)
+            line_nis  = round(unit_usd * usd_rate * maint_factor * 1.18 * qty, 2)
             total_nis += line_nis
             estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
 
@@ -257,10 +260,11 @@ def export_csv(id):
     w.writerow(['Valid Until', estimate.valid_until.strftime('%d %b %Y')])
     w.writerow([])
     w.writerow(['Part No.','Description','Type','Qty','Unit Price (USD)','Unit Price (ILS)','Line Total (ILS)'])
-    rate = float(estimate.usd_rate)
+    rate   = float(estimate.usd_rate)
+    factor = float(estimate.maintenance_factor or 1.7)
     for item in estimate.items:
         unit_usd = float(item.unit_price_usd) if item.unit_price_usd else 0.0
-        unit_ils = round(unit_usd * rate * 1.7 * 1.18, 2)
+        unit_ils = round(unit_usd * rate * factor * 1.18, 2)
         line_ils = round(unit_ils * item.quantity, 2)
         w.writerow([
             item.asset.serial_number if item.asset else '',

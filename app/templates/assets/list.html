@@ -336,11 +336,14 @@
 {% block scripts %}
 <script>
 (function () {
-  var rate = 3.0;
+  var rate   = 3.0;
+  var factor = 1.7;
   try {
     var srv = {{ global_settings|safe }};
     var tmp = parseFloat(srv.usd_rate);
     if (tmp > 0) rate = tmp;
+    var tmpF = parseFloat(srv.maintenance_factor);
+    if (tmpF > 0) factor = tmpF;
   } catch (e) {}
 
   var visible   = localStorage.getItem('pricesVisible') !== 'false';
@@ -348,7 +351,7 @@
   var csrf      = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
   function calcILS(usd) {
-    return Math.round(usd * rate * 1.7 * 1.18 * 100) / 100;
+    return Math.round(usd * rate * factor * 1.18 * 100) / 100;
   }
   function fmt(n) {
     return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₪';
