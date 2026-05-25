@@ -193,7 +193,7 @@
         '<td class="text-end">' +
         (added
           ? '<span class="badge bg-success-subtle text-success border border-success-subtle small">Added</span>'
-          : '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="addAsset(' + a.id + ')">' +
+          : '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="addAsset(\'' + a.id + '\')">' +
             '<i class="bi bi-plus-lg"></i></button>') +
         '</td></tr>';
     });
@@ -250,12 +250,12 @@
         '<td class="text-center">' +
           '<input type="number" class="form-control form-control-sm text-center" min="1" value="' + s.qty + '"' +
           ' style="width:75px; margin:auto;"' +
-          ' oninput="changeQty(' + id + ',this.value)">' +
+          ' oninput="changeQty(\'' + id + '\',this.value)">' +
         '</td>' +
         '<td class="text-end small font-monospace">' + fmt(calcILS(a.price_usd, 1)) + '</td>' +
         '<td class="text-end small font-monospace fw-semibold" id="line_' + id + '">' + fmt(calcILS(a.price_usd, s.qty)) + '</td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="removeAsset(' + id + ')">' +
+          '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="removeAsset(\'' + id + '\')">' +
             '<i class="bi bi-trash3"></i>' +
           '</button>' +
         '</td></tr>';
