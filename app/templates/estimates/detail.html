@@ -31,7 +31,7 @@
           onsubmit="return confirm('Mark this assignment as ongoing and move it to History?')">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-sm btn-success fw-semibold">
-        <i class="bi bi-check2-circle me-1"></i>{% if lang == 'he' %}סמן כנמשך{% else %}Mark as ongoing{% endif %}
+        <i class="bi bi-check2-circle me-1"></i>Mark as Withdrawn
       </button>
     </form>
     {% endif %}
