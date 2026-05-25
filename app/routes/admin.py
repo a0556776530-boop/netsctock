@@ -68,7 +68,7 @@ def users():
     for u in all_users:
         user_stats[u.id] = {
             'assets': Asset.objects(assignee=u).count(),
-            'tasks':  Task.objects(assignee=u, status='pending').count(),
+            'tasks':  Task.objects(assignee_name=u.name, status__in=['pending', 'in_progress']).count(),
         }
     return render_template('admin/users.html', users=all_users, user_stats=user_stats)
 
@@ -131,7 +131,6 @@ def delete_user(id):
         return redirect(url_for('admin.users'))
     name = user.name
     Asset.objects(assignee=user).update(unset__assignee=1)
-    Task.objects(assignee=user).update(unset__assignee=1)
     user.delete()
     flash(t.get('flash_user_deleted', 'User {name} deleted.').format(name=name), 'warning')
     return redirect(url_for('admin.users'))
@@ -223,14 +222,13 @@ def export_events():
 @login_required
 def export_tasks():
     _admin_required()
-    headers = ['Title','Status','Assigned To','Related Asset','Notes','Created At']
+    headers = ['Title', 'Status', 'Assigned To', 'Notes', 'Created At']
     rows = []
-    for t in Task.objects.order_by('-created_at').select_related():
+    for t in Task.objects.order_by('-created_at'):
         rows.append([
             t.title,
             t.status_label,
-            t.assignee.name if t.assignee else '',
-            t.asset.serial_number if t.asset else '',
+            t.assignee_name or '',
             (t.notes or '').replace('\n', ' '),
             t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '',
         ])
