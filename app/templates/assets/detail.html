@@ -289,15 +289,17 @@
   fetch('/api/settings')
     .then(function (r) { return r.json(); })
     .then(function (gs) {
-      var rate   = parseFloat(gs.usd_rate)           || 3.0;
-      var factor = parseFloat(gs.maintenance_factor) || 1.7;
-      var nis    = Math.round(usd * rate * factor * 1.18 * 100) / 100;
+      var usdBase = parseFloat(gs.usd_base_rate)     || 3.6;
+      var bina    = parseFloat(gs.bina_factor)        || 1.048;
+      var factor  = parseFloat(gs.maintenance_factor) || 1.7;
+      var nis     = Math.round(usd * usdBase * bina * factor * 1.18 * 100) / 100;
       el.textContent = nis.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }) + ' ₪';
       var fEl = document.getElementById('priceFormula');
-      if (fEl) fEl.textContent = 'USD × ' + rate.toFixed(2) + ' × 1.18 × ' + factor.toFixed(2);
+      if (fEl) fEl.textContent =
+        'USD × ' + usdBase + ' × ' + bina + ' × ' + factor.toFixed(2) + ' × 1.18';
     })
     .catch(function () { el.textContent = '—'; });
 })();

@@ -60,7 +60,8 @@ def check_allocation():
 @estimates_bp.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_estimate():
-    usd_rate = AppSetting.get('usd_rate') or 3.0
+    from app.models.settings import EFFECTIVE_RATE
+    usd_rate = EFFECTIVE_RATE  # 3.6 × 1.048 ≈ 3.7728
     today    = date.today()
     validity = today + timedelta(days=90)
 

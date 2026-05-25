@@ -4,23 +4,25 @@
 
 {% block content %}
 
-<!-- ── USD Rate bar ──────────────────────────────────────────────────────── -->
+<!-- ── Markup Factor bar ─────────────────────────────────────────────────── -->
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body py-2 px-3">
     <div class="d-flex align-items-center gap-3 flex-wrap">
       <span class="small fw-semibold text-muted text-uppercase" style="letter-spacing:.07em;">
-        <i class="bi bi-currency-exchange me-1"></i>USD Rate
+        <i class="bi bi-percent me-1"></i>Markup Factor
       </span>
       <div class="d-flex align-items-center gap-2">
-        <input type="number" id="gsRate"
+        <span class="small text-muted">×</span>
+        <input type="number" id="factorInput"
                class="form-control form-control-sm text-center fw-semibold font-monospace"
                style="width:90px;"
-               step="0.01" autocomplete="off" placeholder="3.00">
-        <span class="small fw-bold" style="color:#1a5fa8;">
-          1$ = <span id="rateDisplayVal">—</span> ₪
-        </span>
+               step="0.01" min="0.01" autocomplete="off" placeholder="1.70">
       </div>
-      <span class="x-small fst-italic text-muted" id="gsSaveStatus"></span>
+      <span class="small text-muted">
+        Formula: $1 × 3.6 × 1.048 × <span id="factorDisplay" class="fw-semibold text-dark">1.70</span> × 1.18 =
+        <span id="exampleNis" class="fw-semibold" style="color:#1a5fa8;">—</span> ₪
+      </span>
+      <span class="x-small fst-italic text-muted" id="factorSaveStatus"></span>
     </div>
   </div>
 </div>
@@ -336,12 +338,14 @@
 {% block scripts %}
 <script>
 (function () {
-  var rate   = 3.0;
-  var factor = 1.7;
+  // ── Fixed pricing constants ─────────────────────────────────────────────────
+  var USD_BASE = 3.6;
+  var BINA     = 1.048;
+  var VAT      = 1.18;
+  var factor   = 1.7;
+
   try {
     var srv = {{ global_settings|safe }};
-    var tmp = parseFloat(srv.usd_rate);
-    if (tmp > 0) rate = tmp;
     var tmpF = parseFloat(srv.maintenance_factor);
     if (tmpF > 0) factor = tmpF;
   } catch (e) {}
@@ -351,7 +355,7 @@
   var csrf      = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
   function calcILS(usd) {
-    return Math.round(usd * rate * factor * 1.18 * 100) / 100;
+    return Math.round(usd * USD_BASE * BINA * factor * VAT * 100) / 100;
   }
   function fmt(n) {
     return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₪';
@@ -373,20 +377,22 @@
     });
   }
 
-  function showRate(r) {
-    var el = document.getElementById('rateDisplayVal');
-    if (el) el.textContent = r.toFixed(2);
+  function updateFormulaBar() {
+    var fdEl = document.getElementById('factorDisplay');
+    var exEl = document.getElementById('exampleNis');
+    if (fdEl) fdEl.textContent = factor.toFixed(2);
+    if (exEl) exEl.textContent = (Math.round(1 * USD_BASE * BINA * factor * VAT * 100) / 100).toFixed(4);
   }
 
-  function persist(r) {
-    var el = document.getElementById('gsSaveStatus');
+  function persistFactor(f) {
+    var el = document.getElementById('factorSaveStatus');
     if (el) { el.textContent = 'Saving…'; el.className = 'x-small text-muted fst-italic'; }
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       fetch('/api/settings', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-        body:    JSON.stringify({ usd_rate: r }),
+        body:    JSON.stringify({ maintenance_factor: f }),
       })
       .then(function () {
         if (el) { el.textContent = 'Saved ✓'; el.className = 'x-small text-success'; }
@@ -398,25 +404,25 @@
     }, 700);
   }
 
-  var input = document.getElementById('gsRate');
-  if (input) {
-    input.value = rate.toFixed(2);
-    input.addEventListener('input', function () {
-      var r = parseFloat(this.value);
-      if (isNaN(r) || r <= 0) return;
-      rate = r;
-      showRate(r);
+  var factorInput = document.getElementById('factorInput');
+  if (factorInput) {
+    factorInput.value = factor.toFixed(2);
+    factorInput.addEventListener('input', function () {
+      var f = parseFloat(this.value);
+      if (isNaN(f) || f <= 0) return;
+      factor = f;
+      updateFormulaBar();
       repaint();
-      persist(r);
+      persistFactor(f);
     });
-    input.addEventListener('blur', function () {
-      var r = parseFloat(this.value);
-      if (isNaN(r) || r <= 0) {
-        this.value = rate.toFixed(2);
+    factorInput.addEventListener('blur', function () {
+      var f = parseFloat(this.value);
+      if (isNaN(f) || f <= 0) {
+        this.value = factor.toFixed(2);
       } else {
-        rate = r;
-        this.value = r.toFixed(2);
-        showRate(r);
+        factor = f;
+        this.value = f.toFixed(2);
+        updateFormulaBar();
         repaint();
       }
     });
@@ -436,7 +442,7 @@
     repaint();
   };
 
-  showRate(rate);
+  updateFormulaBar();
   syncToggle();
   repaint();
 })();

@@ -12,7 +12,8 @@
         </h6>
 
         <div class="alert alert-info small mb-4">
-          <strong>Formula:</strong> NIS = USD × <strong>3.0</strong> (fixed rate) × <strong>1.18</strong> (VAT) × <strong>Markup Factor</strong>
+          <strong>Formula:</strong>
+          NIS = USD × <strong>3.6</strong> (base rate) × <strong>1.048</strong> (Bina) × <strong>1.18</strong> (VAT) × <strong>Markup Factor</strong>
         </div>
 
         <form method="POST" novalidate>
@@ -30,7 +31,7 @@
           <div class="mb-3 p-3 bg-light rounded">
             <div class="small text-muted mb-1">Example: $20 item</div>
             <div class="fw-semibold" id="exampleResult">
-              $20 × 3.0 × 1.18 × {{ factor }} = ₪{{ "%.2f"|format(20 * 3.0 * 1.18 * factor) }}
+              $20 × 3.6 × 1.048 × 1.18 × {{ factor }} = ₪{{ "%.2f"|format(20 * 3.6 * 1.048 * 1.18 * factor) }}
             </div>
           </div>
 

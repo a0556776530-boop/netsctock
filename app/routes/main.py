@@ -47,10 +47,12 @@ def get_settings():
 def save_settings():
     from app.models.settings import AppSetting
     data = request.get_json(silent=True) or {}
-    for key in ('usd_rate', 'maintenance_factor'):
+    for key in ('maintenance_factor',):
         if key in data:
             try:
-                AppSetting.set(key, float(data[key]))
+                val = float(data[key])
+                if val > 0:
+                    AppSetting.set(key, val)
             except (ValueError, TypeError):
                 pass
     return jsonify({'ok': True})

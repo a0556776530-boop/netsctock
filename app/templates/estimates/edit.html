@@ -133,6 +133,7 @@
 {% block scripts %}
 <script>
 (function () {
+  // RATE = stored effective rate for this estimate (USD_BASE × BINA at creation time)
   var RATE     = {{ usd_rate }};
   var FACTOR   = {{ maint_factor }};
   var ASSETS   = {{ assets_json|safe }};
@@ -144,6 +145,7 @@
     if (a) sel[a.id] = { asset: a, qty: s.quantity };
   });
 
+  // Formula: USD × RATE × FACTOR × 1.18
   function calcILS(usd, qty) {
     return Math.round(usd * RATE * FACTOR * 1.18 * (qty || 1) * 100) / 100;
   }

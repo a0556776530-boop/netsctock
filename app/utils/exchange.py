@@ -6,17 +6,15 @@ Fixed at 3.0 by default.  The user can override the rate in the asset form
 list-view display of legacy records.
 """
 
-FIXED_RATE: float = 3.0
+from app.models.settings import USD_BASE_RATE, BINA_FACTOR
 
-_override: dict = {'rate': FIXED_RATE}
+FIXED_RATE: float = USD_BASE_RATE
 
 
 def get_usd_to_nis() -> float:
-    """Return the current USD → NIS rate."""
-    return _override['rate']
+    return USD_BASE_RATE
 
 
-def set_usd_to_nis(rate: float) -> None:
-    """Allow runtime override (e.g. from an admin API route)."""
-    if rate > 0:
-        _override['rate'] = rate
+def effective_rate() -> float:
+    """Combined USD base rate × Bina factor — used for NIS calculations."""
+    return USD_BASE_RATE * BINA_FACTOR

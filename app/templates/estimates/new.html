@@ -148,11 +148,13 @@
 {% block scripts %}
 <script>
 (function () {
+  // RATE = USD_BASE (3.6) × BINA (1.048), passed from server
   var RATE   = {{ usd_rate }};
   var FACTOR = {{ maint_factor }};
   var ASSETS = {{ assets_json|safe }};
   var sel    = {};
 
+  // Formula: USD × RATE × FACTOR × 1.18
   function calcILS(usd, qty) {
     return Math.round(usd * RATE * FACTOR * 1.18 * (qty || 1) * 100) / 100;
   }

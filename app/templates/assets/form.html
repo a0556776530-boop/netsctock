@@ -94,7 +94,7 @@
                                    id="priceNis", placeholder="auto", readonly=true) }}
               </div>
               <div class="form-text text-muted small">
-                USD × rate × 1.18 VAT × 1.7 maintenance
+                USD × 3.6 × 1.048 (Bina) × 1.18 VAT × markup
               </div>
             </div>
 
@@ -151,8 +151,10 @@
     });
   }
 
-  // ── Formula: USD × 3.0 (fixed) × 1.18 VAT × maintenance_factor ──────────
-  const USD_RATE = 3.0;
+  // ── Formula: USD × 3.6 × 1.048 (Bina) × maintenance_factor × 1.18 ────────
+  const USD_BASE = 3.6;
+  const BINA     = 1.048;
+  const VAT      = 1.18;
   let   factor   = 1.7;
 
   const factorLabel = document.getElementById('factorLabel');
@@ -172,7 +174,7 @@
   function recalcNis() {
     const usd = parseFloat(usdInput ? usdInput.value : '') || 0;
     if (!usd) { if (nisInput) nisInput.value = ''; return; }
-    const nis = Math.round(usd * USD_RATE * 1.18 * factor * 100) / 100;
+    const nis = Math.round(usd * USD_BASE * BINA * factor * VAT * 100) / 100;
     if (nisInput) nisInput.value = nis;
   }
 
