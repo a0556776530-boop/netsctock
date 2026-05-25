@@ -130,12 +130,12 @@
     <div class="card border-0 shadow-sm">
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
+          <thead style="background-color:#343a40; color:#fff;">
             <tr>
               <!-- 1. Asset ID -->
               <th>
                 <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=component_id&order={{ 'desc' if sort == 'component_id' and order == 'asc' else 'asc' }}"
-                   class="text-decoration-none text-dark d-flex align-items-center gap-1">
+                   class="text-decoration-none text-white d-flex align-items-center gap-1">
                   {{ t.col_asset_id }}
                   {% if sort == 'component_id' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
                 </a>
@@ -144,44 +144,44 @@
               <!-- 2. Mfr. Part No. -->
               <th>
                 <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=serial_number&order={{ 'desc' if sort == 'serial_number' and order == 'asc' else 'asc' }}"
-                   class="text-decoration-none text-dark d-flex align-items-center gap-1">
+                   class="text-decoration-none text-white d-flex align-items-center gap-1">
                   {{ t.col_model }}
                   {% if sort == 'serial_number' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
                 </a>
               </th>
 
               <!-- 3. Description -->
-              <th style="min-width:200px;">{{ t.col_feature }}</th>
+              <th style="min-width:200px;" class="text-white">{{ t.col_feature }}</th>
 
               <!-- 4. Stock Qty -->
               <th class="text-center">
                 <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=quantity&order={{ 'desc' if sort == 'quantity' and order == 'asc' else 'asc' }}"
-                   class="text-decoration-none text-dark d-flex align-items-center justify-content-center gap-1">
+                   class="text-decoration-none text-white d-flex align-items-center justify-content-center gap-1">
                   {{ t.col_stock_qty }}
                   {% if sort == 'quantity' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
                 </a>
               </th>
 
               <!-- 5. Commitments -->
-              <th class="text-center" title="Sum of quantities in open Pending estimates">
+              <th class="text-center text-white" title="Sum of quantities in open Pending estimates">
                 Commitments
               </th>
 
               <!-- 6. After Commitments -->
-              <th class="text-center">After Commitments</th>
+              <th class="text-center text-white">After Commitments</th>
 
               <!-- 7. Red Line Alert -->
-              <th class="text-center">{{ t.col_alert }}</th>
+              <th class="text-center text-white">{{ t.col_alert }}</th>
 
               <!-- 8. Final Price (₪) -->
               <th>
                 <div class="d-flex align-items-center gap-1">
                   <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=price_usd&order={{ 'desc' if sort == 'price_usd' and order == 'asc' else 'asc' }}"
-                     class="text-decoration-none text-dark d-flex align-items-center gap-1">
+                     class="text-decoration-none text-white d-flex align-items-center gap-1">
                     {{ t.col_nis }}
                     {% if sort == 'price_usd' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
                   </a>
-                  <button class="btn btn-link btn-sm p-0 ms-1 text-muted border-0 lh-1"
+                  <button class="btn btn-link btn-sm p-0 ms-1 text-white border-0 lh-1"
                           id="priceToggleBtn"
                           data-show-label="{{ t.price_toggle_show }}"
                           data-hide-label="{{ t.price_toggle_hide }}"
@@ -194,7 +194,7 @@
               </th>
 
               <!-- 9. Price USD -->
-              <th>$</th>
+              <th class="text-white">$</th>
 
               <!-- 10. Actions -->
               <th></th>
@@ -214,7 +214,8 @@
             {% set committed = commitments.get(asset.id, 0) %}
             {% set stock = asset.quantity if asset.quantity is not none else 0 %}
             {% set after = stock - committed %}
-            <tr>
+            {% set is_low = asset.quantity is not none and asset.min_threshold is not none and asset.min_threshold > 0 and asset.quantity <= asset.min_threshold %}
+            <tr style="{{ 'background-color:#fff5f5;' if is_low else '' }}">
 
               <!-- 1. Asset ID -->
               <td class="small font-monospace fw-semibold">
@@ -231,17 +232,27 @@
                 {% endif %}
               </td>
 
-              <!-- 3. Description -->
+              <!-- 3. Description (no redundant category prefix) -->
               <td style="min-width:200px;">
-                <div class="small fw-semibold">{{ asset.asset_type.name if asset.asset_type else '—' }}</div>
-                <div class="text-muted x-small">
-                  {{ asset.model or '' }}{% if asset.model and asset.manufacturer %} · {% endif %}{{ asset.manufacturer or '' }}
-                </div>
+                <div class="small fw-semibold">{{ asset.model or '—' }}</div>
+                <div class="text-muted x-small">{{ asset.manufacturer or '' }}</div>
               </td>
 
-              <!-- 4. Stock Qty -->
-              <td class="text-center small">
-                {% if asset.quantity is not none %}{{ asset.quantity }}{% else %}<span class="text-muted">—</span>{% endif %}
+              <!-- 4. Stock Qty with +/- controls -->
+              <td class="text-center">
+                {% if current_user.can_edit %}
+                <div class="d-flex align-items-center justify-content-center gap-1">
+                  <button class="btn btn-outline-secondary py-0 px-1" style="font-size:.7rem; line-height:1.6;"
+                          onclick="adjustQty('{{ asset.id }}', -1, this)" type="button">−</button>
+                  <span id="qty_{{ asset.id }}" class="small fw-semibold" style="min-width:26px; text-align:center;">
+                    {{ asset.quantity if asset.quantity is not none else '—' }}
+                  </span>
+                  <button class="btn btn-outline-secondary py-0 px-1" style="font-size:.7rem; line-height:1.6;"
+                          onclick="adjustQty('{{ asset.id }}', 1, this)" type="button">+</button>
+                </div>
+                {% else %}
+                <span class="small">{{ asset.quantity if asset.quantity is not none else '—' }}</span>
+                {% endif %}
               </td>
 
               <!-- 5. Commitments -->
@@ -256,9 +267,8 @@
 
               <!-- 7. Red Line Alert -->
               <td class="text-center">
-                {% if asset.quantity is not none and asset.quantity < 5 %}
-                <div class="fw-bold text-danger fs-5 lh-1">{{ asset.quantity }}</div>
-                <span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small mt-1">
+                {% if is_low %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small">
                   <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ t.red_line_badge }}
                 </span>
                 {% else %}
@@ -266,12 +276,12 @@
                 {% endif %}
               </td>
 
-              <!-- 8. Final Price (₪) -->
-              <td class="small font-monospace">
+              <!-- 8. Final Price (₪) — bold dark green -->
+              <td class="small font-monospace fw-bold" style="color:#146c43;">
                 {% if asset.price_usd %}
                 <span class="price-cell" data-usd="{{ asset.price_usd|float }}">****</span>
                 {% else %}
-                <span class="text-muted">—</span>
+                <span class="text-muted fw-normal">—</span>
                 {% endif %}
               </td>
 
@@ -284,22 +294,28 @@
                 {% endif %}
               </td>
 
-              <!-- 10. Actions -->
+              <!-- 10. Actions — colored circular backgrounds -->
               <td class="text-end text-nowrap">
-                <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
-                  <i class="bi bi-eye"></i>
+                <a href="{{ url_for('assets.detail', id=asset.id) }}"
+                   class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+                   style="width:30px;height:30px;background:#dbeafe;color:#1d4ed8;border:none;" title="View">
+                  <i class="bi bi-eye" style="font-size:.8rem;"></i>
                 </a>
                 {% if current_user.can_edit %}
-                <a href="{{ url_for('assets.edit', id=asset.id) }}" class="btn btn-sm btn-outline-secondary">
-                  <i class="bi bi-pencil"></i>
+                <a href="{{ url_for('assets.edit', id=asset.id) }}"
+                   class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+                   style="width:30px;height:30px;background:#fef9c3;color:#854d0e;border:none;" title="Edit">
+                  <i class="bi bi-pencil" style="font-size:.8rem;"></i>
                 </a>
                 {% endif %}
                 {% if current_user.is_admin %}
                 <form method="POST" action="{{ url_for('assets.delete', id=asset.id) }}" class="d-inline"
                       onsubmit="return confirm('Delete {{ asset.serial_number }}? This cannot be undone.')">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="btn btn-sm btn-outline-danger">
-                    <i class="bi bi-trash3"></i>
+                  <button type="submit"
+                          class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+                          style="width:30px;height:30px;background:#fee2e2;color:#991b1b;border:none;" title="Delete">
+                    <i class="bi bi-trash3" style="font-size:.8rem;"></i>
                   </button>
                 </form>
                 {% endif %}
@@ -504,6 +520,22 @@
 
   syncToggle();
   repaint();
+
+  // ── Quick qty +/- ──────────────────────────────────────────────────────────
+  window.adjustQty = function (id, delta, btn) {
+    btn.disabled = true;
+    fetch('/assets/' + id + '/qty', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body:    JSON.stringify({ delta: delta }),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var el = document.getElementById('qty_' + id);
+      if (el) el.textContent = data.qty;
+    })
+    .finally(function () { btn.disabled = false; });
+  };
 })();
 </script>
 {% endblock %}

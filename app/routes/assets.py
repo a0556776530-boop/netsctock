@@ -456,6 +456,20 @@ def retire(id):
     return redirect(url_for('assets.detail', id=str(asset.id)))
 
 
+@assets_bp.route('/<id>/qty', methods=['POST'])
+@login_required
+def update_qty(id):
+    if not current_user.can_edit:
+        abort(403)
+    from flask import jsonify
+    asset = get_or_404(Asset, id)
+    data  = request.get_json(force=True) or {}
+    delta = int(data.get('delta', 0))
+    asset.quantity = max(0, (asset.quantity or 0) + delta)
+    asset.save()
+    return jsonify(qty=asset.quantity)
+
+
 @assets_bp.route('/<id>/delete', methods=['POST'])
 @login_required
 def delete(id):
