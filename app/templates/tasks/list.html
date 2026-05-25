@@ -19,17 +19,8 @@
       <div class="col-6 col-md-3">
         <select name="status" class="form-select form-select-sm">
           <option value="">All Statuses</option>
-          <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
           <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
-          <option value="done" {% if status_filter == 'done' %}selected{% endif %}>Done</option>
-        </select>
-      </div>
-      <div class="col-6 col-md-3">
-        <select name="assignee" class="form-select form-select-sm">
-          <option value="">All Assignees</option>
-          {% for u in users %}
-          <option value="{{ u.id }}" {% if assignee_filter == u.id %}selected{% endif %}>{{ u.name }}</option>
-          {% endfor %}
+          <option value="done"        {% if status_filter == 'done' %}selected{% endif %}>Done</option>
         </select>
       </div>
       <div class="col-6 col-md-3 d-flex gap-1">
@@ -51,16 +42,15 @@
       <thead class="table-light">
         <tr>
           <th>
-            <a href="?status={{ status_filter }}&assignee={{ assignee_filter or '' }}&sort=title&order={{ 'desc' if sort == 'title' and order == 'asc' else 'asc' }}"
+            <a href="?status={{ status_filter }}&sort=title&order={{ 'desc' if sort == 'title' and order == 'asc' else 'asc' }}"
                class="text-decoration-none text-dark d-flex align-items-center gap-1">
               Task
               {% if sort == 'title' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
             </a>
           </th>
-          <th>Related Asset</th>
           <th>Assigned To</th>
           <th>
-            <a href="?status={{ status_filter }}&assignee={{ assignee_filter or '' }}&sort=status&order={{ 'desc' if sort == 'status' and order == 'asc' else 'asc' }}"
+            <a href="?status={{ status_filter }}&sort=status&order={{ 'desc' if sort == 'status' and order == 'asc' else 'asc' }}"
                class="text-decoration-none text-dark d-flex align-items-center gap-1">
               Status
               {% if sort == 'status' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
@@ -75,19 +65,10 @@
           <td>
             <div class="fw-semibold small">{{ task.title }}</div>
             {% if task.notes %}
-            <div class="text-muted x-small text-truncate" style="max-width:280px;">{{ task.notes }}</div>
+            <div class="text-muted x-small text-truncate" style="max-width:320px;">{{ task.notes }}</div>
             {% endif %}
           </td>
-          <td class="small">
-            {% if task.asset %}
-            <a href="{{ url_for('assets.detail', id=task.asset.id) }}" class="font-monospace text-decoration-none">
-              {{ task.asset.serial_number }}
-            </a>
-            {% else %}
-            <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <td class="small">{{ task.assignee.name if task.assignee else '—' }}</td>
+          <td class="small">{{ task.assignee_name or '—' }}</td>
           <td>
             <span class="badge bg-{{ task.status_color }} bg-opacity-15 text-{{ task.status_color }} border border-{{ task.status_color }} border-opacity-25">
               {{ task.status_label }}
@@ -125,7 +106,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center text-muted py-5">
+          <td colspan="4" class="text-center text-muted py-5">
             <i class="bi bi-check2-all fs-3 d-block mb-2"></i>
             No tasks found. <a href="{{ url_for('tasks.new_task') }}">Create one?</a>
           </td>

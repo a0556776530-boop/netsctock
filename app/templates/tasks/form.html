@@ -19,16 +19,10 @@
           </div>
 
           <div class="row g-3">
-            <!-- Related asset -->
+            <!-- Assigned to (free text) -->
             <div class="col-md-6">
-              {{ form.asset_id.label(class="form-label fw-semibold") }}
-              {{ form.asset_id(class="form-select") }}
-            </div>
-
-            <!-- Assigned to -->
-            <div class="col-md-6">
-              {{ form.assigned_to_id.label(class="form-label fw-semibold") }}
-              {{ form.assigned_to_id(class="form-select") }}
+              {{ form.assignee_name.label(class="form-label fw-semibold") }}
+              {{ form.assignee_name(class="form-control", placeholder="e.g. John Smith") }}
             </div>
 
             <!-- Status -->

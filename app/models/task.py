@@ -3,18 +3,17 @@ from datetime import datetime
 
 
 class Task(me.Document):
-    meta = {'collection': 'tasks'}
+    meta = {'collection': 'tasks', 'strict': False}
 
-    STATUSES = ['pending', 'in_progress', 'done']
-    STATUS_LABELS = {'pending': 'ממתין', 'in_progress': 'בביצוע', 'done': 'הושלם'}
-    STATUS_COLORS = {'pending': 'warning', 'in_progress': 'primary', 'done': 'success'}
+    STATUSES = ['in_progress', 'done']
+    STATUS_LABELS = {'pending': 'In Progress', 'in_progress': 'In Progress', 'done': 'Done'}
+    STATUS_COLORS = {'pending': 'primary', 'in_progress': 'primary', 'done': 'success'}
 
-    title      = me.StringField(max_length=255, required=True)
-    asset      = me.ReferenceField('Asset')
-    assignee   = me.ReferenceField('User')
-    status     = me.StringField(default='pending')
-    notes      = me.StringField()
-    created_at = me.DateTimeField(default=datetime.utcnow)
+    title         = me.StringField(max_length=255, required=True)
+    assignee_name = me.StringField(max_length=200)
+    status        = me.StringField(default='in_progress')
+    notes         = me.StringField()
+    created_at    = me.DateTimeField(default=datetime.utcnow)
 
     def __repr__(self):
         return f'<Task {self.title}>'
