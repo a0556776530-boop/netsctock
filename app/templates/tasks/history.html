@@ -1,50 +1,30 @@
 {% extends 'base.html' %}
-{% block title %}Tasks{% endblock %}
-{% block page_title %}Tasks{% endblock %}
+{% block title %}Task History{% endblock %}
+{% block page_title %}Task History{% endblock %}
 
 {% block content %}
 
-<!-- Header + Add button -->
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <span class="text-muted small">{{ tasks | length }} task{{ 's' if tasks | length != 1 }}</span>
-  <div class="d-flex gap-2">
-    <a href="{{ url_for('tasks.history') }}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-clock-history me-1"></i>History
-    </a>
-    <a href="{{ url_for('tasks.new_task') }}" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-lg me-1"></i>New Task
-    </a>
-  </div>
+  <span class="text-muted small">{{ tasks | length }} completed task{{ 's' if tasks | length != 1 }}</span>
+  <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Tasks
+  </a>
 </div>
 
-
-<!-- Task table -->
 <div class="card border-0 shadow-sm">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0">
       <thead class="table-light">
         <tr>
-          <th>
-            <a href="?status={{ status_filter }}&sort=title&order={{ 'desc' if sort == 'title' and order == 'asc' else 'asc' }}"
-               class="text-decoration-none text-dark d-flex align-items-center gap-1">
-              Task
-              {% if sort == 'title' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
-            </a>
-          </th>
+          <th>Task</th>
           <th>Assigned To</th>
-          <th>
-            <a href="?status={{ status_filter }}&sort=status&order={{ 'desc' if sort == 'status' and order == 'asc' else 'asc' }}"
-               class="text-decoration-none text-dark d-flex align-items-center gap-1">
-              Status
-              {% if sort == 'status' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
-            </a>
-          </th>
+          <th>Status</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for task in tasks %}
-        <tr class="{{ 'table-light opacity-75' if task.status == 'done' }}">
+        <tr class="table-light opacity-75">
           <td>
             <div class="fw-semibold small">{{ task.title }}</div>
             {% if task.notes %}
@@ -53,26 +33,17 @@
           </td>
           <td class="small">{{ task.assignee_name or '—' }}</td>
           <td>
-            <span class="badge bg-{{ task.status_color }} bg-opacity-15 text-{{ task.status_color }} border border-{{ task.status_color }} border-opacity-25">
-              {{ task.status_label }}
+            <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25">
+              Done
             </span>
           </td>
           <td class="text-end text-nowrap">
-            {% if task.status != 'done' %}
-            <form method="POST" action="{{ url_for('tasks.mark_done', id=task.id) }}" class="d-inline">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-success" title="Mark Done">
-                <i class="bi bi-check-lg"></i>
-              </button>
-            </form>
-            {% else %}
             <form method="POST" action="{{ url_for('tasks.reopen', id=task.id) }}" class="d-inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reopen">
                 <i class="bi bi-arrow-counterclockwise"></i>
               </button>
             </form>
-            {% endif %}
             <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
               <i class="bi bi-pencil"></i>
             </a>
@@ -91,7 +62,7 @@
         <tr>
           <td colspan="4" class="text-center text-muted py-5">
             <i class="bi bi-check2-all fs-3 d-block mb-2"></i>
-            No tasks found. <a href="{{ url_for('tasks.new_task') }}">Create one?</a>
+            No completed tasks yet.
           </td>
         </tr>
         {% endfor %}

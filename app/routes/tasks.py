@@ -23,27 +23,27 @@ class TaskForm(FlaskForm):
 @tasks_bp.route('/')
 @login_required
 def list_tasks():
-    status_filter = request.args.get('status', '')
-    sort          = request.args.get('sort', 'created_at')
-    order         = request.args.get('order', 'desc')
+    sort  = request.args.get('sort', 'created_at')
+    order = request.args.get('order', 'desc')
 
-    qs = Task.objects
-    if status_filter:
-        if status_filter == 'in_progress':
-            qs = qs(__raw__={'status': {'$in': ['pending', 'in_progress']}})
-        else:
-            qs = qs(status=status_filter)
+    qs = Task.objects(__raw__={'status': {'$in': ['pending', 'in_progress']}})
 
-    sort_field = {'status': 'status', 'created_at': 'created_at', 'title': 'title'}.get(sort, 'created_at')
+    sort_field = {'created_at': 'created_at', 'title': 'title'}.get(sort, 'created_at')
     qs = qs.order_by(sort_field if order == 'asc' else f'-{sort_field}')
 
     tasks = list(qs)
     return render_template(
         'tasks/list.html',
         tasks=tasks,
-        status_filter=status_filter,
         sort=sort, order=order,
     )
+
+
+@tasks_bp.route('/history')
+@login_required
+def history():
+    tasks = list(Task.objects(status='done').order_by('-created_at'))
+    return render_template('tasks/history.html', tasks=tasks)
 
 
 @tasks_bp.route('/new', methods=['GET', 'POST'])
