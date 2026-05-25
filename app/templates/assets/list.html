@@ -138,14 +138,7 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-6 col-md-2">
-            <select name="site" class="form-select form-select-sm">
-              <option value="">{{ t.all_sites }}</option>
-              {% for s in sites %}
-              <option value="{{ s.id }}" {% if site_filter == s.id %}selected{% endif %}>{{ s.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
+
           <div class="col-6 col-md-2 d-flex gap-1">
             <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
               <i class="bi bi-search"></i>
