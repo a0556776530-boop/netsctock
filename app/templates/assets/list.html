@@ -32,23 +32,55 @@
 
 <!-- Formula popover (hidden, shown on click) -->
 <div id="formulaPopover" class="d-none"
-     style="position:absolute; z-index:1080; min-width:280px;">
+     style="position:absolute; z-index:1080; min-width:260px;">
   <div class="card border shadow-lg" style="font-size:.82rem;">
     <div class="card-body p-3">
       <div class="fw-bold mb-2 small text-uppercase text-muted" style="letter-spacing:.05em;">
         <i class="bi bi-calculator me-1"></i>Pricing Formula
       </div>
-      <table class="table table-sm table-borderless mb-2" style="font-size:.82rem;">
-        <tr><td class="text-muted pe-3">Base Rate</td>    <td class="font-monospace fw-semibold">× 3.6</td></tr>
-        <tr><td class="text-muted pe-3">Bina Factor</td>  <td class="font-monospace fw-semibold">× 1.048</td></tr>
-        <tr><td class="text-muted pe-3">Markup</td>       <td class="font-monospace fw-semibold">× <span id="popFactor">—</span></td></tr>
-        <tr><td class="text-muted pe-3">VAT</td>          <td class="font-monospace fw-semibold">× 1.18</td></tr>
-        <tr class="border-top">
-          <td class="text-muted pe-3 pt-2">Example $20</td>
-          <td class="font-monospace fw-bold text-success pt-2">= <span id="popExample">—</span> ₪</td>
+      <table class="table table-sm table-borderless mb-1" style="font-size:.82rem;">
+        <tr>
+          <td class="text-muted align-middle pe-2" style="white-space:nowrap;">Base Rate</td>
+          <td>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text px-2">×</span>
+              <input type="number" id="popBaseRate" class="form-control font-monospace"
+                     style="width:80px;" step="0.001" min="0.001" autocomplete="off">
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="text-muted align-middle pe-2" style="white-space:nowrap;">Bina Factor</td>
+          <td>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text px-2">×</span>
+              <input type="number" id="popBina" class="form-control font-monospace"
+                     style="width:80px;" step="0.001" min="0.001" autocomplete="off">
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="text-muted align-middle pe-2" style="white-space:nowrap;">Markup</td>
+          <td>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text px-2">×</span>
+              <input type="number" id="popMarkup" class="form-control font-monospace"
+                     style="width:80px;" step="0.01" min="0.01" autocomplete="off">
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="text-muted align-middle pe-2" style="white-space:nowrap;">VAT</td>
+          <td>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text px-2">×</span>
+              <input type="number" id="popVat" class="form-control font-monospace"
+                     style="width:80px;" step="0.01" min="0.01" autocomplete="off">
+            </div>
+          </td>
         </tr>
       </table>
-      <div class="text-muted" style="font-size:.75rem;">NIS = USD × 3.6 × 1.048 × markup × 1.18</div>
+      <div class="text-muted" style="font-size:.75rem;">NIS = USD × base × bina × markup × VAT</div>
     </div>
   </div>
 </div>
@@ -381,7 +413,7 @@
 {% block scripts %}
 <script>
 (function () {
-  // ── Fixed pricing constants ─────────────────────────────────────────────────
+  // ── Pricing constants (overridden by server settings) ──────────────────────
   var USD_BASE = 3.6;
   var BINA     = 1.048;
   var VAT      = 1.18;
@@ -389,8 +421,10 @@
 
   try {
     var srv = {{ global_settings|safe }};
-    var tmpF = parseFloat(srv.maintenance_factor);
-    if (tmpF > 0) factor = tmpF;
+    if (srv.usd_base_rate      > 0) USD_BASE = srv.usd_base_rate;
+    if (srv.bina_factor        > 0) BINA     = srv.bina_factor;
+    if (srv.vat_factor         > 0) VAT      = srv.vat_factor;
+    if (srv.maintenance_factor > 0) factor   = srv.maintenance_factor;
   } catch (e) {}
 
   var visible   = localStorage.getItem('pricesVisible') !== 'false';
@@ -420,18 +454,22 @@
     });
   }
 
-  function updatePopover() {
-    var pfEl  = document.getElementById('popFactor');
-    var peEl  = document.getElementById('popExample');
-    if (pfEl) pfEl.textContent = factor.toFixed(2);
-    if (peEl) peEl.textContent = (Math.round(20 * USD_BASE * BINA * factor * VAT * 100) / 100)
-                                    .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  }
-
   // ── Popover toggle ──────────────────────────────────────────────────────────
   var popoverEl  = document.getElementById('formulaPopover');
   var infoBtn    = document.getElementById('formulaInfoBtn');
   var popVisible = false;
+
+  var popBaseRate = document.getElementById('popBaseRate');
+  var popBina     = document.getElementById('popBina');
+  var popMarkup   = document.getElementById('popMarkup');
+  var popVat      = document.getElementById('popVat');
+
+  function syncPopoverInputs() {
+    if (popBaseRate) popBaseRate.value = USD_BASE;
+    if (popBina)     popBina.value     = BINA;
+    if (popMarkup)   popMarkup.value   = factor.toFixed(2);
+    if (popVat)      popVat.value      = VAT;
+  }
 
   function positionPopover() {
     if (!infoBtn || !popoverEl) return;
@@ -445,7 +483,7 @@
       e.stopPropagation();
       popVisible = !popVisible;
       if (popVisible) {
-        updatePopover();
+        syncPopoverInputs();
         popoverEl.classList.remove('d-none');
         positionPopover();
       } else {
@@ -455,31 +493,52 @@
   }
 
   document.addEventListener('click', function (e) {
-    if (popVisible && popoverEl && !popoverEl.contains(e.target)) {
+    if (popVisible && popoverEl && !popoverEl.contains(e.target) &&
+        e.target !== infoBtn && !infoBtn.contains(e.target)) {
       popVisible = false;
       popoverEl.classList.add('d-none');
     }
   });
 
-  function persistFactor(f) {
-    var el = document.getElementById('factorSaveStatus');
-    if (el) { el.textContent = 'Saving…'; el.className = 'x-small text-muted fst-italic'; }
+  function persistSetting(key, val) {
+    var statusEl = document.getElementById('factorSaveStatus');
+    if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.className = 'x-small text-muted fst-italic'; }
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
+      var payload = {};
+      payload[key] = val;
       fetch('/api/settings', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-        body:    JSON.stringify({ maintenance_factor: f }),
+        body:    JSON.stringify(payload),
       })
       .then(function () {
-        if (el) { el.textContent = 'Saved ✓'; el.className = 'x-small text-success'; }
-        setTimeout(function () { if (el) el.textContent = ''; }, 2000);
+        if (statusEl) { statusEl.textContent = 'Saved ✓'; statusEl.className = 'x-small text-success'; }
+        setTimeout(function () { if (statusEl) statusEl.textContent = ''; }, 2000);
       })
       .catch(function () {
-        if (el) { el.textContent = 'Failed'; el.className = 'x-small text-danger'; }
+        if (statusEl) { statusEl.textContent = 'Failed'; statusEl.className = 'x-small text-danger'; }
       });
     }, 700);
   }
+
+  function wirePopInput(inputEl, apiKey, setter, syncEl) {
+    if (!inputEl) return;
+    inputEl.addEventListener('input', function () {
+      var v = parseFloat(this.value);
+      if (isNaN(v) || v <= 0) return;
+      setter(v);
+      if (syncEl) syncEl.value = v.toFixed(2);
+      repaint();
+      persistSetting(apiKey, v);
+    });
+  }
+
+  wirePopInput(popBaseRate, 'usd_base_rate', function (v) { USD_BASE = v; }, null);
+  wirePopInput(popBina,     'bina_factor',   function (v) { BINA = v; },     null);
+  wirePopInput(popMarkup,   'maintenance_factor', function (v) { factor = v; },
+               document.getElementById('factorInput'));
+  wirePopInput(popVat,      'vat_factor',    function (v) { VAT = v; },      null);
 
   var factorInput = document.getElementById('factorInput');
   if (factorInput) {
@@ -488,9 +547,9 @@
       var f = parseFloat(this.value);
       if (isNaN(f) || f <= 0) return;
       factor = f;
-      if (popVisible) updatePopover();
+      if (popMarkup) popMarkup.value = f.toFixed(2);
       repaint();
-      persistFactor(f);
+      persistSetting('maintenance_factor', f);
     });
     factorInput.addEventListener('blur', function () {
       var f = parseFloat(this.value);
@@ -499,7 +558,7 @@
       } else {
         factor = f;
         this.value = f.toFixed(2);
-        if (popVisible) updatePopover();
+        if (popMarkup) popMarkup.value = f.toFixed(2);
         repaint();
       }
     });
