@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}Users{% endblock %}
-{% block page_title %}User Management{% endblock %}
+{% block title %}{{ t.user_management_title }}{% endblock %}
+{% block page_title %}{{ t.user_management_title }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <span class="text-muted small">{{ users | length }} user{{ 's' if users | length != 1 }}</span>
   <a href="{{ url_for('admin.new_user') }}" class="btn btn-primary btn-sm">
-    <i class="bi bi-person-plus me-1"></i>New User
+    <i class="bi bi-person-plus me-1"></i>{{ t.form_create_user }}
   </a>
 </div>
 
@@ -15,12 +15,12 @@
     <table class="table table-hover align-middle mb-0">
       <thead class="table-light">
         <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th class="text-center">Assigned Assets</th>
-          <th class="text-center">Open Tasks</th>
-          <th>Created</th>
+          <th>{{ t.col_name }}</th>
+          <th>{{ t.col_email }}</th>
+          <th>{{ t.col_role }}</th>
+          <th class="text-center">{{ t.col_assigned_assets }}</th>
+          <th class="text-center">{{ t.col_open_tasks_hdr }}</th>
+          <th>{{ t.col_created }}</th>
           <th></th>
         </tr>
       </thead>
@@ -30,17 +30,23 @@
           <td class="fw-semibold">
             {{ user.name }}
             {% if user.id == current_user.id %}
-            <span class="badge bg-secondary ms-1 small">you</span>
+            <span class="badge bg-secondary ms-1 small">{{ t.you_badge }}</span>
             {% endif %}
           </td>
           <td class="small text-muted">{{ user.email }}</td>
           <td>
-            {% set role_color = {'admin':'danger','technician':'primary','viewer':'secondary'} %}
-            <span class="badge bg-{{ role_color.get(user.role,'secondary') }} bg-opacity-15
-                         text-{{ role_color.get(user.role,'secondary') }}
-                         border border-{{ role_color.get(user.role,'secondary') }} border-opacity-25">
-              {{ user.role | capitalize }}
-            </span>
+            <div class="d-flex align-items-center gap-2">
+              {% if user.role == 'admin' %}
+              <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
+              <span class="small fw-semibold" style="color:#b45309;">{{ t.role_admin }}</span>
+              {% elif user.role == 'technician' %}
+              <div class="role-avatar-sm role-tech"><i class="bi bi-cpu-fill"></i></div>
+              <span class="small fw-semibold" style="color:#15803d;">{{ t.role_technician }}</span>
+              {% else %}
+              <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
+              <span class="small fw-semibold" style="color:#7e22ce;">{{ t.role_viewer }}</span>
+              {% endif %}
+            </div>
           </td>
           <td class="text-center small">{{ user_stats[user.id].assets }}</td>
           <td class="text-center small">{{ user_stats[user.id].tasks }}</td>
@@ -51,7 +57,7 @@
             </a>
             {% if user.id != current_user.id %}
             <form method="POST" action="{{ url_for('admin.delete_user', id=user.id) }}" class="d-inline"
-                  onsubmit="return confirm('Delete {{ user.name }}? Their assets and tasks will be unlinked.')">
+                  onsubmit="return confirm('{{ t.confirm_delete_user.format(name=user.name) }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-trash"></i>

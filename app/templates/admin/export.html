@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Export{% endblock %}
-{% block page_title %}Export Data{% endblock %}
+{% block title %}{{ t.export_page_title }}{% endblock %}
+{% block page_title %}{{ t.export_page_title }}{% endblock %}
 
 {% block content %}
 <div class="row g-3 justify-content-center">
@@ -10,11 +10,11 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body text-center p-4">
         <i class="bi bi-cpu fs-1 text-primary mb-3 d-block"></i>
-        <h5 class="fw-semibold">Assets</h5>
-        <p class="text-muted small">Serial numbers, types, status, site, assignment, due dates.</p>
-        <div class="badge bg-secondary mb-3">{{ asset_count }} records</div>
+        <h5 class="fw-semibold">{{ t.nav_assets }}</h5>
+        <p class="text-muted small">{{ t.export_assets_desc }}</p>
+        <div class="badge bg-secondary mb-3">{{ asset_count }} {{ t.records_label }}</div>
         <a href="{{ url_for('admin.export_assets') }}" class="btn btn-primary d-block">
-          <i class="bi bi-download me-2"></i>Download assets.csv
+          <i class="bi bi-download me-2"></i>{{ t.download_assets_csv }}
         </a>
       </div>
     </div>
@@ -25,11 +25,11 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body text-center p-4">
         <i class="bi bi-clock-history fs-1 text-info mb-3 d-block"></i>
-        <h5 class="fw-semibold">Event History</h5>
-        <p class="text-muted small">Full audit log — dismantled, moved, assigned, returned, retired.</p>
-        <div class="badge bg-secondary mb-3">{{ event_count }} records</div>
+        <h5 class="fw-semibold">{{ t.export_events_title }}</h5>
+        <p class="text-muted small">{{ t.export_events_desc }}</p>
+        <div class="badge bg-secondary mb-3">{{ event_count }} {{ t.records_label }}</div>
         <a href="{{ url_for('admin.export_events') }}" class="btn btn-info text-white d-block">
-          <i class="bi bi-download me-2"></i>Download events.csv
+          <i class="bi bi-download me-2"></i>{{ t.download_events_csv }}
         </a>
       </div>
     </div>
@@ -40,11 +40,11 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body text-center p-4">
         <i class="bi bi-check2-square fs-1 text-success mb-3 d-block"></i>
-        <h5 class="fw-semibold">Tasks</h5>
-        <p class="text-muted small">All tasks with status, due dates, assignees, and related assets.</p>
-        <div class="badge bg-secondary mb-3">{{ task_count }} records</div>
+        <h5 class="fw-semibold">{{ t.export_tasks_title }}</h5>
+        <p class="text-muted small">{{ t.export_tasks_desc }}</p>
+        <div class="badge bg-secondary mb-3">{{ task_count }} {{ t.records_label }}</div>
         <a href="{{ url_for('admin.export_tasks') }}" class="btn btn-success d-block">
-          <i class="bi bi-download me-2"></i>Download tasks.csv
+          <i class="bi bi-download me-2"></i>{{ t.download_tasks_csv }}
         </a>
       </div>
     </div>
@@ -55,7 +55,7 @@
 <!-- Site reports -->
 <div class="card border-0 shadow-sm mt-4">
   <div class="card-header bg-transparent fw-semibold">
-    <i class="bi bi-geo-alt me-2"></i>Site Inventory Reports
+    <i class="bi bi-geo-alt me-2"></i>{{ t.site_reports_title }}
   </div>
   <div class="card-body">
     <div class="row g-2">
@@ -66,7 +66,7 @@
         </a>
       </div>
       {% else %}
-      <p class="text-muted small mb-0">No sites configured.</p>
+      <p class="text-muted small mb-0">{{ t.no_sites_msg }}</p>
       {% endfor %}
     </div>
   </div>

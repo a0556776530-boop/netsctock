@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}Task History{% endblock %}
-{% block page_title %}Task History{% endblock %}
+{% block title %}{{ t.task_history_title }}{% endblock %}
+{% block page_title %}{{ t.task_history_title }}{% endblock %}
 
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <span class="text-muted small">{{ tasks | length }} completed task{{ 's' if tasks | length != 1 }}</span>
   <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Back to Tasks
+    <i class="bi bi-arrow-left me-1"></i>{{ t.back_to_tasks }}
   </a>
 </div>
 
@@ -16,9 +16,9 @@
     <table class="table table-hover align-middle mb-0">
       <thead class="table-light">
         <tr>
-          <th>Task</th>
-          <th>Assigned To</th>
-          <th>Status</th>
+          <th>{{ t.col_task }}</th>
+          <th>{{ t.form_assigned_to }}</th>
+          <th>{{ t.form_status }}</th>
           <th></th>
         </tr>
       </thead>
@@ -34,24 +34,24 @@
           <td class="small">{{ task.assignee_name or '—' }}</td>
           <td>
             <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25">
-              Done
+              {{ t.done_badge }}
             </span>
           </td>
           <td class="text-end text-nowrap">
             <form method="POST" action="{{ url_for('tasks.reopen', id=task.id) }}" class="d-inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reopen">
+              <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ t.btn_reopen }}">
                 <i class="bi bi-arrow-counterclockwise"></i>
               </button>
             </form>
-            <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+            <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.btn_edit }}">
               <i class="bi bi-pencil"></i>
             </a>
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('tasks.delete', id=task.id) }}" class="d-inline"
-                  onsubmit="return confirm('Delete this task?')">
+                  onsubmit="return confirm('{{ t.confirm_delete_task }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ t.action_delete }}">
                 <i class="bi bi-trash"></i>
               </button>
             </form>
@@ -62,7 +62,7 @@
         <tr>
           <td colspan="4" class="text-center text-muted py-5">
             <i class="bi bi-check2-all fs-3 d-block mb-2"></i>
-            No completed tasks yet.
+            {{ t.no_completed_tasks }}
           </td>
         </tr>
         {% endfor %}

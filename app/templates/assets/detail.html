@@ -77,11 +77,11 @@
           {% if asset.price_usd %}
           <tr><td colspan="2"><hr class="my-1"></td></tr>
           <tr>
-            <td class="text-muted fw-semibold">Base Price</td>
+            <td class="text-muted fw-semibold">{{ t.base_price_label }}</td>
             <td class="font-monospace">${{ "{:,.2f}".format(asset.price_usd|float) }}</td>
           </tr>
           <tr>
-            <td class="text-muted fw-semibold">Final Price</td>
+            <td class="text-muted fw-semibold">{{ t.final_price_label }}</td>
             <td class="font-monospace fw-bold text-success"
                 id="detailPriceNis"
                 data-usd="{{ asset.price_usd|float }}">—</td>

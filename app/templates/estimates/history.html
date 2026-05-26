@@ -1,22 +1,22 @@
 {% extends 'base.html' %}
-{% block title %}Estimates History{% endblock %}
-{% block page_title %}Estimates History{% endblock %}
+{% block title %}{{ t.estimates_hist_title }}{% endblock %}
+{% block page_title %}{{ t.estimates_hist_title }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
-    <h6 class="mb-0 fw-bold">Estimates History</h6>
+    <h6 class="mb-0 fw-bold">{{ t.estimates_hist_title }}</h6>
     <span class="text-muted small">{{ estimates | length }} withdrawn assignment(s)</span>
   </div>
   <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Back to Active
+    <i class="bi bi-arrow-left me-1"></i>{{ t.back_to_active }}
   </a>
 </div>
 
 <!-- Search bar -->
 <div class="mb-3">
   <input type="text" id="assignmentSearch" class="form-control"
-         placeholder="Search by Assignment Number…"
+         placeholder="{{ t.ph_search_est_hist }}"
          oninput="filterTable(this.value)">
 </div>
 
@@ -25,12 +25,12 @@
     <table class="table table-hover align-middle mb-0" id="estimatesTable">
       <thead class="table-light">
         <tr>
-          <th>Assignment No.</th>
-          <th>Requester Name</th>
-          <th>Project</th>
-          <th>Date</th>
-          <th>Status</th>
-          <th class="text-end">Total (ILS)</th>
+          <th>{{ t.col_assignment_no }}</th>
+          <th>{{ t.col_requester }}</th>
+          <th>{{ t.col_project }}</th>
+          <th>{{ t.col_date }}</th>
+          <th>{{ t.form_status }}</th>
+          <th class="text-end">{{ t.col_total_ils }}</th>
           <th></th>
         </tr>
       </thead>
@@ -48,22 +48,22 @@
           <td><span class="badge bg-secondary small">נמשך · Withdrawn</span></td>
           <td class="text-end font-monospace fw-semibold text-muted">{{ e.formatted_total }}</td>
           <td class="text-end text-nowrap">
-            <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="View">
+            <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.action_view }}">
               <i class="bi bi-eye"></i>
             </a>
-            <a href="{{ url_for('estimates.edit', id=e.id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
+            <a href="{{ url_for('estimates.edit', id=e.id) }}" class="btn btn-sm btn-outline-primary" title="{{ t.btn_edit }}">
               <i class="bi bi-pencil"></i>
             </a>
             <form method="POST" action="{{ url_for('estimates.restore', id=e.id) }}" class="d-inline"
-                  onsubmit="return confirm('Restore assignment {{ e.allocation_number }} back to Pending?')">
+                  onsubmit="return confirm('{{ t.confirm_restore_assign.format(no=e.allocation_number) }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-outline-success" title="Restore to Pending">
+              <button type="submit" class="btn btn-sm btn-outline-success" title="{{ t.btn_restore_pending }}">
                 <i class="bi bi-arrow-counterclockwise"></i>
               </button>
             </form>
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('estimates.delete', id=e.id) }}" class="d-inline"
-                  onsubmit="return confirm('Delete estimate \'{{ e.task_name }}\'?')">
+                  onsubmit="return confirm('{{ t.confirm_delete_estimate.format(name=e.task_name) }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                 <i class="bi bi-trash3"></i>
@@ -76,7 +76,7 @@
         <tr>
           <td colspan="7" class="text-center text-muted py-5">
             <i class="bi bi-clock-history fs-3 d-block mb-2"></i>
-            No withdrawn assignments yet.
+            {{ t.no_withdrawn }}
           </td>
         </tr>
         {% endfor %}
@@ -102,7 +102,7 @@ function filterTable(q) {
   if (!noResult) {
     noResult = document.createElement('tr');
     noResult.id = 'noResultRow';
-    noResult.innerHTML = '<td colspan="7" class="text-center text-muted py-4 small">No assignments match your search.</td>';
+    noResult.innerHTML = '<td colspan="7" class="text-center text-muted py-4 small">{{ t.no_assignments_match }}</td>';
     document.querySelector('#estimatesTable tbody').appendChild(noResult);
   }
   noResult.style.display = (q && visible === 0) ? '' : 'none';

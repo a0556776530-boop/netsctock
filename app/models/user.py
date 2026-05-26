@@ -25,7 +25,7 @@ class User(UserMixin, me.Document):
 
     @property
     def can_edit(self):
-        return self.role in ('admin', 'technician')
+        return self.role == 'admin'
 
 
 @login_manager.user_loader

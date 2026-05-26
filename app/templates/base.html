@@ -43,14 +43,14 @@
       <li class="nav-item">
         <a href="{{ url_for('estimates.list_estimates') }}"
            class="nav-link text-white {% if request.blueprint == 'estimates' and request.endpoint != 'estimates.history' %}active{% endif %}">
-          <i class="bi bi-clipboard2-data me-2"></i>Estimates
+          <i class="bi bi-clipboard2-data me-2"></i>{{ t.nav_estimates }}
         </a>
       </li>
       <li class="nav-item ps-2">
         <a href="{{ url_for('estimates.history') }}"
            class="nav-link text-white {% if request.endpoint == 'estimates.history' %}active{% endif %}"
            style="font-size:.9em; opacity:.85;">
-          <i class="bi bi-clock-history me-2"></i>Estimates History
+          <i class="bi bi-clock-history me-2"></i>{{ t.nav_estimates_history }}
         </a>
       </li>
       {% if current_user.is_admin %}
@@ -64,12 +64,6 @@
         </a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('admin.settings') }}"
-           class="nav-link text-white {% if request.endpoint == 'admin.settings' %}active{% endif %}">
-          <i class="bi bi-sliders me-2"></i>Settings
-        </a>
-      </li>
-      <li class="nav-item">
         <a href="{{ url_for('admin.export') }}"
            class="nav-link text-white {% if request.endpoint == 'admin.export' %}active{% endif %}">
           <i class="bi bi-download me-2"></i>{{ t.nav_export }}
@@ -79,13 +73,29 @@
     </ul>
 
     <div class="mt-auto border-top border-secondary pt-3">
-      <div class="d-flex align-items-center gap-2 mb-2 small text-secondary">
-        <i class="bi bi-person-circle fs-5 text-white"></i>
+      <div class="d-flex align-items-center gap-2 mb-2">
+        {% if current_user.role == 'admin' %}
+        <div class="role-avatar role-admin"><i class="bi bi-crown-fill"></i></div>
+        {% elif current_user.role == 'technician' %}
+        <div class="role-avatar role-tech"><i class="bi bi-cpu-fill"></i></div>
+        {% else %}
+        <div class="role-avatar role-viewer"><i class="bi bi-eye-fill"></i></div>
+        {% endif %}
         <div>
-          <div class="text-white fw-semibold">{{ current_user.name }}</div>
-          <div class="text-capitalize">{{ current_user.role }}</div>
+          <div class="text-white fw-semibold" style="font-size:.88rem;">{{ current_user.name }}</div>
+          <div style="font-size:.75rem; color:rgba(255,255,255,.45);">
+            {% if current_user.role == 'admin' %}{{ t.role_admin }}
+            {% elif current_user.role == 'technician' %}{{ t.role_technician }}
+            {% else %}{{ t.role_viewer }}{% endif %}
+          </div>
         </div>
       </div>
+      {% if current_user.is_admin %}
+      <a href="{{ url_for('admin.settings') }}"
+         class="nav-link small {% if request.endpoint == 'admin.settings' %}text-white{% else %}text-secondary{% endif %}">
+        <i class="bi bi-gear me-1"></i>{{ t.nav_settings }}
+      </a>
+      {% endif %}
       <a href="{{ url_for('auth.change_password') }}" class="nav-link text-secondary small">
         <i class="bi bi-key me-1"></i>{{ t.nav_change_password }}
       </a>
@@ -107,8 +117,8 @@
         <button type="button"
                 onclick="history.back()"
                 class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
-          <i class="bi bi-arrow-left"></i>
-          <span class="d-none d-sm-inline">Back</span>
+          <i class="bi bi-arrow-{% if dir_html == 'rtl' %}right{% else %}left{% endif %}"></i>
+          <span class="d-none d-sm-inline">{{ t.btn_back_label }}</span>
         </button>
         {% endif %}
       </div>

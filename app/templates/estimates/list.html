@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Allocations & Estimates{% endblock %}
-{% block page_title %}Allocations & Estimates{% endblock %}
+{% block title %}{{ t.estimates_page_title }}{% endblock %}
+{% block page_title %}{{ t.estimates_page_title }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -13,7 +13,7 @@
 <!-- Search bar -->
 <div class="mb-3">
   <input type="text" id="assignmentSearch" class="form-control"
-         placeholder="Search by Assignment Number, Requester Name, or Project…"
+         placeholder="{{ t.ph_search_estimates }}"
          oninput="filterTable(this.value)">
 </div>
 
@@ -22,12 +22,12 @@
     <table class="table table-hover align-middle mb-0" id="estimatesTable">
       <thead class="table-light">
         <tr>
-          <th>Assignment No.</th>
-          <th>Requester Name</th>
-          <th>Project</th>
-          <th>Date</th>
-          <th>Valid Until</th>
-          <th class="text-end">Total (ILS)</th>
+          <th>{{ t.col_assignment_no }}</th>
+          <th>{{ t.col_requester }}</th>
+          <th>{{ t.col_project }}</th>
+          <th>{{ t.col_date }}</th>
+          <th>{{ t.col_valid_until }}</th>
+          <th class="text-end">{{ t.col_total_ils }}</th>
           <th></th>
         </tr>
       </thead>
@@ -46,19 +46,19 @@
           <td class="small">{{ e.created_date.strftime('%d %b %Y') }}</td>
           <td class="small {% if e.valid_until < now.date() %}text-danger fw-semibold{% endif %}">
             {{ e.valid_until.strftime('%d %b %Y') }}
-            {% if e.valid_until < now.date() %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small ms-1">Expired</span>{% endif %}
+            {% if e.valid_until < now.date() %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small ms-1">{{ t.badge_expired }}</span>{% endif %}
           </td>
           <td class="text-end font-monospace fw-semibold text-success">{{ e.formatted_total }}</td>
           <td class="text-end text-nowrap">
-            <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="View">
+            <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.action_view }}">
               <i class="bi bi-eye"></i>
             </a>
-            <a href="{{ url_for('estimates.edit', id=e.id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
+            <a href="{{ url_for('estimates.edit', id=e.id) }}" class="btn btn-sm btn-outline-primary" title="{{ t.btn_edit }}">
               <i class="bi bi-pencil"></i>
             </a>
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('estimates.delete', id=e.id) }}" class="d-inline"
-                  onsubmit="return confirm('Delete estimate \'{{ e.task_name }}\'?')">
+                  onsubmit="return confirm('{{ t.confirm_delete_estimate.format(name=e.task_name) }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                 <i class="bi bi-trash3"></i>
@@ -71,8 +71,8 @@
         <tr id="emptyRow">
           <td colspan="7" class="text-center text-muted py-5">
             <i class="bi bi-clipboard2-x fs-3 d-block mb-2"></i>
-            No estimates yet.
-            <a href="{{ url_for('estimates.new_estimate') }}">Create the first one?</a>
+            {{ t.no_estimates }}
+            <a href="{{ url_for('estimates.new_estimate') }}">{{ t.create_first }}</a>
           </td>
         </tr>
         {% endfor %}
@@ -100,7 +100,7 @@ function filterTable(q) {
   if (!noResult) {
     noResult = document.createElement('tr');
     noResult.id = 'noResultRow';
-    noResult.innerHTML = '<td colspan="7" class="text-center text-muted py-4 small">No estimates match your search.</td>';
+    noResult.innerHTML = '<td colspan="7" class="text-center text-muted py-4 small">{{ t.no_estimates_match }}</td>';
     document.querySelector('#estimatesTable tbody').appendChild(noResult);
   }
   noResult.style.display = (q && visible === 0) ? '' : 'none';

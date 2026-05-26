@@ -138,23 +138,28 @@ def delete_user(id):
 
 # ── Settings ─────────────────────────────────────────────────────────────────
 
-@admin_bp.route('/settings', methods=['GET', 'POST'])
+@admin_bp.route('/settings', methods=['GET'])
 @login_required
 def settings():
     _admin_required()
-    from app.models.settings import AppSetting
-    if request.method == 'POST':
-        factor = request.form.get('maintenance_factor', '').strip()
-        try:
-            val = float(factor)
-            if val > 0:
-                AppSetting.set('maintenance_factor', val)
-                flash('Markup factor updated.', 'success')
-        except (ValueError, TypeError):
-            flash('Invalid value.', 'danger')
-        return redirect(url_for('admin.settings'))
-    current_factor = AppSetting.get('maintenance_factor')
-    return render_template('admin/settings.html', factor=current_factor)
+    all_users = list(User.objects.order_by('name'))
+    return render_template('admin/settings.html', users=all_users)
+
+
+@admin_bp.route('/users/<id>/role', methods=['POST'])
+@login_required
+def update_role(id):
+    _admin_required()
+    from flask import jsonify
+    user = get_or_404(User, id)
+    if user.id == current_user.id:
+        return jsonify(ok=False, error='Cannot change your own role'), 400
+    new_role = (request.get_json(force=True) or {}).get('role', '')
+    if new_role not in ('admin', 'technician', 'viewer'):
+        return jsonify(ok=False, error='Invalid role'), 400
+    user.role = new_role
+    user.save()
+    return jsonify(ok=True)
 
 
 # ── Export ────────────────────────────────────────────────────────────────────

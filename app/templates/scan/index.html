@@ -10,8 +10,8 @@
     <!-- Camera card -->
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-        <span class="fw-semibold"><i class="bi bi-camera-video me-2"></i>Camera Scanner</span>
-        <span id="scanStatus" class="badge bg-secondary">Idle</span>
+        <span class="fw-semibold"><i class="bi bi-camera-video me-2"></i>{{ t.scan_camera_title }}</span>
+        <span id="scanStatus" class="badge bg-secondary">{{ t.scan_idle_status }}</span>
       </div>
       <div class="card-body p-0">
         <!-- Camera preview area -->
@@ -26,24 +26,24 @@
           <!-- Placeholder when camera is off -->
           <div id="cameraPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white text-center p-4" style="min-height:240px;">
             <i class="bi bi-upc-scan fs-1 mb-2 opacity-50"></i>
-            <p class="small opacity-75 mb-0">Press Start to activate the camera.<br>Hold a barcode or QR code in front of the lens.</p>
+            <p class="small opacity-75 mb-0">{{ t.scan_instruction }}</p>
           </div>
         </div>
       </div>
       <div class="card-footer bg-transparent d-flex gap-2">
         <button id="btnStart" class="btn btn-primary flex-grow-1">
-          <i class="bi bi-play-fill me-1"></i>Start Camera
+          <i class="bi bi-play-fill me-1"></i>{{ t.btn_start_camera }}
         </button>
         <button id="btnStop" class="btn btn-secondary flex-grow-1 d-none">
-          <i class="bi bi-stop-fill me-1"></i>Stop Camera
+          <i class="bi bi-stop-fill me-1"></i>{{ t.btn_stop_camera }}
         </button>
         <div class="dropdown">
-          <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Camera">
+          <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="{{ t.scan_camera_label }}">
             <i class="bi bi-camera"></i>
           </button>
           <ul class="dropdown-menu dropdown-menu-end" id="cameraMenu">
-            <li><h6 class="dropdown-header">Select Camera</h6></li>
-            <li><span class="dropdown-item text-muted small">Loading cameras…</span></li>
+            <li><h6 class="dropdown-header">{{ t.select_camera_label }}</h6></li>
+            <li><span class="dropdown-item text-muted small">{{ t.loading_cameras }}</span></li>
           </ul>
         </div>
       </div>
@@ -52,14 +52,14 @@
     <!-- Manual lookup -->
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-transparent fw-semibold">
-        <i class="bi bi-keyboard me-2"></i>Manual Lookup
+        <i class="bi bi-keyboard me-2"></i>{{ t.manual_lookup_title }}
       </div>
       <div class="card-body">
         <div class="input-group">
           <input type="text" id="manualInput" class="form-control text-uppercase font-monospace"
-                 placeholder="Type or paste serial / barcode…" autocomplete="off" spellcheck="false">
+                 placeholder="{{ t.ph_manual_lookup }}" autocomplete="off" spellcheck="false">
           <button id="btnLookup" class="btn btn-outline-primary">
-            <i class="bi bi-search me-1"></i>Look Up
+            <i class="bi bi-search me-1"></i>{{ t.btn_look_up }}
           </button>
         </div>
         <div class="form-text">Cisco format: <span class="font-monospace">FTX1234A5BC</span> (3 letters + 4 digits + 4 alphanumeric)</div>
@@ -78,12 +78,12 @@
     <!-- Scan history -->
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-        <span class="fw-semibold"><i class="bi bi-clock-history me-2"></i>Scan History</span>
-        <button id="btnClearHistory" class="btn btn-sm btn-link text-muted p-0">Clear</button>
+        <span class="fw-semibold"><i class="bi bi-clock-history me-2"></i>{{ t.scan_hist_title }}</span>
+        <button id="btnClearHistory" class="btn btn-sm btn-link text-muted p-0">{{ t.btn_clear }}</button>
       </div>
       <div id="historyList" class="list-group list-group-flush">
         <div class="list-group-item text-muted text-center small py-4" id="historyEmpty">
-          No scans yet this session.
+          {{ t.no_scans }}
         </div>
       </div>
     </div>
@@ -92,6 +92,17 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+window._scanT = {
+  starting:   '{% if lang == "he" %}מתחיל…{% else %}Starting…{% endif %}',
+  scanning:   '{% if lang == "he" %}סורק{% else %}Scanning{% endif %}',
+  error:      '{% if lang == "he" %}שגיאה{% else %}Error{% endif %}',
+  lookingUp:  '{% if lang == "he" %}מחפש…{% else %}Looking up…{% endif %}',
+  noCamera:   '{% if lang == "he" %}לא נמצאה מצלמה{% else %}No cameras found{% endif %}',
+  camera:     '{{ t.scan_camera_label }}',
+  loading:    '{{ t.loading }}'
+};
+</script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const LOOKUP_URL = "{{ url_for('scan.lookup') }}";
@@ -109,14 +120,15 @@ async function loadCameraList() {
   try {
     const devices = await Html5Qrcode.getCameras();
     const menu = document.getElementById('cameraMenu');
-    menu.innerHTML = '<li><h6 class="dropdown-header">Select Camera</h6></li>';
+    const _t = window._scanT || {};
+    menu.innerHTML = '<li><h6 class="dropdown-header">{{ t.select_camera_label }}</h6></li>';
     if (!devices.length) {
-      menu.innerHTML += '<li><span class="dropdown-item text-muted small">No cameras found</span></li>';
+      menu.innerHTML += '<li><span class="dropdown-item text-muted small">' + (_t.noCamera || 'No cameras found') + '</span></li>';
       return;
     }
     devices.forEach((d, i) => {
       const li = document.createElement('li');
-      li.innerHTML = `<a class="dropdown-item small" href="#" data-id="${d.id}">${d.label || 'Camera ' + (i+1)}</a>`;
+      li.innerHTML = `<a class="dropdown-item small" href="#" data-id="${d.id}">${d.label || (_t.camera || 'Camera') + ' ' + (i+1)}</a>`;
       li.querySelector('a').addEventListener('click', e => {
         e.preventDefault();
         selectedCamera = d.id;
@@ -206,7 +218,7 @@ async function performLookup(query) {
   query = query.trim().toUpperCase();
   if (!query) return;
 
-  setStatus('looking up…');
+  setStatus('looking up…');  // mapped via _scanT.lookingUp
   showLoading(query);
 
   try {
@@ -248,7 +260,7 @@ function renderResult(data, query) {
             ${a.assignee ? `<span class="small text-muted"><i class="bi bi-person me-1"></i>${a.assignee}</span>` : ''}
           </div>
           <a href="${a.detail_url}" class="btn btn-sm btn-primary mt-3">
-            <i class="bi bi-arrow-right me-1"></i>View Asset
+            <i class="bi bi-arrow-right me-1"></i>{{ t.btn_view_asset }}
           </a>
         </div>
       </div>`;
@@ -262,10 +274,10 @@ function renderResult(data, query) {
         </div>
         <div class="flex-grow-1">
           <div class="fw-bold font-monospace">${escHtml(query)}</div>
-          <div class="text-muted small mt-1">Not found in the system.</div>
-          ${isCisco ? `<div class="small text-success mt-1"><i class="bi bi-check me-1"></i>Looks like a valid Cisco serial number.</div>` : ''}
+          <div class="text-muted small mt-1">{{ t.asset_not_found_msg }}</div>
+          ${isCisco ? `<div class="small text-success mt-1"><i class="bi bi-check me-1"></i>{{ t.valid_cisco_msg }}</div>` : ''}
           <a href="${data.register_url}" class="btn btn-sm btn-warning mt-3">
-            <i class="bi bi-plus me-1"></i>Register This Asset
+            <i class="bi bi-plus me-1"></i>{{ t.btn_register_asset }}
           </a>
         </div>
       </div>`;
@@ -276,9 +288,10 @@ function showLoading(query) {
   const panel = document.getElementById('resultPanel');
   const body  = document.getElementById('resultBody');
   panel.classList.remove('d-none', 'border-success', 'border-warning', 'border-danger');
+  const _t2 = window._scanT || {};
   body.innerHTML = `<div class="d-flex align-items-center gap-2 text-muted">
     <div class="spinner-border spinner-border-sm"></div>
-    <span>Looking up <span class="font-monospace">${escHtml(query)}</span>…</span>
+    <span>${_t2.lookingUp || 'Looking up'} <span class="font-monospace">${escHtml(query)}</span>…</span>
   </div>`;
 }
 
@@ -326,12 +339,13 @@ function renderHistory() {
 
 function setStatus(text) {
   const el = document.getElementById('scanStatus');
+  const _t = window._scanT || {};
   const map = {
-    'idle':       ['bg-secondary', 'Idle'],
-    'starting':   ['bg-info',      'Starting…'],
-    'scanning':   ['bg-success',   'Scanning'],
-    'error':      ['bg-danger',    'Error'],
-    'looking up…':['bg-primary',  'Looking up…'],
+    'idle':       ['bg-secondary', '{{ t.scan_idle_status }}'],
+    'starting':   ['bg-info',      _t.starting  || 'Starting…'],
+    'scanning':   ['bg-success',   _t.scanning  || 'Scanning'],
+    'error':      ['bg-danger',    _t.error     || 'Error'],
+    'looking up…':['bg-primary',  _t.lookingUp || 'Looking up…'],
   };
   const [cls, label] = map[text] || ['bg-secondary', text];
   el.className = `badge ${cls}`;

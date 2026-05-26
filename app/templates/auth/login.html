@@ -2,42 +2,71 @@
 {% block title %}{{ t.login_page_title }}{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm" style="width: 380px;">
-  <div class="card-body p-4">
-    <div class="text-center mb-4">
-      <i class="bi bi-hdd-network-fill text-primary" style="font-size: 2.5rem;"></i>
-      <h4 class="mt-2 fw-bold">Inventory</h4>
-      <p class="text-muted small">{{ t.app_login_subtitle }}</p>
+<div class="login-card">
+
+  <!-- Brand -->
+  <div class="text-center mb-4">
+    <div class="brand-icon">
+      <i class="bi bi-hdd-network-fill"></i>
+    </div>
+    <p class="brand-name">NetStock</p>
+    <p class="brand-sub">{{ t.app_login_subtitle }}</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Form -->
+  <form method="POST" novalidate autocomplete="on">
+    {{ form.hidden_tag() }}
+
+    <div class="mb-3">
+      {{ form.email.label(class="form-label") }}
+      {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""),
+                    placeholder="you@example.com", autofocus=true, autocomplete="email") }}
+      {% for error in form.email.errors %}
+        <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
     </div>
 
-    <form method="POST" novalidate>
-      {{ form.hidden_tag() }}
-
-      <div class="mb-3">
-        {{ form.email.label(class="form-label") }}
-        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""),
-                      placeholder="you@example.com", autofocus=true) }}
-        {% for error in form.email.errors %}
-          <div class="invalid-feedback">{{ error }}</div>
-        {% endfor %}
-      </div>
-
-      <div class="mb-3">
-        {{ form.password.label(class="form-label") }}
+    <div class="mb-4">
+      {{ form.password.label(class="form-label") }}
+      <div class="pw-wrap">
         {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
-                         placeholder="••••••••") }}
+                         placeholder="••••••••", id="pwField", autocomplete="current-password") }}
+        <button type="button" class="pw-eye" id="pwToggle" tabindex="-1" aria-label="Toggle password visibility">
+          <i class="bi bi-eye" id="pwIcon"></i>
+        </button>
         {% for error in form.password.errors %}
           <div class="invalid-feedback">{{ error }}</div>
         {% endfor %}
       </div>
+    </div>
 
-      <div class="mb-3 form-check">
-        {{ form.remember(class="form-check-input") }}
-        {{ form.remember.label(class="form-check-label") }}
-      </div>
+    <div class="mb-4 form-check">
+      {{ form.remember(class="form-check-input") }}
+      {{ form.remember.label(class="form-check-label") }}
+    </div>
 
-      {{ form.submit(class="btn btn-primary w-100") }}
-    </form>
-  </div>
+    <button type="submit" class="btn-login">
+      {{ t.login_submit }}
+    </button>
+  </form>
+
+  <p class="login-footer">NetStock &copy; {{ now.year }}</p>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var btn  = document.getElementById('pwToggle');
+  var fld  = document.getElementById('pwField');
+  var icon = document.getElementById('pwIcon');
+  if (btn && fld) {
+    btn.addEventListener('click', function () {
+      var show = fld.type === 'password';
+      fld.type = show ? 'text' : 'password';
+      icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+  }
+</script>
 {% endblock %}

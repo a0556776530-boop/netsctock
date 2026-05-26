@@ -15,8 +15,8 @@
             <div class="col-md-6">
               {{ form.component_id.label(class="form-label fw-semibold") }}
               {{ form.component_id(class="form-control font-monospace",
-                                   placeholder="e.g. SN-0042") }}
-              <div class="form-text">{{ t.field_asset_id }} — internal tracking ID</div>
+                                   placeholder="{{ t.ph_component_id }}") }}
+              <div class="form-text">{{ t.field_asset_id }} — {{ t.hint_component_id }}</div>
             </div>
 
             <!-- Serial Number (Mfr. Part No.) -->
@@ -69,7 +69,7 @@
                 <span class="fw-semibold small">{{ t.pricing_inventory_section }}</span>
                 <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
                   <i class="bi bi-percent me-1"></i>
-                  Markup: ×<span id="factorLabel">1.70</span>
+                  {{ t.markup_factor }}: ×<span id="factorLabel">1.70</span>
                 </span>
               </div>
             </div>
@@ -94,7 +94,7 @@
                                    id="priceNis", placeholder="auto", readonly=true) }}
               </div>
               <div class="form-text text-muted small">
-                USD × 3.6 × 1.048 (Bina) × 1.18 VAT × markup
+                {{ t.hint_price_formula }}
               </div>
             </div>
 
@@ -110,7 +110,7 @@
               {{ form.min_threshold.label(class="form-label fw-semibold") }}
               {{ form.min_threshold(class="form-control", type="text", inputmode="numeric",
                                     placeholder="e.g. 5") }}
-              <div class="form-text text-muted small">Red alert if stock falls at or below this</div>
+              <div class="form-text text-muted small">{{ t.hint_min_threshold }}</div>
             </div>
           </div>
 
@@ -118,9 +118,9 @@
           <div class="d-flex gap-2">
             {{ form.submit(class="btn btn-primary") }}
             {% if asset %}
-            <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-outline-secondary">Cancel</a>
+            <a href="{{ url_for('assets.detail', id=asset.id) }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
             {% else %}
-            <a href="{{ url_for('assets.list_assets') }}" class="btn btn-outline-secondary">Cancel</a>
+            <a href="{{ url_for('assets.list_assets') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
             {% endif %}
           </div>
         </form>

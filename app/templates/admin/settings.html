@@ -1,46 +1,105 @@
 {% extends 'base.html' %}
-{% block title %}Settings{% endblock %}
-{% block page_title %}Settings{% endblock %}
+{% block title %}{{ t.settings_page_title }}{% endblock %}
+{% block page_title %}{{ t.settings_page_title }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-5">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body p-4">
-        <h6 class="fw-bold mb-4">
-          <i class="bi bi-sliders text-primary me-2"></i>Pricing Settings
-        </h6>
-
-        <div class="alert alert-info small mb-4">
-          <strong>Formula:</strong>
-          NIS = USD × <strong>3.6</strong> (base rate) × <strong>1.048</strong> (Bina) × <strong>1.18</strong> (VAT) × <strong>Markup Factor</strong>
-        </div>
-
-        <form method="POST" novalidate>
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="mb-4">
-            <label class="form-label fw-semibold">Markup Factor</label>
-            <div class="input-group" style="max-width: 200px;">
-              <span class="input-group-text">×</span>
-              <input type="number" name="maintenance_factor" class="form-control font-monospace fw-semibold"
-                     value="{{ factor }}" step="0.01" min="0.01" required>
-            </div>
-            <div class="form-text">Default: 1.70 (maintenance + margin)</div>
-          </div>
-
-          <div class="mb-3 p-3 bg-light rounded">
-            <div class="small text-muted mb-1">Example: $20 item</div>
-            <div class="fw-semibold" id="exampleResult">
-              $20 × 3.6 × 1.048 × 1.18 × {{ factor }} = ₪{{ "{:,.2f}".format(20 * 3.6 * 1.048 * 1.18 * factor) }}
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-primary">
-            <i class="bi bi-floppy me-1"></i>Save
-          </button>
-        </form>
-      </div>
-    </div>
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+    <span class="fw-semibold">{{ t.nav_users }}</span>
+    <a href="{{ url_for('admin.new_user') }}" class="btn btn-sm btn-primary">
+      <i class="bi bi-person-plus me-1"></i>{{ t.form_create_user }}
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>{{ t.col_name }}</th>
+          <th>{{ t.col_email }}</th>
+          <th style="min-width:160px">{{ t.col_role }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td class="fw-semibold">
+            {{ user.name }}
+            {% if user.id == current_user.id %}
+            <span class="badge bg-secondary bg-opacity-15 text-secondary ms-1 small">{{ t.you_badge }}</span>
+            {% endif %}
+          </td>
+          <td class="small text-muted">{{ user.email }}</td>
+          <td>
+            {% if user.id == current_user.id %}
+              <div class="d-flex align-items-center gap-2">
+                {% if user.role == 'admin' %}
+                <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
+                <span class="small fw-medium">{{ t.role_admin }}</span>
+                {% elif user.role == 'technician' %}
+                <div class="role-avatar-sm role-tech"><i class="bi bi-cpu-fill"></i></div>
+                <span class="small fw-medium">{{ t.role_technician }}</span>
+                {% else %}
+                <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
+                <span class="small fw-medium">{{ t.role_viewer }}</span>
+                {% endif %}
+              </div>
+            {% else %}
+            <select class="form-select form-select-sm role-select"
+                    data-user-id="{{ user.id }}"
+                    style="max-width:150px">
+              <option value="admin"      {% if user.role == 'admin' %}selected{% endif %}>{{ t.role_admin }}</option>
+              <option value="technician" {% if user.role == 'technician' %}selected{% endif %}>{{ t.role_technician }}</option>
+              <option value="viewer"     {% if user.role == 'viewer' %}selected{% endif %}>{{ t.role_viewer }}</option>
+            </select>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            {% if user.id != current_user.id %}
+            <a href="{{ url_for('admin.edit_user', id=user.id) }}"
+               class="btn btn-sm btn-outline-secondary" title="{{ t.btn_edit }}">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <form method="POST" action="{{ url_for('admin.delete_user', id=user.id) }}" class="d-inline"
+                  onsubmit="return confirm('{{ t.confirm_delete_user.format(name=user.name) }}')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ t.action_delete }}">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.role-select').forEach(function(sel) {
+  sel.addEventListener('change', function() {
+    var userId = this.dataset.userId;
+    var newRole = this.value;
+    var csrf = document.querySelector('meta[name="csrf-token"]').content;
+    fetch('/admin/users/' + userId + '/role', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+      body: JSON.stringify({role: newRole})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        sel.classList.add('border-success');
+        setTimeout(function(){ sel.classList.remove('border-success'); }, 1500);
+      } else {
+        alert(data.error || 'Error updating role');
+      }
+    })
+    .catch(function(){ alert('Network error'); });
+  });
+});
+</script>
 {% endblock %}

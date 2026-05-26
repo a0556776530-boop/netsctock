@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}New Estimate{% endblock %}
-{% block page_title %}Allocations & Estimates{% endblock %}
+{% block title %}{{ t.new_estimate_title }}{% endblock %}
+{% block page_title %}{{ t.estimates_page_title }}{% endblock %}
 
 {% block content %}
 <form method="POST" id="estimateForm" novalidate>
@@ -12,13 +12,13 @@
     <div class="card-body p-4">
       <h6 class="fw-bold mb-4 d-flex align-items-center gap-2">
         <i class="bi bi-clipboard2-plus text-primary"></i>
-        New Allocation Request
+        {{ t.new_estimate_title }}
       </h6>
       <div class="row g-3">
         <div class="col-md-3">
           <label class="form-label fw-semibold">
-            Allocation No.
-            <span class="text-muted fw-normal small ms-1">(auto)</span>
+            {{ t.allocation_no_label }}
+            <span class="text-muted fw-normal small ms-1">{{ t.auto_label }}</span>
           </label>
           <div class="input-group">
             <span class="input-group-text text-muted">#</span>
@@ -28,31 +28,31 @@
                    title="Auto-generated — change only if needed"
                    autocomplete="off">
           </div>
-          <div class="form-text">Next available: {{ next_num }}</div>
+          <div class="form-text">{{ t.next_available }} {{ next_num }}</div>
           <div id="allocError" class="d-none mt-1 small text-danger fw-semibold">
             <i class="bi bi-exclamation-circle me-1"></i><span id="allocErrorMsg"></span>
           </div>
         </div>
         <div class="col-md-5">
-          <label class="form-label fw-semibold">Requester Name <span class="text-danger">*</span></label>
+          <label class="form-label fw-semibold">{{ t.col_requester }} <span class="text-danger">*</span></label>
           <input type="text" name="task_name" class="form-control" required
                  placeholder="e.g. John Smith">
         </div>
         <div class="col-md-4">
-          <label class="form-label fw-semibold">Project Name</label>
+          <label class="form-label fw-semibold">{{ t.col_project }}</label>
           <input type="text" name="project_name" class="form-control"
                  placeholder="e.g. Tel Aviv HQ">
         </div>
         <div class="col-sm-4">
-          <label class="form-label fw-semibold">Current Date</label>
+          <label class="form-label fw-semibold">{{ t.current_date_label }}</label>
           <input type="text" class="form-control bg-light text-muted"
                  value="{{ today.strftime('%d %b %Y') }}" readonly>
         </div>
         <div class="col-sm-4">
-          <label class="form-label fw-semibold">Estimate Valid Until</label>
+          <label class="form-label fw-semibold">{{ t.valid_until_label }}</label>
           <input type="text" class="form-control bg-light text-muted"
                  value="{{ valid_until.strftime('%d %b %Y') }}" readonly>
-          <div class="form-text">3 months from today</div>
+          <div class="form-text">{{ t.default_3months }}</div>
         </div>
       </div>
     </div>
@@ -63,26 +63,26 @@
     <div class="card-body p-4">
       <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
         <i class="bi bi-search text-primary"></i>
-        Select Assets from Inventory
+        {{ t.select_assets_title }}
       </h6>
       <input type="text" id="assetSearch" class="form-control mb-3"
-             placeholder="Search by Part No., Description, Manufacturer, Asset ID…">
+             placeholder="{{ t.ph_search_assets_tbl }}">
       <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
         <table class="table table-hover table-sm align-middle mb-0">
           <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
             <tr>
-              <th class="small">Asset ID</th>
-              <th class="small">Part No.</th>
-              <th class="small">Description</th>
-              <th class="small">Type</th>
-              <th class="small text-center">In Stock</th>
-              <th class="small text-end">Base (USD)</th>
-              <th class="small text-end">Price (ILS)</th>
+              <th class="small">{{ t.field_asset_id }}</th>
+              <th class="small">{{ t.col_part_no }}</th>
+              <th class="small">{{ t.col_feature }}</th>
+              <th class="small">{{ t.field_type }}</th>
+              <th class="small text-center">{{ t.col_in_stock }}</th>
+              <th class="small text-end">{{ t.col_base_usd }}</th>
+              <th class="small text-end">{{ t.col_price_ils }}</th>
               <th></th>
             </tr>
           </thead>
           <tbody id="assetTableBody">
-            <tr><td colspan="8" class="text-center text-muted py-3 small">Loading…</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-3 small">{{ t.loading }}</td></tr>
           </tbody>
         </table>
       </div>
@@ -94,12 +94,12 @@
     <div class="card-body p-4">
       <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
         <i class="bi bi-cart3 text-primary"></i>
-        Selected Items
+        {{ t.selected_items_title }}
       </h6>
 
       <div id="noItemsMsg" class="text-center text-muted py-4 small">
         <i class="bi bi-inbox fs-4 d-block mb-2 opacity-50"></i>
-        No items selected yet — use the table above to add assets.
+        {{ t.no_items_selected }}
       </div>
 
       <div id="selectedSection" class="d-none">
@@ -107,11 +107,11 @@
           <table class="table table-sm align-middle mb-0">
             <thead class="table-light">
               <tr>
-                <th>Part No.</th>
-                <th>Description</th>
-                <th class="text-center" style="width:100px;">Qty</th>
-                <th class="text-end">Unit (ILS)</th>
-                <th class="text-end">Line Total (ILS)</th>
+                <th>{{ t.col_part_no }}</th>
+                <th>{{ t.col_feature }}</th>
+                <th class="text-center" style="width:100px;">{{ t.col_qty }}</th>
+                <th class="text-end">{{ t.col_unit_ils }}</th>
+                <th class="text-end">{{ t.col_line_total }}</th>
                 <th></th>
               </tr>
             </thead>
@@ -122,7 +122,7 @@
                   <div class="rounded-3 p-3 mt-2 d-flex justify-content-between align-items-center"
                        style="background: linear-gradient(135deg,#e0f0ff,#d6eaff); border:1px solid #b6d8f7;">
                     <span class="fw-bold text-uppercase small" style="letter-spacing:.06em; color:#1a5fa8;">
-                      Total Estimated Cost
+                      {{ t.col_total_cost }}
                     </span>
                     <span class="fw-bold font-monospace" style="font-size:1.4rem; color:#1a5fa8;" id="grandTotal">—</span>
                   </div>
@@ -138,9 +138,9 @@
   <!-- ── Actions ───────────────────────────────────────────────────────────── -->
   <div class="d-flex gap-2">
     <button type="submit" class="btn btn-primary">
-      <i class="bi bi-floppy me-1"></i>Save Estimate
+      <i class="bi bi-floppy me-1"></i>{{ t.btn_save_estimate }}
     </button>
-    <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-outline-secondary">Cancel</a>
+    <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
   </div>
 </form>
 {% endblock %}
@@ -193,13 +193,13 @@
         '<td class="text-end">' +
         (added
           ? '<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="removeAsset(\'' + a.id + '\')" title="Click to remove">' +
-            '<i class="bi bi-check-lg me-1"></i>Added</button>'
+            '<i class="bi bi-check-lg me-1"></i>{{ t.added_badge }}</button>'
           : '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="addAsset(\'' + a.id + '\')">' +
             '<i class="bi bi-plus-lg"></i></button>') +
         '</td></tr>';
     });
     if (!shown) {
-      html = '<tr><td colspan="8" class="text-center text-muted py-3 small">No assets match your search.</td></tr>';
+      html = '<tr><td colspan="8" class="text-center text-muted py-3 small">{{ t.no_assets_match }}</td></tr>';
     }
     tbody.innerHTML = html;
   }
