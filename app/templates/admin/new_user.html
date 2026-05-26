@@ -12,14 +12,14 @@
 
           <div class="mb-3">
             <label class="form-label fw-semibold">{{ t.col_name }}</label>
-            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="{{ t.col_name }}") }}
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
             {% for e in form.name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
           </div>
 
           <div class="mb-3">
-            {{ form.email.label(class="form-label fw-semibold") }}
-            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="user@example.com") }}
-            {% for e in form.email.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            <label class="form-label fw-semibold">{{ t.col_username }}</label>
+            {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+            {% for e in form.username.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
           </div>
 
           <div class="mb-3">
@@ -29,7 +29,7 @@
 
           <div class="mb-3">
             {{ form.password.label(class="form-label fw-semibold") }}
-            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="{{ t.hint_min_8_chars }}") }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
             <div class="form-text">{{ t.hint_first_login_pw }}</div>
             {% for e in form.password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
           </div>

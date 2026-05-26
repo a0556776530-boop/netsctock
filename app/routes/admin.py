@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Email, Length, Optional
+from wtforms.validators import DataRequired, Length, Optional
 
 from app import bcrypt
 from app.models.user import User
@@ -27,8 +27,8 @@ def _admin_required():
 # ── Forms ─────────────────────────────────────────────────────────────────────
 
 class NewUserForm(FlaskForm):
-    name     = StringField('Full Name', validators=[DataRequired(), Length(max=100)])
-    email    = StringField('Email',     validators=[DataRequired(), Email(check_deliverability=False)])
+    name     = StringField('Name',     validators=[DataRequired(), Length(max=100)])
+    username = StringField('Username', validators=[DataRequired(), Length(max=150)])
     role     = SelectField('Role', choices=[('technician','Technician'),('viewer','Viewer'),('admin','Admin')])
     password = PasswordField('Initial Password', validators=[DataRequired(), Length(min=8)])
     submit   = SubmitField('Create User')
@@ -48,6 +48,8 @@ def _localize_user_form(form, t, is_new=True):
                   extra={'password': 'form_initial_password'} if is_new else
                         {'new_password': 'form_new_password_optional'})
     form.name.label.text = t.get('col_name', 'Name')
+    if hasattr(form, 'username'):
+        form.username.label.text = t.get('col_username', 'Username')
 
     role_choices = [
         ('technician', t.get('role_technician', 'Technician')),
@@ -82,12 +84,12 @@ def new_user():
     form = NewUserForm()
     _localize_user_form(form, t, is_new=True)
     if form.validate_on_submit():
-        if User.objects(email=form.email.data.lower().strip()).first():
-            flash(t.get('flash_user_exists', 'A user with this email already exists.'), 'danger')
+        if User.objects(username=form.username.data.strip()).first():
+            flash(t.get('flash_user_exists', 'A user with this username already exists.'), 'danger')
         else:
             u = User(
                 name=form.name.data.strip(),
-                email=form.email.data.lower().strip(),
+                username=form.username.data.strip(),
                 password_hash=bcrypt.generate_password_hash(form.password.data).decode('utf-8'),
                 role=form.role.data,
             )

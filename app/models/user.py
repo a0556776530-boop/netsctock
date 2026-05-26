@@ -5,10 +5,10 @@ from datetime import datetime
 
 
 class User(UserMixin, me.Document):
-    meta = {'collection': 'users'}
+    meta = {'collection': 'users', 'strict': False}
 
     name          = me.StringField(max_length=100, required=True)
-    email         = me.StringField(max_length=150, required=True, unique=True)
+    username      = me.StringField(max_length=150, required=True, unique=True)
     password_hash = me.StringField(max_length=255, required=True)
     role          = me.StringField(max_length=20, default='technician')
     created_at    = me.DateTimeField(default=datetime.utcnow)
@@ -17,7 +17,7 @@ class User(UserMixin, me.Document):
         return str(self.id)
 
     def __repr__(self):
-        return f'<User {self.email}>'
+        return f'<User {self.username}>'
 
     @property
     def is_admin(self):

@@ -8,7 +8,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-transparent fw-semibold">
         <i class="bi bi-person-circle me-2"></i>{{ user.name }}
-        <span class="text-muted small fw-normal ms-1">{{ user.email }}</span>
+        <span class="text-muted small fw-normal ms-1">@{{ user.username }}</span>
       </div>
       <div class="card-body p-4">
         <form method="POST" novalidate>
@@ -27,7 +27,8 @@
 
           <div class="mb-3">
             {{ form.new_password.label(class="form-label fw-semibold") }}
-            {{ form.new_password(class="form-control" + (" is-invalid" if form.new_password.errors else ""), placeholder="{{ t.hint_leave_blank_pw }}") }}
+            {{ form.new_password(class="form-control" + (" is-invalid" if form.new_password.errors else "")) }}
+            <div class="form-text">{{ t.hint_leave_blank_pw }}</div>
             {% for e in form.new_password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
           </div>
 

@@ -15,7 +15,7 @@
       <thead class="table-light">
         <tr>
           <th>{{ t.col_name }}</th>
-          <th>{{ t.col_email }}</th>
+          <th>{{ t.col_username }}</th>
           <th style="min-width:160px">{{ t.col_role }}</th>
           <th></th>
         </tr>
@@ -29,7 +29,7 @@
             <span class="badge bg-secondary bg-opacity-15 text-secondary ms-1 small">{{ t.you_badge }}</span>
             {% endif %}
           </td>
-          <td class="small text-muted">{{ user.email }}</td>
+          <td class="small text-muted">@{{ user.username }}</td>
           <td>
             {% if user.id == current_user.id %}
               <div class="d-flex align-items-center gap-2">

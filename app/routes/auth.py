@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Email, Length
+from wtforms.validators import DataRequired, Length
 
 from app import bcrypt
 from app.models.user import User
@@ -12,7 +12,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 class LoginForm(FlaskForm):
-    email    = StringField('Email',    validators=[DataRequired(), Email(check_deliverability=False)])
+    username = StringField('Username', validators=[DataRequired(), Length(max=150)])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember me')
     submit   = SubmitField('Sign In')
@@ -30,15 +30,16 @@ def login():
         return redirect(url_for('main.dashboard'))
     t = getattr(g, 't', {})
     form = LoginForm()
+    form.username.label.text = t.get('col_username', 'Username')
     localize_form(form, t, submit_key='form_sign_in')
     if form.validate_on_submit():
-        user = User.objects(email=form.email.data.lower().strip()).first()
+        user = User.objects(username=form.username.data.strip()).first()
         if user and bcrypt.check_password_hash(user.password_hash, form.password.data):
             login_user(user, remember=form.remember.data)
             next_page = request.args.get('next')
             flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=user.name), 'success')
             return redirect(next_page or url_for('main.dashboard'))
-        flash(t.get('flash_login_failed', 'Incorrect email or password.'), 'danger')
+        flash(t.get('flash_login_failed', 'Incorrect username or password.'), 'danger')
     return render_template('auth/login.html', form=form)
 
 
