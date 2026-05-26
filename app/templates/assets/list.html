@@ -155,7 +155,7 @@
     <div class="card border-0 shadow-sm">
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-          <thead style="background-color:#343a40; color:#fff;">
+          <thead class="table-dark">
             <tr>
               <!-- 1. Asset ID -->
               <th>
@@ -176,7 +176,7 @@
               </th>
 
               <!-- 3. Description -->
-              <th style="min-width:200px;" class="text-white">{{ t.col_feature }}</th>
+              <th style="min-width:200px;">{{ t.col_feature }}</th>
 
               <!-- 4. Stock Qty -->
               <th class="text-center">
@@ -188,38 +188,38 @@
               </th>
 
               <!-- 5. Commitments -->
-              <th class="text-center text-white" title="Sum of quantities in open Pending estimates">
+              <th class="text-center" title="Sum of quantities in open Pending estimates">
                 Commitments
               </th>
 
               <!-- 6. After Commitments -->
-              <th class="text-center text-white">After Commitments</th>
+              <th class="text-center">After Commitments</th>
 
               <!-- 7. Red Line Alert -->
-              <th class="text-center text-white">{{ t.col_alert }}</th>
+              <th class="text-center">{{ t.col_alert }}</th>
 
               <!-- 8. Final Price (₪) -->
               <th>
                 <div class="d-flex align-items-center gap-1">
                   <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&site={{ site_filter or '' }}&sort=price_usd&order={{ 'desc' if sort == 'price_usd' and order == 'asc' else 'asc' }}"
                      class="text-decoration-none text-white d-flex align-items-center gap-1">
-                    {{ t.col_nis }}
+                    {{ t.col_nis }} ₪
                     {% if sort == 'price_usd' %}<i class="bi bi-chevron-{{ 'up' if order == 'asc' else 'down' }} small"></i>{% endif %}
                   </a>
-                  <button class="btn btn-link btn-sm p-0 ms-1 text-white border-0 lh-1"
+                  <button class="btn btn-sm p-0 ms-1 border-0 lh-1 text-white opacity-75"
                           id="priceToggleBtn"
                           data-show-label="{{ t.price_toggle_show }}"
                           data-hide-label="{{ t.price_toggle_hide }}"
-                          title="{{ t.price_toggle_show }}"
+                          title="Show / Hide prices"
                           onclick="togglePrices()"
                           type="button">
-                    <i class="bi bi-eye" id="priceToggleIcon"></i>
+                    <i class="bi bi-eye-slash" id="priceToggleIcon"></i>
                   </button>
                 </div>
               </th>
 
               <!-- 9. Price USD -->
-              <th class="text-white">$</th>
+              <th>USD $</th>
 
               <!-- 10. Actions -->
               <th></th>
