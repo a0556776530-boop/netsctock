@@ -4,41 +4,121 @@
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-md-6">
+  <div class="col-md-6 col-lg-5">
     <div class="card border-0 shadow-sm">
-      <div class="card-header bg-transparent fw-semibold">
-        <i class="bi bi-person-circle me-2"></i>{{ user.name }}
-        <span class="text-muted small fw-normal ms-1">@{{ user.username }}</span>
+
+      <!-- Profile header -->
+      <div class="card-body text-center pt-4 pb-3 border-bottom">
+        <div class="role-avatar mx-auto mb-3
+          {% if user.role == 'admin' %}role-admin{% elif user.role == 'technician' %}role-tech{% else %}role-viewer{% endif %}"
+          id="headerAvatar">
+          <i class="bi
+            {% if user.role == 'admin' %}bi-crown-fill{% elif user.role == 'technician' %}bi-cpu-fill{% else %}bi-eye-fill{% endif %}"
+            id="headerIcon"></i>
+        </div>
+        <h5 class="mb-0 fw-bold">{{ user.name }}</h5>
+        <span class="text-muted small">@{{ user.username }}</span>
       </div>
-      <div class="card-body p-4">
+
+      <!-- Form -->
+      <div class="card-body px-4 pb-4">
         <form method="POST" novalidate>
           {{ form.hidden_tag() }}
 
+          <!-- Name -->
           <div class="mb-3">
-            <label class="form-label fw-semibold">{{ t.col_name }}</label>
-            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
-            {% for e in form.name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_name }}</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 text-muted">
+                <i class="bi bi-person"></i>
+              </span>
+              {{ form.name(class="form-control border-start-0" + (" is-invalid" if form.name.errors else ""),
+                           style="border-radius:0 6px 6px 0;") }}
+            </div>
+            {% for e in form.name.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
           </div>
 
+          <!-- Role with live preview -->
           <div class="mb-3">
-            {{ form.role.label(class="form-label fw-semibold") }}
-            {{ form.role(class="form-select") }}
+            <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_role }}</label>
+            <div class="d-flex align-items-center gap-2">
+              <div id="rolePreview"
+                   class="role-avatar-sm flex-shrink-0
+                   {% if user.role == 'admin' %}role-admin{% elif user.role == 'technician' %}role-tech{% else %}role-viewer{% endif %}">
+                <i id="roleIcon" class="bi
+                   {% if user.role == 'admin' %}bi-crown-fill{% elif user.role == 'technician' %}bi-cpu-fill{% else %}bi-eye-fill{% endif %}"></i>
+              </div>
+              {{ form.role(class="form-select", id="roleSelect") }}
+            </div>
           </div>
 
-          <div class="mb-3">
-            {{ form.new_password.label(class="form-label fw-semibold") }}
-            {{ form.new_password(class="form-control" + (" is-invalid" if form.new_password.errors else "")) }}
+          <!-- New password with eye toggle -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">
+              {{ form.new_password.label.text }}
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 text-muted">
+                <i class="bi bi-lock"></i>
+              </span>
+              {{ form.new_password(class="form-control border-start-0 border-end-0" + (" is-invalid" if form.new_password.errors else ""),
+                                   id="pwField", autocomplete="new-password",
+                                   style="border-radius:0;") }}
+              <button type="button" class="input-group-text bg-light border-start-0" id="pwToggle" tabindex="-1" style="cursor:pointer;">
+                <i class="bi bi-eye text-muted" id="pwIcon"></i>
+              </button>
+            </div>
             <div class="form-text">{{ t.hint_leave_blank_pw }}</div>
-            {% for e in form.new_password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            {% for e in form.new_password.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
           </div>
 
           <div class="d-flex gap-2">
-            {{ form.submit(class="btn btn-primary") }}
+            {{ form.submit(class="btn btn-primary flex-grow-1") }}
             <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
           </div>
         </form>
       </div>
+
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Password toggle ──────────────────────────────────────────────
+var pwBtn = document.getElementById('pwToggle');
+var pwFld = document.getElementById('pwField');
+var pwIco = document.getElementById('pwIcon');
+if (pwBtn && pwFld) {
+  pwBtn.addEventListener('click', function () {
+    var show = pwFld.type === 'password';
+    pwFld.type = show ? 'text' : 'password';
+    pwIco.className = 'bi ' + (show ? 'bi-eye-slash' : 'bi-eye') + ' text-muted';
+  });
+}
+
+// ── Role preview ─────────────────────────────────────────────────
+var _roles = {
+  admin:      { cls: 'role-admin',  icon: 'bi-crown-fill'  },
+  technician: { cls: 'role-tech',   icon: 'bi-cpu-fill'    },
+  viewer:     { cls: 'role-viewer', icon: 'bi-eye-fill'    },
+};
+function applyRole(val) {
+  var r = _roles[val] || _roles.viewer;
+  ['rolePreview', 'headerAvatar'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.className = el.className.replace(/role-(admin|tech|viewer)/g, '') + ' ' + r.cls;
+  });
+  ['roleIcon', 'headerIcon'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.className = 'bi ' + r.icon;
+  });
+}
+var roleSel = document.getElementById('roleSelect');
+if (roleSel) {
+  roleSel.addEventListener('change', function () { applyRole(this.value); });
+}
+</script>
 {% endblock %}
