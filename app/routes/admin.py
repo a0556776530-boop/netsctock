@@ -47,6 +47,7 @@ def _localize_user_form(form, t, is_new=True):
                   submit_key='form_create_user' if is_new else 'form_save',
                   extra={'password': 'form_initial_password'} if is_new else
                         {'new_password': 'form_new_password_optional'})
+    form.name.label.text = t.get('col_name', 'Name')
 
     role_choices = [
         ('technician', t.get('role_technician', 'Technician')),
