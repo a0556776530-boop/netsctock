@@ -60,6 +60,8 @@ def check_allocation():
 @estimates_bp.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_estimate():
+    if not current_user.can_edit:
+        abort(403)
     from app.models.settings import EFFECTIVE_RATE
     usd_rate = EFFECTIVE_RATE  # 3.6 × 1.048 ≈ 3.7728
     today    = date.today()
@@ -153,6 +155,8 @@ def detail(id):
 @estimates_bp.route('/<id>/withdraw', methods=['POST'])
 @login_required
 def withdraw(id):
+    if not current_user.can_edit:
+        abort(403)
     estimate = get_or_404(Estimate, id)
     estimate.status = 'withdrawn'
     estimate.save()
@@ -163,6 +167,8 @@ def withdraw(id):
 @estimates_bp.route('/<id>/restore', methods=['POST'])
 @login_required
 def restore(id):
+    if not current_user.can_edit:
+        abort(403)
     estimate = get_or_404(Estimate, id)
     estimate.status = 'pending'
     estimate.save()
@@ -173,6 +179,8 @@ def restore(id):
 @estimates_bp.route('/<id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(id):
+    if not current_user.can_edit:
+        abort(403)
     estimate = get_or_404(Estimate, id)
     usd_rate = float(estimate.usd_rate)
 

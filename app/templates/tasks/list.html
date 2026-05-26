@@ -11,12 +11,13 @@
     <a href="{{ url_for('tasks.history') }}" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-clock-history me-1"></i>{{ t.task_history_title }}
     </a>
+    {% if current_user.can_edit %}
     <a href="{{ url_for('tasks.new_task') }}" class="btn btn-primary btn-sm">
       <i class="bi bi-plus-lg me-1"></i>{{ t.form_title_new_task }}
     </a>
+    {% endif %}
   </div>
 </div>
-
 
 <!-- Task table -->
 <div class="card border-0 shadow-sm">
@@ -58,32 +59,34 @@
             </span>
           </td>
           <td class="text-end text-nowrap">
-            {% if task.status != 'done' %}
-            <form method="POST" action="{{ url_for('tasks.mark_done', id=task.id) }}" class="d-inline">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-success" title="{{ t.btn_mark_done }}">
-                <i class="bi bi-check-lg"></i>
-              </button>
-            </form>
-            {% else %}
-            <form method="POST" action="{{ url_for('tasks.reopen', id=task.id) }}" class="d-inline">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ t.btn_reopen }}">
-                <i class="bi bi-arrow-counterclockwise"></i>
-              </button>
-            </form>
-            {% endif %}
-            <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.btn_edit }}">
-              <i class="bi bi-pencil"></i>
-            </a>
-            {% if current_user.is_admin %}
-            <form method="POST" action="{{ url_for('tasks.delete', id=task.id) }}" class="d-inline"
-                  onsubmit="return confirm('{{ t.confirm_delete_task }}')">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ t.action_delete }}">
-                <i class="bi bi-trash"></i>
-              </button>
-            </form>
+            {% if current_user.can_edit %}
+              {% if task.status != 'done' %}
+              <form method="POST" action="{{ url_for('tasks.mark_done', id=task.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-success" title="{{ t.btn_mark_done }}">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+              </form>
+              {% else %}
+              <form method="POST" action="{{ url_for('tasks.reopen', id=task.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ t.btn_reopen }}">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+              </form>
+              {% endif %}
+              <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.btn_edit }}">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% if current_user.is_admin %}
+              <form method="POST" action="{{ url_for('tasks.delete', id=task.id) }}" class="d-inline"
+                    onsubmit="return confirm('{{ t.confirm_delete_task }}')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ t.action_delete }}">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+              {% endif %}
             {% endif %}
           </td>
         </tr>
@@ -91,7 +94,10 @@
         <tr>
           <td colspan="4" class="text-center text-muted py-5">
             <i class="bi bi-check2-all fs-3 d-block mb-2"></i>
-            {{ t.no_tasks }} <a href="{{ url_for('tasks.new_task') }}">{{ t.create_one }}</a>
+            {{ t.no_tasks }}
+            {% if current_user.can_edit %}
+            <a href="{{ url_for('tasks.new_task') }}">{{ t.create_one }}</a>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

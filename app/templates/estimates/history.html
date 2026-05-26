@@ -51,6 +51,7 @@
             <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.action_view }}">
               <i class="bi bi-eye"></i>
             </a>
+            {% if current_user.can_edit %}
             <a href="{{ url_for('estimates.edit', id=e.id) }}" class="btn btn-sm btn-outline-primary" title="{{ t.btn_edit }}">
               <i class="bi bi-pencil"></i>
             </a>
@@ -65,10 +66,11 @@
             <form method="POST" action="{{ url_for('estimates.delete', id=e.id) }}" class="d-inline"
                   onsubmit="return confirm('{{ t.confirm_delete_estimate.format(name=e.task_name) }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ t.action_delete }}">
                 <i class="bi bi-trash3"></i>
               </button>
             </form>
+            {% endif %}
             {% endif %}
           </td>
         </tr>

@@ -26,6 +26,7 @@
     <a href="{{ url_for('estimates.export_csv', id=estimate.id) }}" class="btn btn-sm btn-outline-success">
       <i class="bi bi-filetype-csv me-1"></i>{{ t.nav_export }} CSV
     </a>
+    {% if current_user.can_edit %}
     {% if estimate.status == 'pending' %}
     <form method="POST" action="{{ url_for('estimates.withdraw', id=estimate.id) }}"
           onsubmit="return confirm('{{ t.confirm_mark_withdrawn }}')">
@@ -43,6 +44,7 @@
         <i class="bi bi-arrow-counterclockwise me-1"></i>{{ t.btn_restore }}
       </button>
     </form>
+    {% endif %}
     {% endif %}
     {% if current_user.is_admin %}
     <form method="POST" action="{{ url_for('estimates.delete', id=estimate.id) }}"

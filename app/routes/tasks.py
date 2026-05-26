@@ -49,6 +49,8 @@ def history():
 @tasks_bp.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_task():
+    if not current_user.can_edit:
+        abort(403)
     t    = getattr(g, 't', {})
     form = TaskForm()
 
@@ -69,6 +71,8 @@ def new_task():
 @tasks_bp.route('/<id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(id):
+    if not current_user.can_edit:
+        abort(403)
     task = get_or_404(Task, id)
     form = TaskForm()
 
@@ -93,6 +97,8 @@ def edit(id):
 @tasks_bp.route('/<id>/done', methods=['POST'])
 @login_required
 def mark_done(id):
+    if not current_user.can_edit:
+        abort(403)
     task = get_or_404(Task, id)
     task.status = 'done'
     task.save()
@@ -103,6 +109,8 @@ def mark_done(id):
 @tasks_bp.route('/<id>/reopen', methods=['POST'])
 @login_required
 def reopen(id):
+    if not current_user.can_edit:
+        abort(403)
     task = get_or_404(Task, id)
     task.status = 'in_progress'
     task.save()
