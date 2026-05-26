@@ -11,8 +11,8 @@
           {{ form.hidden_tag() }}
 
           <div class="mb-3">
-            {{ form.name.label(class="form-label fw-semibold") }}
-            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="Full name") }}
+            <label class="form-label fw-semibold">{{ t.col_name }}</label>
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="{{ t.col_name }}") }}
             {% for e in form.name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
           </div>
 
