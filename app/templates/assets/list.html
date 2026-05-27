@@ -107,7 +107,7 @@
         </button>
         {% if current_user.can_edit %}
         <a href="{{ url_for('assets.import_qty') }}" class="btn btn-outline-success btn-sm">
-          <i class="bi bi-file-earmark-arrow-up me-1"></i>עדכון מלאי CSV
+          <i class="bi bi-file-earmark-arrow-up me-1"></i>{{ t.btn_import_stock_csv }}
         </a>
         {% endif %}
         <a href="{{ url_for('assets.new_asset') }}" class="btn btn-primary btn-sm">
@@ -282,21 +282,9 @@
                 <div class="text-muted x-small" data-hl>{{ asset.manufacturer or '' }}</div>
               </td>
 
-              <!-- 4. Stock Qty with +/- controls -->
+              <!-- 4. Stock Qty -->
               <td class="text-center">
-                {% if current_user.can_edit %}
-                <div class="d-flex align-items-center justify-content-center gap-1">
-                  <button class="btn btn-outline-secondary py-0 px-1" style="font-size:.7rem; line-height:1.6;"
-                          onclick="adjustQty('{{ asset.id }}', -1, this)" type="button">−</button>
-                  <span id="qty_{{ asset.id }}" class="small fw-semibold" style="min-width:26px; text-align:center;">
-                    {{ asset.quantity if asset.quantity is not none else '—' }}
-                  </span>
-                  <button class="btn btn-outline-secondary py-0 px-1" style="font-size:.7rem; line-height:1.6;"
-                          onclick="adjustQty('{{ asset.id }}', 1, this)" type="button">+</button>
-                </div>
-                {% else %}
-                <span class="small">{{ asset.quantity if asset.quantity is not none else '—' }}</span>
-                {% endif %}
+                <span class="small fw-semibold" style="color:#6366f1;">{{ asset.quantity if asset.quantity is not none else '—' }}</span>
               </td>
 
               <!-- 5. Commitments -->
@@ -606,21 +594,6 @@
   syncToggle();
   repaint();
 
-  // ── Quick qty +/- ──────────────────────────────────────────────────────────
-  window.adjustQty = function (id, delta, btn) {
-    btn.disabled = true;
-    fetch('/assets/' + id + '/qty', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-      body:    JSON.stringify({ delta: delta }),
-    })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      var el = document.getElementById('qty_' + id);
-      if (el) el.textContent = data.qty;
-    })
-    .finally(function () { btn.disabled = false; });
-  };
 
   // ── Real-time search (professional) ───────────────────────────────────────
   var searchInput  = document.getElementById('searchInput');

@@ -16,7 +16,6 @@
               {{ form.component_id.label(class="form-label fw-semibold") }}
               {{ form.component_id(class="form-control font-monospace",
                                    placeholder="{{ t.ph_component_id }}") }}
-              <div class="form-text">{{ t.field_asset_id }} — {{ t.hint_component_id }}</div>
             </div>
 
             <!-- Serial Number (Mfr. Part No.) -->
@@ -93,9 +92,6 @@
                      id="priceNisDisplay" style="cursor:default;">—</div>
                 {{ form.price_nis(type="hidden", id="priceNis") }}
               </div>
-              <div class="form-text text-muted small">
-                {{ t.hint_price_formula }}
-              </div>
             </div>
 
             <!-- Stock Qty -->
@@ -110,7 +106,6 @@
               {{ form.min_threshold.label(class="form-label fw-semibold") }}
               {{ form.min_threshold(class="form-control", type="text", inputmode="numeric",
                                     placeholder="e.g. 5") }}
-              <div class="form-text text-muted small">{{ t.hint_min_threshold }}</div>
             </div>
           </div>
 

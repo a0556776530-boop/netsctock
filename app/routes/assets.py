@@ -1,7 +1,9 @@
 import csv
 import io
 import json
+import re
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g, Response
+from markupsafe import Markup
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, TextAreaField, SubmitField, DecimalField, IntegerField
@@ -217,10 +219,10 @@ def new_asset():
         existing = Asset.objects(serial_number=form.serial_number.data.strip().upper()).first()
         if existing:
             flash(
-                t.get('flash_asset_duplicate', 'Model already registered: <a href="{url}">{sn}</a>').format(
+                Markup(t.get('flash_asset_duplicate', 'Model already registered: <a href="{url}">{sn}</a>').format(
                     url=url_for('assets.detail', id=str(existing.id)),
-                    sn=existing.serial_number,
-                ),
+                    sn=Markup.escape(existing.serial_number),
+                )),
                 'danger',
             )
             return redirect(url_for('assets.new_asset'))
@@ -482,7 +484,7 @@ def delete(id):
     sn = asset.serial_number
     AssetEvent.objects(asset=asset).delete()
     asset.delete()
-    flash(f'{sn} deleted.', 'danger')
+    flash(t.get('flash_retired', '{sn} deleted.').format(sn=sn), 'danger')
     return redirect(url_for('assets.list_assets'))
 
 
@@ -491,7 +493,7 @@ def delete(id):
 @assets_bp.route('/import-qty/template')
 @login_required
 def import_qty_template():
-    sample = 'מקט יצרן,כמות\nFTX1234A5BC,50\nGLC-SX-MMD,30\nWS-C2960X,10\n'
+    sample = 'mfr. part no.,stock qty\nFTX1234A5BC,50\nGLC-SX-MMD,30\nWS-C2960X,10\n'
     return Response(sample.encode('utf-8-sig'), mimetype='text/csv; charset=utf-8-sig',
                     headers={'Content-Disposition': 'attachment; filename="qty_template.csv"'})
 
@@ -505,32 +507,37 @@ def import_qty():
     if request.method == 'GET':
         return render_template('assets/import_qty.html', results=None)
 
+    t = getattr(g, 't', {})
     f = request.files.get('csv_file')
     if not f or not f.filename.lower().endswith('.csv'):
-        flash('נא להעלות קובץ CSV בלבד.', 'danger')
+        flash(t.get('flash_csv_type_error', 'Please upload a CSV file only.'), 'danger')
         return redirect(url_for('assets.import_qty'))
 
     try:
         stream = io.StringIO(f.stream.read().decode('utf-8-sig'))
     except UnicodeDecodeError:
-        flash('שגיאת קידוד — שמור את הקובץ כ-UTF-8 CSV ונסה שוב.', 'danger')
+        flash(t.get('flash_csv_encoding_error', 'Encoding error — save the file as UTF-8 CSV and try again.'), 'danger')
         return redirect(url_for('assets.import_qty'))
 
     reader = csv.DictReader(stream)
 
-    # Normalise header names (strip spaces, lowercase)
+    def _norm(s):
+        return re.sub(r'[\s.\-_#/]', '', (s or '').lower())
+
     def _col(row, *names):
-        for n in names:
-            for k, v in row.items():
-                if k and k.strip().lower() == n.lower():
-                    return (v or '').strip()
+        norm_names = {_norm(n) for n in names}
+        for k, v in row.items():
+            if k and _norm(k) in norm_names:
+                return (v or '').strip()
         return ''
 
     updated, not_found, invalid, skipped = [], [], [], []
 
     for i, row in enumerate(reader, start=2):
-        serial = _col(row, 'מקט יצרן', 'serial_number', 'serial', 'part no', 'part_no', 'מקט')
-        qty_raw = _col(row, 'כמות', 'quantity', 'qty', 'stock qty', 'stock_qty')
+        serial = _col(row, 'מקט יצרן', 'מקט', 'mfr part no', 'manufacturer part no',
+                      'manufacturer part number', 'serial number', 'serial', 'part no',
+                      'part number', 'partnumber', 'partno')
+        qty_raw = _col(row, 'stock qty', 'stockqty', 'כמות', 'quantity', 'qty')
 
         if not serial:
             skipped.append(f'שורה {i}: אין מקט יצרן')
@@ -584,10 +591,11 @@ def list_categories():
 def new_category():
     if not current_user.can_edit:
         abort(403)
+    t = getattr(g, 't', {})
     form = CategoryForm()
     if form.validate_on_submit():
         AssetType(name=form.name.data.strip(), category=form.category.data.strip()).save()
-        flash(f'Category "{form.name.data}" created.', 'success')
+        flash(t.get('flash_category_created', 'Category "{name}" created.').format(name=form.name.data), 'success')
         return redirect(url_for('assets.list_assets'))
     return render_template('assets/category_form.html', form=form, title='New Category')
 
@@ -597,13 +605,14 @@ def new_category():
 def edit_category(id):
     if not current_user.can_edit:
         abort(403)
+    t = getattr(g, 't', {})
     cat  = get_or_404(AssetType, id)
     form = CategoryForm(obj=cat)
     if form.validate_on_submit():
         cat.name     = form.name.data.strip()
         cat.category = form.category.data.strip()
         cat.save()
-        flash(f'Category "{cat.name}" updated.', 'success')
+        flash(t.get('flash_category_updated', 'Category "{name}" updated.').format(name=cat.name), 'success')
         return redirect(url_for('assets.list_assets'))
     return render_template('assets/category_form.html', form=form, title='Edit Category', cat=cat)
 
@@ -613,11 +622,12 @@ def edit_category(id):
 def delete_category(id):
     if not current_user.is_admin:
         abort(403)
+    t = getattr(g, 't', {})
     cat = get_or_404(AssetType, id)
     name = cat.name
     if Asset.objects(asset_type=cat).count():
-        flash(f'Cannot delete "{name}" — it is used by existing assets.', 'danger')
+        flash(t.get('flash_category_in_use', 'Cannot delete "{name}" — it is used by existing assets.').format(name=name), 'danger')
     else:
         cat.delete()
-        flash(f'Category "{name}" deleted.', 'warning')
+        flash(t.get('flash_category_deleted', 'Category "{name}" deleted.').format(name=name), 'warning')
     return redirect(url_for('assets.list_assets'))

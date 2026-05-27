@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, g
+from urllib.parse import urlparse
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SubmitField
@@ -38,7 +39,10 @@ def login():
                 break
         if matched:
             login_user(matched, remember=form.remember.data)
-            next_page = request.args.get('next')
+            next_page = request.args.get('next', '')
+            parsed = urlparse(next_page)
+            if parsed.scheme or parsed.netloc:
+                next_page = ''
             flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=matched.name), 'success')
             return redirect(next_page or url_for('main.dashboard'))
         flash(t.get('flash_login_failed', 'Incorrect password.'), 'danger')

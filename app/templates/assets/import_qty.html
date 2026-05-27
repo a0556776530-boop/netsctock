@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}עדכון כמויות מ-CSV{% endblock %}
-{% block page_title %}עדכון כמויות מ-CSV{% endblock %}
+{% block title %}{{ t.import_qty_title }}{% endblock %}
+{% block page_title %}{{ t.import_qty_title }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -9,11 +9,8 @@
     <!-- Upload card -->
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body p-4">
-        <h6 class="fw-bold mb-1">העלאת קובץ CSV לעדכון מלאי</h6>
-        <p class="text-muted small mb-4">
-          הקובץ יחליף את כמות המלאי של כל רכיב שמופיע בו.
-          רכיבים שאינם בקובץ לא יושפעו.
-        </p>
+        <h6 class="fw-bold mb-1">{{ t.import_qty_card_title }}</h6>
+        <p class="text-muted small mb-4">{{ t.import_qty_desc }}</p>
 
         <form method="POST" enctype="multipart/form-data" id="uploadForm">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -24,17 +21,17 @@
                  style="cursor:pointer; border-color:#dee2e6 !important; transition:border-color .2s;"
                  id="dropZone">
             <i class="bi bi-file-earmark-spreadsheet fs-1 text-success d-block mb-2"></i>
-            <span class="fw-semibold">גרור קובץ לכאן, או לחץ לבחירה</span>
-            <span class="d-block text-muted small mt-1" id="fileName">CSV בלבד</span>
+            <span class="fw-semibold">{{ t.import_qty_dropzone }}</span>
+            <span class="d-block text-muted small mt-1" id="fileName">{{ t.import_qty_csv_only }}</span>
             <input type="file" name="csv_file" id="csv_file" accept=".csv" class="d-none">
           </label>
 
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary flex-grow-1" id="submitBtn" disabled>
-              <i class="bi bi-upload me-2"></i>עדכן כמויות
+              <i class="bi bi-upload me-2"></i>{{ t.btn_update_qty }}
             </button>
             <a href="{{ url_for('assets.import_qty_template') }}" class="btn btn-outline-secondary">
-              <i class="bi bi-download me-1"></i>תבנית CSV
+              <i class="bi bi-download me-1"></i>{{ t.btn_csv_template }}
             </a>
             <a href="{{ url_for('assets.list_assets') }}" class="btn btn-outline-secondary">
               <i class="bi bi-arrow-left"></i>
@@ -44,14 +41,11 @@
 
         <!-- Format guide -->
         <div class="mt-4 p-3 rounded-3 bg-light border small">
-          <div class="fw-semibold mb-2"><i class="bi bi-info-circle me-1 text-primary"></i>פורמט הקובץ</div>
-          <code class="d-block text-dark">מקט יצרן,כמות</code>
-          <code class="d-block text-dark">FTX1234A5BC,50</code>
-          <code class="d-block text-dark">GLC-SX-MMD,30</code>
-          <div class="text-muted mt-2">
-            המזהה הוא <strong>מקט היצרן</strong> (Serial / Part No.) שרשום בכל רכיב במערכת.
-            נתמך גם: <code>serial_number</code> · <code>מקט</code> · <code>כמות</code> · <code>quantity</code>
-          </div>
+          <div class="fw-semibold mb-2"><i class="bi bi-info-circle me-1 text-primary"></i>{{ t.import_qty_format_title }}</div>
+          <code class="d-block text-dark" dir="ltr">mfr. part no.,stock qty</code>
+          <code class="d-block text-dark" dir="ltr">FTX1234A5BC,50</code>
+          <code class="d-block text-dark" dir="ltr">GLC-SX-MMD,30</code>
+          <div class="text-muted mt-2">{{ t.import_qty_format_desc }}</div>
         </div>
       </div>
     </div>
@@ -60,42 +54,42 @@
     {% if results is not none %}
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-transparent fw-semibold">
-        <i class="bi bi-clipboard2-check me-2"></i>תוצאות העדכון
+        <i class="bi bi-clipboard2-check me-2"></i>{{ t.import_qty_results_title }}
       </div>
       <div class="card-body">
 
         <!-- Summary badges -->
         <div class="d-flex gap-2 flex-wrap mb-4">
           <span class="badge bg-success fs-6 px-3 py-2">
-            <i class="bi bi-check2 me-1"></i>{{ results.updated | length }} עודכנו
+            <i class="bi bi-check2 me-1"></i>{{ results.updated | length }} {{ t.import_qty_updated_badge }}
           </span>
           {% if results.not_found %}
           <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-            <i class="bi bi-search me-1"></i>{{ results.not_found | length }} לא נמצאו
+            <i class="bi bi-search me-1"></i>{{ results.not_found | length }} {{ t.import_qty_notfound_badge }}
           </span>
           {% endif %}
           {% if results.invalid %}
           <span class="badge bg-danger fs-6 px-3 py-2">
-            <i class="bi bi-exclamation-triangle me-1"></i>{{ results.invalid | length }} שגיאות
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ results.invalid | length }} {{ t.import_qty_errors_badge }}
           </span>
           {% endif %}
           {% if results.skipped %}
           <span class="badge bg-secondary fs-6 px-3 py-2">
-            <i class="bi bi-skip-forward me-1"></i>{{ results.skipped | length }} דולגו
+            <i class="bi bi-skip-forward me-1"></i>{{ results.skipped | length }} {{ t.import_qty_skipped_badge }}
           </span>
           {% endif %}
         </div>
 
         <!-- Updated -->
         {% if results.updated %}
-        <h6 class="fw-semibold text-success mb-2"><i class="bi bi-check2-circle me-1"></i>עודכנו בהצלחה</h6>
+        <h6 class="fw-semibold text-success mb-2"><i class="bi bi-check2-circle me-1"></i>{{ t.import_qty_updated_title }}</h6>
         <div class="table-responsive mb-4">
           <table class="table table-sm align-middle mb-0">
             <thead class="table-light">
               <tr>
-                <th>מקט יצרן</th>
-                <th>תיאור</th>
-                <th class="text-center">כמות חדשה</th>
+                <th>{{ t.import_qty_col_part }}</th>
+                <th>{{ t.import_qty_col_desc }}</th>
+                <th class="text-center">{{ t.import_qty_col_new_qty }}</th>
               </tr>
             </thead>
             <tbody>
@@ -115,7 +109,7 @@
 
         <!-- Not found -->
         {% if results.not_found %}
-        <h6 class="fw-semibold text-warning mb-2"><i class="bi bi-search me-1"></i>לא נמצאו במערכת</h6>
+        <h6 class="fw-semibold text-warning mb-2"><i class="bi bi-search me-1"></i>{{ t.import_qty_notfound_title }}</h6>
         <div class="mb-4 d-flex flex-wrap gap-2">
           {% for id in results.not_found %}
           <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-monospace px-2 py-1">{{ id }}</span>
@@ -125,7 +119,7 @@
 
         <!-- Invalid -->
         {% if results.invalid %}
-        <h6 class="fw-semibold text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>כמות לא תקינה</h6>
+        <h6 class="fw-semibold text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>{{ t.import_qty_invalid_title }}</h6>
         <ul class="list-unstyled mb-4 small">
           {% for r in results.invalid %}
           <li class="text-danger"><i class="bi bi-x me-1"></i><span class="font-monospace">{{ r.id }}</span> — {{ r.reason }}</li>
@@ -135,7 +129,7 @@
 
         <!-- Skipped -->
         {% if results.skipped %}
-        <h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-skip-forward me-1"></i>דולגו</h6>
+        <h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-skip-forward me-1"></i>{{ t.import_qty_skipped_title }}</h6>
         <ul class="list-unstyled small">
           {% for s in results.skipped %}
           <li class="text-muted">{{ s }}</li>
@@ -164,7 +158,7 @@
       submitBtn.disabled = false;
       dropZone.style.borderColor = '#198754';
     } else {
-      fileNameEl.textContent = 'CSV בלבד';
+      fileNameEl.textContent = '{{ t.import_qty_csv_only }}';
       submitBtn.disabled = true;
       dropZone.style.borderColor = '';
     }

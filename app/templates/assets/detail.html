@@ -196,7 +196,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p class="text-muted small">{{ t.modal_dismantle_desc.format(sn=asset.serial_number) | safe }}</p>
+          <p class="text-muted small">{{ t.modal_dismantle_desc_pre }}<strong>{{ asset.serial_number }}</strong>{{ t.modal_dismantle_desc_post }}</p>
           <div class="mb-3">
             {{ dismantle_form.from_site_id.label(class="form-label") }}
             {{ dismantle_form.from_site_id(class="form-select") }}
@@ -318,7 +318,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p class="text-muted small">{{ t.modal_return_desc | safe }}</p>
+          <p class="text-muted small">{{ t.modal_return_desc }}</p>
           <div class="mb-3">
             {{ return_form.to_site_id.label(class="form-label") }}
             {{ return_form.to_site_id(class="form-select") }}

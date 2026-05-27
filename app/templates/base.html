@@ -141,7 +141,7 @@
           <div class="mb-3">
             {% for category, message in messages %}
               <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message | safe }}
+                {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
               </div>
             {% endfor %}
