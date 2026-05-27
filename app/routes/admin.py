@@ -35,11 +35,12 @@ class NewUserForm(FlaskForm):
 
 
 class EditUserForm(FlaskForm):
-    name         = StringField('Full Name', validators=[DataRequired(), Length(max=100)])
-    role         = SelectField('Role', choices=[('technician','Technician'),('viewer','Viewer'),('admin','Admin')])
-    new_password = PasswordField('New Password (leave blank to keep current)',
-                                 validators=[Optional(), Length(min=8)])
-    submit       = SubmitField('Save')
+    name             = StringField('Name',         validators=[DataRequired(), Length(max=100)])
+    username         = StringField('Username',     validators=[DataRequired(), Length(max=150)])
+    role             = SelectField('Role', choices=[('technician','Technician'),('viewer','Viewer'),('admin','Admin')])
+    new_password     = PasswordField('New Password',     validators=[Optional(), Length(min=8)])
+    current_password = PasswordField('Current Password', validators=[Optional()])
+    submit           = SubmitField('Save')
 
 
 def _localize_user_form(form, t, is_new=True):
@@ -109,14 +110,35 @@ def edit_user(id):
     _localize_user_form(form, t, is_new=False)
 
     if request.method == 'GET':
-        form.name.data = user.name
-        form.role.data = user.role
+        form.name.data     = user.name
+        form.username.data = user.username
+        form.role.data     = user.role
 
     if form.validate_on_submit():
+        new_username = form.username.data.strip()
+        new_pw       = form.new_password.data
+        changing_username = new_username != user.username
+        changing_password = bool(new_pw)
+
+        if changing_username or changing_password:
+            if not form.current_password.data:
+                flash(t.get('flash_current_pw_required', 'Current password is required to change username or password.'), 'danger')
+                return render_template('admin/edit_user.html', form=form, user=user)
+            if not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
+                flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
+                return render_template('admin/edit_user.html', form=form, user=user)
+
+        if changing_username:
+            if User.objects(username=new_username).filter(id__ne=user.id).first():
+                flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
+                return render_template('admin/edit_user.html', form=form, user=user)
+            user.username = new_username
+
+        if changing_password:
+            user.password_hash = bcrypt.generate_password_hash(new_pw).decode('utf-8')
+
         user.name = form.name.data.strip()
         user.role = form.role.data
-        if form.new_password.data:
-            user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
         user.save()
         flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
         return redirect(url_for('admin.users'))
