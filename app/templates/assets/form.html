@@ -79,9 +79,8 @@
               {{ form.price_usd.label(class="form-label fw-semibold") }}
               <div class="input-group">
                 <span class="input-group-text">$</span>
-                <input type="text" class="form-control" inputmode="numeric"
-                       id="priceUsdDisplay" placeholder="0" autocomplete="off">
-                {{ form.price_usd(type="hidden", id="priceUsd") }}
+                {{ form.price_usd(class="form-control", type="text", inputmode="numeric",
+                                   id="priceUsd", placeholder="0", autocomplete="off") }}
               </div>
             </div>
 
@@ -158,11 +157,10 @@
   const VAT      = 1.18;
   let   factor   = 1.7;
 
-  const factorLabel   = document.getElementById('factorLabel');
-  const usdInput      = document.getElementById('priceUsd');       // hidden field (submitted)
-  const usdDisplay    = document.getElementById('priceUsdDisplay'); // visible input
-  const nisInput      = document.getElementById('priceNis');       // hidden field (submitted)
-  const nisDisplay    = document.getElementById('priceNisDisplay'); // visible display
+  const factorLabel = document.getElementById('factorLabel');
+  const usdInput    = document.getElementById('priceUsd');        // visible editable input
+  const nisInput    = document.getElementById('priceNis');        // hidden field (submitted)
+  const nisDisplay  = document.getElementById('priceNisDisplay'); // visible NIS display
 
   fetch('/api/settings')
     .then(r => r.json())
@@ -174,8 +172,12 @@
     })
     .catch(() => { recalcNis(); });
 
+  function getUsdRaw() {
+    return parseFloat((usdInput ? usdInput.value : '').replace(/,/g, '')) || 0;
+  }
+
   function recalcNis() {
-    const usd = parseFloat(usdInput ? usdInput.value : '') || 0;
+    const usd = getUsdRaw();
     if (!usd) {
       const stored = nisInput ? parseFloat(nisInput.value) : 0;
       if (nisDisplay) nisDisplay.textContent = stored
@@ -188,25 +190,24 @@
     if (nisDisplay) nisDisplay.textContent = nis.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   }
 
-  // USD display input: format with commas on blur, strip on focus, sync raw value
-  if (usdDisplay) {
-    usdDisplay.addEventListener('input', function () {
-      const raw = this.value.replace(/,/g, '');
-      if (usdInput) usdInput.value = raw;
-      recalcNis();
-    });
-    usdDisplay.addEventListener('blur', function () {
-      const val = parseFloat(this.value.replace(/,/g, ''));
+  // USD input: recalc on every keystroke, show commas after user leaves the field
+  if (usdInput) {
+    usdInput.addEventListener('input', recalcNis);
+    usdInput.addEventListener('blur', function () {
+      const val = getUsdRaw();
       this.value = val ? val.toLocaleString('en-US') : '';
     });
-    usdDisplay.addEventListener('focus', function () {
-      const raw = usdInput ? usdInput.value : '';
-      this.value = raw || '';
+    usdInput.addEventListener('focus', function () {
+      const val = getUsdRaw();
+      this.value = val ? String(val) : '';
     });
-    // Initialize display from existing value (edit mode)
-    const initUsd = parseFloat(usdInput ? usdInput.value : '');
-    if (initUsd) usdDisplay.value = initUsd.toLocaleString('en-US');
   }
+
+  // Strip commas from USD before the form submits so DecimalField can parse it
+  var formEl = usdInput ? usdInput.closest('form') : null;
+  if (formEl) formEl.addEventListener('submit', function () {
+    if (usdInput) usdInput.value = String(getUsdRaw() || '');
+  });
 
   recalcNis();
 
