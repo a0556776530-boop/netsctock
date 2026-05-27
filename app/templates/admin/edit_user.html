@@ -41,6 +41,19 @@
             </div>
           </div>
 
+          <!-- Current password -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.label_current_password }}</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-key"></i></span>
+              {{ form.current_password(class="form-control border-start-0 border-end-0",
+                                       id="curPwField", autocomplete="current-password", style="border-radius:0;") }}
+              <button type="button" class="input-group-text bg-light border-start-0" id="curPwToggle" tabindex="-1" style="cursor:pointer;">
+                <i class="bi bi-eye text-muted" id="curPwIcon"></i>
+              </button>
+            </div>
+          </div>
+
           <!-- New password -->
           <div class="mb-3">
             <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.label_new_password }}</label>
@@ -95,6 +108,7 @@ function makeToggle(btnId, fldId, icoId) {
     ico.className = 'bi ' + (show ? 'bi-eye-slash' : 'bi-eye') + ' text-muted';
   });
 }
+makeToggle('curPwToggle', 'curPwField', 'curPwIcon');
 makeToggle('newPwToggle', 'newPwField', 'newPwIcon');
 </script>
 {% endblock %}

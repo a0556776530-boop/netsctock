@@ -36,7 +36,8 @@ class NewUserForm(FlaskForm):
 class EditUserForm(FlaskForm):
     name             = StringField('Name',             validators=[DataRequired(), Length(max=100)])
     role             = SelectField('Role',             choices=[('technician','Technician'),('viewer','Viewer'),('admin','Admin')])
-    new_password     = PasswordField('New Password', validators=[Optional(), Length(min=8)])
+    current_password = PasswordField('Current Password', validators=[Optional()])
+    new_password     = PasswordField('New Password',     validators=[Optional(), Length(min=8)])
     submit           = SubmitField('Save')
 
 
@@ -106,6 +107,9 @@ def edit_user(id):
 
     if form.validate_on_submit():
         if form.new_password.data:
+            if not form.current_password.data or not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
+                flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
+                return render_template('admin/edit_user.html', form=form, user=user)
             user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
 
         user.name = form.name.data.strip()
