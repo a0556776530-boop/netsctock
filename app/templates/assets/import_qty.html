@@ -45,12 +45,12 @@
         <!-- Format guide -->
         <div class="mt-4 p-3 rounded-3 bg-light border small">
           <div class="fw-semibold mb-2"><i class="bi bi-info-circle me-1 text-primary"></i>פורמט הקובץ</div>
-          <code class="d-block text-dark">component_id,quantity</code>
-          <code class="d-block text-dark">ABC-001,50</code>
-          <code class="d-block text-dark">ABC-002,30</code>
+          <code class="d-block text-dark">מקט יצרן,כמות</code>
+          <code class="d-block text-dark">FTX1234A5BC,50</code>
+          <code class="d-block text-dark">GLC-SX-MMD,30</code>
           <div class="text-muted mt-2">
-            עמודות נתמכות: <code>component_id</code> / <code>asset id</code> ·
-            <code>quantity</code> / <code>qty</code>
+            המזהה הוא <strong>מקט היצרן</strong> (Serial / Part No.) שרשום בכל רכיב במערכת.
+            נתמך גם: <code>serial_number</code> · <code>מקט</code> · <code>כמות</code> · <code>quantity</code>
           </div>
         </div>
       </div>
@@ -93,8 +93,7 @@
           <table class="table table-sm align-middle mb-0">
             <thead class="table-light">
               <tr>
-                <th>Asset ID</th>
-                <th>Serial / Part No.</th>
+                <th>מקט יצרן</th>
                 <th>תיאור</th>
                 <th class="text-center">כמות חדשה</th>
               </tr>
@@ -102,8 +101,7 @@
             <tbody>
               {% for r in results.updated %}
               <tr>
-                <td class="font-monospace small fw-semibold">{{ r.id }}</td>
-                <td class="font-monospace small">{{ r.serial }}</td>
+                <td class="font-monospace small fw-semibold">{{ r.serial }}</td>
                 <td class="small text-muted">{{ r.model or '—' }}</td>
                 <td class="text-center">
                   <span class="badge bg-success-subtle text-success border border-success-subtle px-2">{{ r.qty }}</span>

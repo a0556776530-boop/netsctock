@@ -491,8 +491,8 @@ def delete(id):
 @assets_bp.route('/import-qty/template')
 @login_required
 def import_qty_template():
-    sample = 'component_id,quantity\nABC-001,50\nABC-002,30\nABC-003,10\n'
-    return Response(sample, mimetype='text/csv; charset=utf-8',
+    sample = 'מקט יצרן,כמות\nFTX1234A5BC,50\nGLC-SX-MMD,30\nWS-C2960X,10\n'
+    return Response(sample.encode('utf-8-sig'), mimetype='text/csv; charset=utf-8-sig',
                     headers={'Content-Disposition': 'attachment; filename="qty_template.csv"'})
 
 
@@ -529,11 +529,11 @@ def import_qty():
     updated, not_found, invalid, skipped = [], [], [], []
 
     for i, row in enumerate(reader, start=2):
-        comp_id = _col(row, 'component_id', 'asset id', 'asset_id', 'id')
-        qty_raw = _col(row, 'quantity', 'qty', 'stock qty', 'stock_qty')
+        serial = _col(row, 'מקט יצרן', 'serial_number', 'serial', 'part no', 'part_no', 'מקט')
+        qty_raw = _col(row, 'כמות', 'quantity', 'qty', 'stock qty', 'stock_qty')
 
-        if not comp_id:
-            skipped.append(f'שורה {i}: אין מזהה')
+        if not serial:
+            skipped.append(f'שורה {i}: אין מקט יצרן')
             continue
 
         try:
@@ -541,20 +541,19 @@ def import_qty():
             if qty < 0:
                 raise ValueError
         except (ValueError, TypeError):
-            invalid.append({'id': comp_id, 'reason': f'כמות לא תקינה: "{qty_raw}"'})
+            invalid.append({'id': serial, 'reason': f'כמות לא תקינה: "{qty_raw}"'})
             continue
 
-        asset = Asset.objects(component_id=comp_id).first()
-        if not asset:
-            asset = Asset.objects(serial_number__iexact=comp_id).first()
+        asset = Asset.objects(serial_number__iexact=serial).first()
+        comp_id = serial
 
         if not asset:
-            not_found.append(comp_id)
+            not_found.append(serial)
             continue
 
         asset.quantity = qty
         asset.save()
-        updated.append({'id': comp_id, 'serial': asset.serial_number, 'model': asset.model or '', 'qty': qty})
+        updated.append({'serial': asset.serial_number, 'model': asset.model or '', 'qty': qty})
 
     results = {'updated': updated, 'not_found': not_found, 'invalid': invalid, 'skipped': skipped}
     return render_template('assets/import_qty.html', results=results)
