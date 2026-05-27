@@ -79,8 +79,9 @@
               {{ form.price_usd.label(class="form-label fw-semibold") }}
               <div class="input-group">
                 <span class="input-group-text">$</span>
-                {{ form.price_usd(class="form-control", type="text", inputmode="numeric",
-                                   id="priceUsd", placeholder="0") }}
+                <input type="text" class="form-control" inputmode="numeric"
+                       id="priceUsdDisplay" placeholder="0" autocomplete="off">
+                {{ form.price_usd(type="hidden", id="priceUsd") }}
               </div>
             </div>
 
@@ -158,7 +159,8 @@
   let   factor   = 1.7;
 
   const factorLabel   = document.getElementById('factorLabel');
-  const usdInput      = document.getElementById('priceUsd');
+  const usdInput      = document.getElementById('priceUsd');       // hidden field (submitted)
+  const usdDisplay    = document.getElementById('priceUsdDisplay'); // visible input
   const nisInput      = document.getElementById('priceNis');       // hidden field (submitted)
   const nisDisplay    = document.getElementById('priceNisDisplay'); // visible display
 
@@ -182,11 +184,30 @@
       return;
     }
     const nis = Math.round(usd * USD_BASE * BINA * factor * VAT * 100) / 100;
-    if (nisInput)   nisInput.value = Math.round(nis);  // plain integer — no commas
+    if (nisInput)   nisInput.value = Math.round(nis);
     if (nisDisplay) nisDisplay.textContent = nis.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   }
 
-  if (usdInput) usdInput.addEventListener('input', recalcNis);
+  // USD display input: format with commas on blur, strip on focus, sync raw value
+  if (usdDisplay) {
+    usdDisplay.addEventListener('input', function () {
+      const raw = this.value.replace(/,/g, '');
+      if (usdInput) usdInput.value = raw;
+      recalcNis();
+    });
+    usdDisplay.addEventListener('blur', function () {
+      const val = parseFloat(this.value.replace(/,/g, ''));
+      this.value = val ? val.toLocaleString('en-US') : '';
+    });
+    usdDisplay.addEventListener('focus', function () {
+      const raw = usdInput ? usdInput.value : '';
+      this.value = raw || '';
+    });
+    // Initialize display from existing value (edit mode)
+    const initUsd = parseFloat(usdInput ? usdInput.value : '');
+    if (initUsd) usdDisplay.value = initUsd.toLocaleString('en-US');
+  }
+
   recalcNis();
 
 </script>
