@@ -190,20 +190,20 @@
     if (nisDisplay) nisDisplay.textContent = nis.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   }
 
-  // USD input: recalc on every keystroke, show commas after user leaves the field
+  // Format USD with commas in real-time as the user types
   if (usdInput) {
-    usdInput.addEventListener('input', recalcNis);
-    usdInput.addEventListener('blur', function () {
-      const val = getUsdRaw();
-      this.value = val ? val.toLocaleString('en-US') : '';
-    });
-    usdInput.addEventListener('focus', function () {
-      const val = getUsdRaw();
-      this.value = val ? String(val) : '';
+    // On page load: show existing value with commas (edit mode)
+    const initUsd = parseFloat(usdInput.value) || 0;
+    if (initUsd) usdInput.value = initUsd.toLocaleString('en-US');
+
+    usdInput.addEventListener('input', function () {
+      const raw = this.value.replace(/[^\d]/g, '');
+      this.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : '';
+      recalcNis();
     });
   }
 
-  // Strip commas from USD before the form submits so DecimalField can parse it
+  // Strip commas before submit so DecimalField can parse the plain number
   var formEl = usdInput ? usdInput.closest('form') : null;
   if (formEl) formEl.addEventListener('submit', function () {
     if (usdInput) usdInput.value = String(getUsdRaw() || '');
