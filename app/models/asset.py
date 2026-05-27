@@ -18,7 +18,7 @@ class Asset(me.Document):
     STATUSES = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
     STATUS_LABELS = {
         'in_use': 'בשימוש', 'dismantled': 'פורק', 'in_storage': 'באחסון',
-        'assigned': 'מוקצה', 'faulty': 'פגום', 'retired': 'הוצא משירות',
+        'assigned': 'מוקצה', 'faulty': 'פגום', 'retired': 'מחיקת פריט',
     }
     STATUS_COLORS = {
         'in_use': 'success', 'dismantled': 'warning', 'in_storage': 'info',

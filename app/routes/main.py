@@ -15,7 +15,7 @@ _STATUS_COLORS = {
 }
 _STATUS_LABELS = {
     'in_use': 'In Use', 'dismantled': 'Dismantled', 'in_storage': 'In Storage',
-    'assigned': 'Assigned', 'faulty': 'Faulty', 'retired': 'Retired',
+    'assigned': 'Assigned', 'faulty': 'Faulty', 'retired': 'Deleted',
 }
 
 
