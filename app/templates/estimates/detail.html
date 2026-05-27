@@ -97,6 +97,14 @@
             <td class="text-muted fw-semibold">{{ t.col_date }}</td>
             <td>{{ estimate.created_date.strftime('%d %b %Y') }}</td>
           </tr>
+          {% if estimate.withdrawn_at %}
+          <tr>
+            <td class="text-muted fw-semibold">{{ t.col_completed_at }}</td>
+            <td class="fw-semibold text-success">
+              <i class="bi bi-check2-circle me-1"></i>{{ estimate.withdrawn_at.strftime('%d %b %Y, %H:%M') }}
+            </td>
+          </tr>
+          {% endif %}
           <tr>
             <td class="text-muted fw-semibold">{{ t.col_valid_until }}</td>
             <td class="{% if estimate.valid_until < now.date() %}text-danger fw-semibold{% endif %}">

@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, Response, jsonify
 from flask_login import login_required, current_user
@@ -158,7 +158,8 @@ def withdraw(id):
     if not current_user.can_edit:
         abort(403)
     estimate = get_or_404(Estimate, id)
-    estimate.status = 'withdrawn'
+    estimate.status       = 'withdrawn'
+    estimate.withdrawn_at = datetime.utcnow()
     estimate.save()
     flash(f'Assignment {estimate.allocation_number} marked as ongoing and moved to History.', 'success')
     return redirect(url_for('estimates.detail', id=str(estimate.id)))
@@ -170,7 +171,8 @@ def restore(id):
     if not current_user.can_edit:
         abort(403)
     estimate = get_or_404(Estimate, id)
-    estimate.status = 'pending'
+    estimate.status       = 'pending'
+    estimate.withdrawn_at = None
     estimate.save()
     flash(f'Assignment {estimate.allocation_number} restored to Pending.', 'success')
     return redirect(url_for('estimates.detail', id=str(estimate.id)))

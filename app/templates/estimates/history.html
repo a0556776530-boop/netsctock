@@ -29,7 +29,7 @@
           <th>{{ t.col_requester }}</th>
           <th>{{ t.col_project }}</th>
           <th>{{ t.col_date }}</th>
-          <th>{{ t.form_status }}</th>
+          <th>{{ t.col_completed_at }}</th>
           <th class="text-end">{{ t.col_total_ils }}</th>
           <th></th>
         </tr>
@@ -45,7 +45,11 @@
           </td>
           <td class="small text-muted">{{ e.project_name or '—' }}</td>
           <td class="small">{{ e.created_date.strftime('%d %b %Y') }}</td>
-          <td><span class="badge bg-secondary small">נמשך · Withdrawn</span></td>
+          <td class="small {% if e.withdrawn_at %}text-success fw-semibold{% else %}text-muted{% endif %}">
+            {% if e.withdrawn_at %}
+            <i class="bi bi-check2-circle me-1"></i>{{ e.withdrawn_at.strftime('%d %b %Y, %H:%M') }}
+            {% else %}—{% endif %}
+          </td>
           <td class="text-end font-monospace fw-semibold text-muted">{{ e.formatted_total }}</td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.action_view }}">

@@ -27,6 +27,7 @@ class Estimate(me.Document):
     total_nis          = me.FloatField()
     created_by         = me.ReferenceField('User')
     created_at         = me.DateTimeField(default=datetime.utcnow)
+    withdrawn_at       = me.DateTimeField()
 
     items = me.EmbeddedDocumentListField(EstimateItem)
 
