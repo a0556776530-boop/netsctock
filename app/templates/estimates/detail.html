@@ -100,7 +100,7 @@
           {% if estimate.withdrawn_at %}
           <tr>
             <td class="text-muted fw-semibold">{{ t.col_completed_at }}</td>
-            <td class="fw-semibold text-success">
+            <td class="fw-semibold text-success" dir="ltr" style="text-align:left;">
               <i class="bi bi-check2-circle me-1"></i>{{ estimate.withdrawn_at.strftime('%d %b %Y, %H:%M') }}
             </td>
           </tr>

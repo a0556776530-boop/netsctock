@@ -45,7 +45,8 @@
           </td>
           <td class="small text-muted">{{ e.project_name or '—' }}</td>
           <td class="small">{{ e.created_date.strftime('%d %b %Y') }}</td>
-          <td class="small {% if e.withdrawn_at %}text-success fw-semibold{% else %}text-muted{% endif %}">
+          <td class="small {% if e.withdrawn_at %}text-success fw-semibold{% else %}text-muted{% endif %}"
+              dir="ltr" style="text-align:left;">
             {% if e.withdrawn_at %}
             <i class="bi bi-check2-circle me-1"></i>{{ e.withdrawn_at.strftime('%d %b %Y, %H:%M') }}
             {% else %}—{% endif %}
