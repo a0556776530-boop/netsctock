@@ -55,25 +55,6 @@
             {% for e in form.new_password.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
           </div>
 
-          <!-- Current password gate -->
-          <div id="currentPwGate" style="overflow:hidden; max-height:0; transition:max-height .35s ease, opacity .3s ease; opacity:0;">
-            <div class="rounded-3 p-3 mb-3" style="background:rgba(59,130,246,.06); border:1px solid rgba(59,130,246,.18);">
-              <div class="d-flex align-items-center gap-2 mb-2">
-                <i class="bi bi-shield-lock-fill text-primary"></i>
-                <span class="small fw-semibold text-primary">{{ t.label_current_password }}</span>
-              </div>
-              <p class="text-muted x-small mb-2">{{ t.hint_current_pw_gate }}</p>
-              <div class="input-group">
-                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-key"></i></span>
-                {{ form.current_password(class="form-control border-start-0 border-end-0",
-                                         id="currentPwField", autocomplete="current-password", style="border-radius:0;") }}
-                <button type="button" class="input-group-text bg-white border-start-0" id="curPwToggle" tabindex="-1" style="cursor:pointer;">
-                  <i class="bi bi-eye text-muted" id="curPwIcon"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-
           <div class="d-flex gap-2 mt-2">
             {{ form.submit(class="btn btn-primary flex-grow-1") }}
             <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
@@ -115,25 +96,5 @@ function makeToggle(btnId, fldId, icoId) {
   });
 }
 makeToggle('newPwToggle', 'newPwField', 'newPwIcon');
-makeToggle('curPwToggle', 'currentPwField', 'curPwIcon');
-
-var gate = document.getElementById('currentPwGate');
-var newPwFld = document.getElementById('newPwField');
-var curPwFld = document.getElementById('currentPwField');
-var _gateOpen = false;
-
-function checkGate() {
-  var need = newPwFld && newPwFld.value.length > 0;
-  if (need && !_gateOpen) {
-    gate.style.maxHeight = '200px'; gate.style.opacity = '1'; _gateOpen = true;
-  } else if (!need && _gateOpen) {
-    gate.style.maxHeight = '0'; gate.style.opacity = '0';
-    if (curPwFld) curPwFld.value = ''; _gateOpen = false;
-  }
-}
-if (newPwFld) newPwFld.addEventListener('input', checkGate);
-{% if form.new_password.data or form.current_password.errors %}
-if (gate) { gate.style.maxHeight='200px'; gate.style.opacity='1'; _gateOpen=true; }
-{% endif %}
 </script>
 {% endblock %}
