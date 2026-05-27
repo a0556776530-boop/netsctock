@@ -1,5 +1,7 @@
+import csv
+import io
 import json
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g, Response
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, TextAreaField, SubmitField, DecimalField, IntegerField
@@ -482,6 +484,80 @@ def delete(id):
     asset.delete()
     flash(f'{sn} deleted.', 'danger')
     return redirect(url_for('assets.list_assets'))
+
+
+# ── CSV quantity import ───────────────────────────────────────────────────────
+
+@assets_bp.route('/import-qty/template')
+@login_required
+def import_qty_template():
+    sample = 'component_id,quantity\nABC-001,50\nABC-002,30\nABC-003,10\n'
+    return Response(sample, mimetype='text/csv; charset=utf-8',
+                    headers={'Content-Disposition': 'attachment; filename="qty_template.csv"'})
+
+
+@assets_bp.route('/import-qty', methods=['GET', 'POST'])
+@login_required
+def import_qty():
+    if not current_user.can_edit:
+        abort(403)
+
+    if request.method == 'GET':
+        return render_template('assets/import_qty.html', results=None)
+
+    f = request.files.get('csv_file')
+    if not f or not f.filename.lower().endswith('.csv'):
+        flash('נא להעלות קובץ CSV בלבד.', 'danger')
+        return redirect(url_for('assets.import_qty'))
+
+    try:
+        stream = io.StringIO(f.stream.read().decode('utf-8-sig'))
+    except UnicodeDecodeError:
+        flash('שגיאת קידוד — שמור את הקובץ כ-UTF-8 CSV ונסה שוב.', 'danger')
+        return redirect(url_for('assets.import_qty'))
+
+    reader = csv.DictReader(stream)
+
+    # Normalise header names (strip spaces, lowercase)
+    def _col(row, *names):
+        for n in names:
+            for k, v in row.items():
+                if k and k.strip().lower() == n.lower():
+                    return (v or '').strip()
+        return ''
+
+    updated, not_found, invalid, skipped = [], [], [], []
+
+    for i, row in enumerate(reader, start=2):
+        comp_id = _col(row, 'component_id', 'asset id', 'asset_id', 'id')
+        qty_raw = _col(row, 'quantity', 'qty', 'stock qty', 'stock_qty')
+
+        if not comp_id:
+            skipped.append(f'שורה {i}: אין מזהה')
+            continue
+
+        try:
+            qty = int(qty_raw)
+            if qty < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            invalid.append({'id': comp_id, 'reason': f'כמות לא תקינה: "{qty_raw}"'})
+            continue
+
+        asset = Asset.objects(component_id=comp_id).first()
+        if not asset:
+            asset = Asset.objects(serial_number__iexact=comp_id).first()
+
+        if not asset:
+            not_found.append(comp_id)
+            continue
+
+        asset.quantity = qty
+        asset.save()
+        updated.append({'id': comp_id, 'serial': asset.serial_number, 'model': asset.model or '', 'qty': qty})
+
+    results = {'updated': updated, 'not_found': not_found, 'invalid': invalid, 'skipped': skipped}
+    return render_template('assets/import_qty.html', results=results)
 
 
 # ── Category (AssetType) management ──────────────────────────────────────────

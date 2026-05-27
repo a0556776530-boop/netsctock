@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block title %}עדכון כמויות מ-CSV{% endblock %}
+{% block page_title %}עדכון כמויות מ-CSV{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    <!-- Upload card -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-1">העלאת קובץ CSV לעדכון מלאי</h6>
+        <p class="text-muted small mb-4">
+          הקובץ יחליף את כמות המלאי של כל רכיב שמופיע בו.
+          רכיבים שאינם בקובץ לא יושפעו.
+        </p>
+
+        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <!-- Drop zone -->
+          <label for="csv_file"
+                 class="d-block border border-2 border-dashed rounded-3 text-center p-5 mb-3"
+                 style="cursor:pointer; border-color:#dee2e6 !important; transition:border-color .2s;"
+                 id="dropZone">
+            <i class="bi bi-file-earmark-spreadsheet fs-1 text-success d-block mb-2"></i>
+            <span class="fw-semibold">גרור קובץ לכאן, או לחץ לבחירה</span>
+            <span class="d-block text-muted small mt-1" id="fileName">CSV בלבד</span>
+            <input type="file" name="csv_file" id="csv_file" accept=".csv" class="d-none">
+          </label>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1" id="submitBtn" disabled>
+              <i class="bi bi-upload me-2"></i>עדכן כמויות
+            </button>
+            <a href="{{ url_for('assets.import_qty_template') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-download me-1"></i>תבנית CSV
+            </a>
+            <a href="{{ url_for('assets.list_assets') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+          </div>
+        </form>
+
+        <!-- Format guide -->
+        <div class="mt-4 p-3 rounded-3 bg-light border small">
+          <div class="fw-semibold mb-2"><i class="bi bi-info-circle me-1 text-primary"></i>פורמט הקובץ</div>
+          <code class="d-block text-dark">component_id,quantity</code>
+          <code class="d-block text-dark">ABC-001,50</code>
+          <code class="d-block text-dark">ABC-002,30</code>
+          <div class="text-muted mt-2">
+            עמודות נתמכות: <code>component_id</code> / <code>asset id</code> ·
+            <code>quantity</code> / <code>qty</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    {% if results is not none %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-transparent fw-semibold">
+        <i class="bi bi-clipboard2-check me-2"></i>תוצאות העדכון
+      </div>
+      <div class="card-body">
+
+        <!-- Summary badges -->
+        <div class="d-flex gap-2 flex-wrap mb-4">
+          <span class="badge bg-success fs-6 px-3 py-2">
+            <i class="bi bi-check2 me-1"></i>{{ results.updated | length }} עודכנו
+          </span>
+          {% if results.not_found %}
+          <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+            <i class="bi bi-search me-1"></i>{{ results.not_found | length }} לא נמצאו
+          </span>
+          {% endif %}
+          {% if results.invalid %}
+          <span class="badge bg-danger fs-6 px-3 py-2">
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ results.invalid | length }} שגיאות
+          </span>
+          {% endif %}
+          {% if results.skipped %}
+          <span class="badge bg-secondary fs-6 px-3 py-2">
+            <i class="bi bi-skip-forward me-1"></i>{{ results.skipped | length }} דולגו
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- Updated -->
+        {% if results.updated %}
+        <h6 class="fw-semibold text-success mb-2"><i class="bi bi-check2-circle me-1"></i>עודכנו בהצלחה</h6>
+        <div class="table-responsive mb-4">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Asset ID</th>
+                <th>Serial / Part No.</th>
+                <th>תיאור</th>
+                <th class="text-center">כמות חדשה</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in results.updated %}
+              <tr>
+                <td class="font-monospace small fw-semibold">{{ r.id }}</td>
+                <td class="font-monospace small">{{ r.serial }}</td>
+                <td class="small text-muted">{{ r.model or '—' }}</td>
+                <td class="text-center">
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-2">{{ r.qty }}</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+
+        <!-- Not found -->
+        {% if results.not_found %}
+        <h6 class="fw-semibold text-warning mb-2"><i class="bi bi-search me-1"></i>לא נמצאו במערכת</h6>
+        <div class="mb-4 d-flex flex-wrap gap-2">
+          {% for id in results.not_found %}
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-monospace px-2 py-1">{{ id }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Invalid -->
+        {% if results.invalid %}
+        <h6 class="fw-semibold text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>כמות לא תקינה</h6>
+        <ul class="list-unstyled mb-4 small">
+          {% for r in results.invalid %}
+          <li class="text-danger"><i class="bi bi-x me-1"></i><span class="font-monospace">{{ r.id }}</span> — {{ r.reason }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+        <!-- Skipped -->
+        {% if results.skipped %}
+        <h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-skip-forward me-1"></i>דולגו</h6>
+        <ul class="list-unstyled small">
+          {% for s in results.skipped %}
+          <li class="text-muted">{{ s }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var fileInput = document.getElementById('csv_file');
+  var fileNameEl = document.getElementById('fileName');
+  var submitBtn = document.getElementById('submitBtn');
+  var dropZone = document.getElementById('dropZone');
+
+  fileInput.addEventListener('change', function () {
+    if (this.files.length) {
+      fileNameEl.textContent = this.files[0].name;
+      submitBtn.disabled = false;
+      dropZone.style.borderColor = '#198754';
+    } else {
+      fileNameEl.textContent = 'CSV בלבד';
+      submitBtn.disabled = true;
+      dropZone.style.borderColor = '';
+    }
+  });
+
+  ['dragover', 'dragenter'].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) {
+      e.preventDefault();
+      dropZone.style.borderColor = '#0d6efd';
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    dropZone.addEventListener(ev, function (e) {
+      e.preventDefault();
+      if (ev === 'drop' && e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+      } else {
+        dropZone.style.borderColor = '';
+      }
+    });
+  });
+</script>
+{% endblock %}

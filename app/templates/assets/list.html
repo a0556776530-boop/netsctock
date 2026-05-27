@@ -105,6 +105,11 @@
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#newCategoryModal">
           <i class="bi bi-tag me-1"></i>{{ t.new_category_btn }}
         </button>
+        {% if current_user.can_edit %}
+        <a href="{{ url_for('assets.import_qty') }}" class="btn btn-outline-success btn-sm">
+          <i class="bi bi-file-earmark-arrow-up me-1"></i>עדכון מלאי CSV
+        </a>
+        {% endif %}
         <a href="{{ url_for('assets.new_asset') }}" class="btn btn-primary btn-sm">
           <i class="bi bi-plus-lg me-1"></i>{{ t.register_asset_btn }}
         </a>
