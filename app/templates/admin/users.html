@@ -16,7 +16,6 @@
       <thead class="table-light">
         <tr>
           <th>{{ t.col_name }}</th>
-          <th>{{ t.col_username }}</th>
           <th>{{ t.col_role }}</th>
           <th class="text-center">{{ t.col_assigned_assets }}</th>
           <th class="text-center">{{ t.col_open_tasks_hdr }}</th>
@@ -33,7 +32,6 @@
             <span class="badge bg-secondary ms-1 small">{{ t.you_badge }}</span>
             {% endif %}
           </td>
-          <td class="small text-muted">@{{ user.username }}</td>
           <td>
             <div class="d-flex align-items-center gap-2">
               {% if user.role == 'admin' %}

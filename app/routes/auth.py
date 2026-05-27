@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, g
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Length
+from wtforms import PasswordField, BooleanField, SubmitField
+from wtforms.validators import DataRequired
 
 from app import bcrypt
 from app.models.user import User
@@ -12,7 +12,6 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(max=150)])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember me')
     submit   = SubmitField('Sign In')
@@ -20,7 +19,7 @@ class LoginForm(FlaskForm):
 
 class ChangePasswordForm(FlaskForm):
     current_password = PasswordField('Current Password', validators=[DataRequired()])
-    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8)])
+    new_password     = PasswordField('New Password',     validators=[DataRequired()])
     submit           = SubmitField('Save Password')
 
 
@@ -28,18 +27,21 @@ class ChangePasswordForm(FlaskForm):
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
-    t = getattr(g, 't', {})
+    t    = getattr(g, 't', {})
     form = LoginForm()
-    form.username.label.text = t.get('col_username', 'Username')
-    localize_form(form, t, submit_key='form_sign_in')
+    localize_form(form, t, submit_key='login_submit')
     if form.validate_on_submit():
-        user = User.objects(username=form.username.data.strip()).first()
-        if user and bcrypt.check_password_hash(user.password_hash, form.password.data):
-            login_user(user, remember=form.remember.data)
+        matched = None
+        for u in User.objects.all():
+            if bcrypt.check_password_hash(u.password_hash, form.password.data):
+                matched = u
+                break
+        if matched:
+            login_user(matched, remember=form.remember.data)
             next_page = request.args.get('next')
-            flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=user.name), 'success')
+            flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=matched.name), 'success')
             return redirect(next_page or url_for('main.dashboard'))
-        flash(t.get('flash_login_failed', 'Incorrect username or password.'), 'danger')
+        flash(t.get('flash_login_failed', 'Incorrect password.'), 'danger')
     return render_template('auth/login.html', form=form)
 
 
@@ -55,7 +57,7 @@ def logout():
 @auth_bp.route('/change-password', methods=['GET', 'POST'])
 @login_required
 def change_password():
-    t = getattr(g, 't', {})
+    t    = getattr(g, 't', {})
     form = ChangePasswordForm()
     localize_form(form, t, submit_key='form_save_password')
     if form.validate_on_submit():

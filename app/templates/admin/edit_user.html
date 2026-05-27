@@ -7,7 +7,6 @@
   <div class="col-md-6 col-lg-5">
     <div class="card border-0 shadow-sm">
 
-      <!-- Profile header -->
       <div class="card-body text-center pt-4 pb-3 border-bottom">
         <div class="role-avatar mx-auto mb-3
           {% if user.role == 'admin' %}role-admin{% elif user.role == 'technician' %}role-tech{% else %}role-viewer{% endif %}"
@@ -15,15 +14,13 @@
           <i class="bi {% if user.role == 'admin' %}bi-crown-fill{% elif user.role == 'technician' %}bi-cpu-fill{% else %}bi-eye-fill{% endif %}"
              id="headerIcon"></i>
         </div>
-        <h5 class="mb-0 fw-bold">{{ user.name }}</h5>
-        <span class="text-muted small">@{{ user.username }}</span>
+        <h5 class="mb-0 fw-bold" id="headerName">{{ user.name }}</h5>
       </div>
 
       <div class="card-body px-4 pb-4">
-        <form method="POST" novalidate id="editForm">
+        <form method="POST" novalidate>
           {{ form.hidden_tag() }}
 
-          <!-- Name -->
           <div class="mb-3">
             <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_name }}</label>
             <div class="input-group">
@@ -33,18 +30,6 @@
             {% for e in form.name.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
           </div>
 
-          <!-- Username -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_username }}</label>
-            <div class="input-group">
-              <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-at"></i></span>
-              {{ form.username(class="form-control border-start-0" + (" is-invalid" if form.username.errors else ""),
-                               id="usernameField", style="border-radius:0 6px 6px 0;") }}
-            </div>
-            {% for e in form.username.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
-          </div>
-
-          <!-- Role -->
           <div class="mb-3">
             <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_role }}</label>
             <div class="d-flex align-items-center gap-2">
@@ -70,7 +55,7 @@
             {% for e in form.new_password.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
           </div>
 
-          <!-- Current password gate (slides in) -->
+          <!-- Current password gate -->
           <div id="currentPwGate" style="overflow:hidden; max-height:0; transition:max-height .35s ease, opacity .3s ease; opacity:0;">
             <div class="rounded-3 p-3 mb-3" style="background:rgba(59,130,246,.06); border:1px solid rgba(59,130,246,.18);">
               <div class="d-flex align-items-center gap-2 mb-2">
@@ -81,8 +66,7 @@
               <div class="input-group">
                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-key"></i></span>
                 {{ form.current_password(class="form-control border-start-0 border-end-0",
-                                         id="currentPwField", autocomplete="current-password",
-                                         style="border-radius:0;") }}
+                                         id="currentPwField", autocomplete="current-password", style="border-radius:0;") }}
                 <button type="button" class="input-group-text bg-white border-start-0" id="curPwToggle" tabindex="-1" style="cursor:pointer;">
                   <i class="bi bi-eye text-muted" id="curPwIcon"></i>
                 </button>
@@ -96,7 +80,6 @@
           </div>
         </form>
       </div>
-
     </div>
   </div>
 </div>
@@ -104,9 +87,6 @@
 
 {% block scripts %}
 <script>
-var _origUsername = {{ user.username | tojson }};
-
-// ── Role avatar ──────────────────────────────────────────────────
 var _roles = {
   admin:      { cls: 'role-admin',  icon: 'bi-crown-fill' },
   technician: { cls: 'role-tech',   icon: 'bi-cpu-fill'   },
@@ -126,49 +106,33 @@ function applyRole(val) {
 var roleSel = document.getElementById('roleSelect');
 if (roleSel) roleSel.addEventListener('change', function(){ applyRole(this.value); });
 
-// ── Password eye toggles ─────────────────────────────────────────
 function makeToggle(btnId, fldId, icoId) {
-  var btn = document.getElementById(btnId);
-  var fld = document.getElementById(fldId);
-  var ico = document.getElementById(icoId);
-  if (btn && fld) {
-    btn.addEventListener('click', function() {
-      var show = fld.type === 'password';
-      fld.type = show ? 'text' : 'password';
-      ico.className = 'bi ' + (show ? 'bi-eye-slash' : 'bi-eye') + ' text-muted';
-    });
-  }
+  var btn = document.getElementById(btnId), fld = document.getElementById(fldId), ico = document.getElementById(icoId);
+  if (btn && fld) btn.addEventListener('click', function() {
+    var show = fld.type === 'password';
+    fld.type = show ? 'text' : 'password';
+    ico.className = 'bi ' + (show ? 'bi-eye-slash' : 'bi-eye') + ' text-muted';
+  });
 }
 makeToggle('newPwToggle', 'newPwField', 'newPwIcon');
 makeToggle('curPwToggle', 'currentPwField', 'curPwIcon');
 
-// ── Current password gate ────────────────────────────────────────
-var gate      = document.getElementById('currentPwGate');
-var curPwFld  = document.getElementById('currentPwField');
-var newPwFld  = document.getElementById('newPwField');
-var userFld   = document.getElementById('usernameField');
+var gate = document.getElementById('currentPwGate');
+var newPwFld = document.getElementById('newPwField');
+var curPwFld = document.getElementById('currentPwField');
 var _gateOpen = false;
 
 function checkGate() {
-  var needsGate = (userFld && userFld.value.trim() !== _origUsername) ||
-                  (newPwFld && newPwFld.value.length > 0);
-  if (needsGate && !_gateOpen) {
-    gate.style.maxHeight = '200px';
-    gate.style.opacity   = '1';
-    _gateOpen = true;
-  } else if (!needsGate && _gateOpen) {
-    gate.style.maxHeight = '0';
-    gate.style.opacity   = '0';
-    if (curPwFld) curPwFld.value = '';
-    _gateOpen = false;
+  var need = newPwFld && newPwFld.value.length > 0;
+  if (need && !_gateOpen) {
+    gate.style.maxHeight = '200px'; gate.style.opacity = '1'; _gateOpen = true;
+  } else if (!need && _gateOpen) {
+    gate.style.maxHeight = '0'; gate.style.opacity = '0';
+    if (curPwFld) curPwFld.value = ''; _gateOpen = false;
   }
 }
-
-if (userFld) userFld.addEventListener('input', checkGate);
 if (newPwFld) newPwFld.addEventListener('input', checkGate);
-
-// Open gate immediately if server returned an error (fields already filled)
-{% if form.current_password.errors or (form.username.data and form.username.data != user.username) or form.new_password.data %}
+{% if form.new_password.data or form.current_password.errors %}
 if (gate) { gate.style.maxHeight='200px'; gate.style.opacity='1'; _gateOpen=true; }
 {% endif %}
 </script>
