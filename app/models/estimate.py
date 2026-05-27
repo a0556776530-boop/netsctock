@@ -31,6 +31,15 @@ class Estimate(me.Document):
     items = me.EmbeddedDocumentListField(EstimateItem)
 
     @property
+    def total_usd(self):
+        return sum((item.unit_price_usd or 0) * item.quantity for item in self.items)
+
+    @property
+    def formatted_total_usd(self):
+        t = self.total_usd
+        return '${:,.2f}'.format(t) if t else '—'
+
+    @property
     def formatted_total(self):
         if self.total_nis is None:
             return '—'

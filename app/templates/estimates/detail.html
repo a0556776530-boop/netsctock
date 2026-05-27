@@ -116,6 +116,9 @@
           <div class="fw-bold font-monospace" style="font-size:1.5rem; color:#1a5fa8;">
             {{ estimate.formatted_total }}
           </div>
+          <div class="font-monospace text-muted mt-1" style="font-size:.95rem;">
+            {{ estimate.formatted_total_usd }}
+          </div>
         </div>
       </div>
     </div>
@@ -171,7 +174,8 @@
             {% if estimate.items %}
             <tfoot class="fw-bold border-top border-2">
               <tr>
-                <td colspan="6" class="text-end">{{ t.col_total_cost }}</td>
+                <td colspan="5" class="text-end">{{ t.col_total_cost }}</td>
+                <td class="text-end font-monospace text-muted">{{ estimate.formatted_total_usd }}</td>
                 <td class="text-end font-monospace text-success">{{ estimate.formatted_total }}</td>
               </tr>
             </tfoot>
