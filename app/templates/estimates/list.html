@@ -51,7 +51,7 @@
             {{ e.valid_until.strftime('%d %b %Y') }}
             {% if e.valid_until < now.date() %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small ms-1">{{ t.badge_expired }}</span>{% endif %}
           </td>
-          <td class="text-end font-monospace text-muted">{{ e.formatted_total_usd }}</td>
+          <td class="text-end font-monospace fw-semibold text-success">{{ e.formatted_total_usd }}</td>
           <td class="text-end font-monospace fw-semibold text-success">{{ e.formatted_total }}</td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.action_view }}">
