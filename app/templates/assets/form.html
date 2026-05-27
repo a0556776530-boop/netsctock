@@ -89,9 +89,9 @@
               {{ form.price_nis.label(class="form-label fw-semibold") }}
               <div class="input-group">
                 <span class="input-group-text">₪</span>
-                {{ form.price_nis(class="form-control bg-secondary bg-opacity-10 text-muted",
-                                   type="text", inputmode="numeric",
-                                   id="priceNis", placeholder="auto", readonly=true) }}
+                <div class="form-control bg-secondary bg-opacity-10 text-muted"
+                     id="priceNisDisplay" style="cursor:default;">—</div>
+                {{ form.price_nis(type="hidden", id="priceNis") }}
               </div>
               <div class="form-text text-muted small">
                 {{ t.hint_price_formula }}
@@ -157,9 +157,10 @@
   const VAT      = 1.18;
   let   factor   = 1.7;
 
-  const factorLabel = document.getElementById('factorLabel');
-  const usdInput    = document.getElementById('priceUsd');
-  const nisInput    = document.getElementById('priceNis');
+  const factorLabel   = document.getElementById('factorLabel');
+  const usdInput      = document.getElementById('priceUsd');
+  const nisInput      = document.getElementById('priceNis');       // hidden field (submitted)
+  const nisDisplay    = document.getElementById('priceNisDisplay'); // visible display
 
   fetch('/api/settings')
     .then(r => r.json())
@@ -173,9 +174,16 @@
 
   function recalcNis() {
     const usd = parseFloat(usdInput ? usdInput.value : '') || 0;
-    if (!usd) { if (nisInput) nisInput.value = ''; return; }
+    if (!usd) {
+      const stored = nisInput ? parseFloat(nisInput.value) : 0;
+      if (nisDisplay) nisDisplay.textContent = stored
+        ? stored.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+        : '—';
+      return;
+    }
     const nis = Math.round(usd * USD_BASE * BINA * factor * VAT * 100) / 100;
-    if (nisInput) nisInput.value = nis.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (nisInput)   nisInput.value = Math.round(nis);  // plain integer — no commas
+    if (nisDisplay) nisDisplay.textContent = nis.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   }
 
   if (usdInput) usdInput.addEventListener('input', recalcNis);
