@@ -257,7 +257,7 @@
             {% set committed = commitments.get(asset.id|string, 0) %}
             {% set stock = asset.quantity if asset.quantity is not none else 0 %}
             {% set after = stock - committed %}
-            {% set is_low = asset.quantity is not none and asset.min_threshold is not none and asset.min_threshold > 0 and asset.quantity <= asset.min_threshold %}
+            {% set is_low = asset.quantity is not none and ((asset.min_threshold is not none and asset.min_threshold > 0 and after <= asset.min_threshold) or after < 0) %}
             <tr data-asset-row="1"
                 data-group="{{ group_label }}"
                 data-q="{{ ((asset.component_id or '') ~ ' ' ~ asset.serial_number ~ ' ' ~ (asset.model or '') ~ ' ' ~ (asset.manufacturer or '') ~ ' ' ~ (asset.barcode or '')) | lower }}"
@@ -296,7 +296,13 @@
 
               <!-- 6. After Commitments -->
               <td class="text-center small">
-                {% if asset.quantity is not none %}{{ after }}{% else %}<span class="text-muted">—</span>{% endif %}
+                {% if asset.quantity is not none %}
+                  {% if after < 0 %}
+                  <span class="fw-bold" style="color:#dc2626;">{{ after }}</span>
+                  {% else %}
+                  {{ after }}
+                  {% endif %}
+                {% else %}<span class="text-muted">—</span>{% endif %}
               </td>
 
               <!-- 7. Red Line Alert -->
