@@ -14,11 +14,7 @@
             {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="{{ t.ph_category_name }}") }}
             {% for e in form.name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
           </div>
-          <div class="mb-3">
-            {{ form.category.label(class="form-label fw-semibold") }}
-            {{ form.category(class="form-control", placeholder="{{ t.ph_category_group }}") }}
-            <div class="form-text">{{ t.hint_category_group }}</div>
-          </div>
+          {{ form.category(type="hidden") }}
           <hr class="my-4">
           <div class="d-flex gap-2">
             {{ form.submit(class="btn btn-primary") }}

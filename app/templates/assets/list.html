@@ -395,13 +395,8 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">{{ t.form_category_name }} <span class="text-danger">*</span></label>
             <input type="text" name="name" class="form-control" placeholder="{{ t.ph_category_name }}" required maxlength="100" autofocus>
-            <div class="form-text">{{ t.hint_category_name }}</div>
           </div>
-          <div class="mb-1">
-            <label class="form-label fw-semibold">{{ t.form_category_group }} <span class="text-muted fw-normal">(optional)</span></label>
-            <input type="text" name="category" class="form-control" placeholder="{{ t.ph_category_group }}" maxlength="100">
-            <div class="form-text">{{ t.hint_category_group }}</div>
-          </div>
+          <input type="hidden" name="category" value="">
         </div>
         <div class="modal-footer border-0 pt-0">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ t.cancel }}</button>
