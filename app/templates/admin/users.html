@@ -53,14 +53,17 @@
           <td class="text-center small">{{ user_stats[user.id].tasks }}</td>
           <td class="small text-muted">{{ user.created_at.strftime('%d %b %Y') if user.created_at else '—' }}</td>
           <td class="text-end text-nowrap">
-            <a href="{{ url_for('admin.edit_user', id=user.id) }}" class="btn btn-sm btn-outline-secondary">
+            <a href="{{ url_for('admin.edit_user', id=user.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.btn_edit }}">
               <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{{ url_for('admin.reset_password', id=user.id) }}" class="btn btn-sm btn-outline-warning" title="{{ t.btn_reset_password or 'Reset Password' }}">
+              <i class="bi bi-key"></i>
             </a>
             {% if user.id != current_user.id %}
             <form method="POST" action="{{ url_for('admin.delete_user', id=user.id) }}" class="d-inline"
                   onsubmit="return confirm('{{ t.confirm_delete_user.format(name=user.name) }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ t.action_delete }}">
                 <i class="bi bi-trash"></i>
               </button>
             </form>

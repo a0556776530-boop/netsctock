@@ -168,6 +168,8 @@ TRANSLATIONS = {
         'role_super_admin': 'Super Admin',
         'flash_last_super_admin': 'Cannot change — this is the last Super Admin.',
         'label_change_password': 'Change Password',
+        'btn_reset_password': 'Reset Password',
+        'flash_password_reset': 'Password for {name} has been reset.',
         # Asset detail
         'asset_details_title': 'Asset Details',
         'btn_edit': 'Edit',
@@ -595,6 +597,8 @@ TRANSLATIONS = {
         'role_super_admin': 'סופר אדמין',
         'flash_last_super_admin': 'לא ניתן לשנות — זהו הסופר אדמין האחרון.',
         'label_change_password': 'שינוי סיסמה',
+        'btn_reset_password': 'איפוס סיסמה',
+        'flash_password_reset': 'הסיסמה של {name} אופסה.',
         # Asset detail
         'asset_details_title': 'פרטי ציוד',
         'btn_edit': 'עריכה',

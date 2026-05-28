@@ -51,6 +51,11 @@ class ChangeOwnPasswordForm(FlaskForm):
     submit           = SubmitField('Save')
 
 
+class ResetPasswordForm(FlaskForm):
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=8)])
+    submit       = SubmitField('Reset Password')
+
+
 def _role_choices(t):
     return [
         ('super_admin', t.get('role_super_admin', 'Super Admin')),
@@ -175,6 +180,21 @@ def delete_user(id):
     user.delete()
     flash(t.get('flash_user_deleted', 'User {name} deleted.').format(name=name), 'warning')
     return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/users/<id>/reset-password', methods=['GET', 'POST'])
+@login_required
+def reset_password(id):
+    _super_admin_required()
+    t = getattr(g, 't', {})
+    user = get_or_404(User, id)
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+        user.save()
+        flash(t.get('flash_password_reset', 'Password for {name} has been reset.').format(name=user.name), 'success')
+        return redirect(url_for('admin.users'))
+    return render_template('admin/reset_password.html', form=form, user=user)
 
 
 # ── Settings ─────────────────────────────────────────────────────────────────
