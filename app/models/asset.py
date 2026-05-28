@@ -55,6 +55,24 @@ class Asset(me.Document):
     def status_color(self):
         return self.STATUS_COLORS.get(self.status, 'secondary')
 
+    def _safe_ref(self, field):
+        try:
+            return getattr(self, field)
+        except Exception:
+            return None
+
+    @property
+    def safe_assignee(self):
+        return self._safe_ref('assignee')
+
+    @property
+    def safe_current_site(self):
+        return self._safe_ref('current_site')
+
+    @property
+    def safe_asset_type(self):
+        return self._safe_ref('asset_type')
+
 
 class AssetEvent(me.Document):
     meta = {'collection': 'asset_events', 'ordering': ['-event_date']}
@@ -83,6 +101,31 @@ class AssetEvent(me.Document):
 
     def __repr__(self):
         return f'<AssetEvent {self.event_type}>'
+
+    def _safe_ref(self, field):
+        try:
+            return getattr(self, field)
+        except Exception:
+            return None
+
+    @property
+    def performer_name(self):
+        try:
+            return self.performed_by_user.name if self.performed_by_user else '—'
+        except Exception:
+            return '—'
+
+    @property
+    def safe_from_site(self):
+        return self._safe_ref('from_site')
+
+    @property
+    def safe_to_site(self):
+        return self._safe_ref('to_site')
+
+    @property
+    def safe_asset(self):
+        return self._safe_ref('asset')
 
     @property
     def event_label(self):

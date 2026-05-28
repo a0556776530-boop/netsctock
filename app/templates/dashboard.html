@@ -127,7 +127,7 @@
                 <a href="{{ url_for('assets.detail', id=event.asset.id) }}" class="fw-semibold font-monospace text-decoration-none">{{ event.asset.serial_number }}</a>
                 — {{ event.event_label }}
               </div>
-              <div class="text-muted x-small">{{ event.performed_by_user.name }} · {{ event.event_date.strftime('%d %b %H:%M') }}</div>
+              <div class="text-muted x-small">{{ event.performer_name }} · {{ event.event_date.strftime('%d %b %H:%M') }}</div>
             </div>
           </li>
           {% endfor %}

@@ -35,7 +35,7 @@ def _find_free_port(start=5000, end=5100):
     for port in range(start, end):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.bind(('127.0.0.1', port))
+                s.bind(('0.0.0.0', port))
                 return port
             except OSError:
                 continue
@@ -103,12 +103,14 @@ def main():
     _first_run_setup(flask_app)
 
     port = _find_free_port()
+    local_ip = socket.gethostbyname(socket.gethostname())
     url  = f'http://127.0.0.1:{port}'
     print(f'[Inventory] Starting server on {url}')
+    print(f'[Inventory] Network access:  http://{local_ip}:{port}')
     print('[Inventory] Press Ctrl+C to quit.')
     _open_browser(url)
 
-    flask_app.run(host='127.0.0.1', port=port, debug=False, threaded=True)
+    flask_app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
 
 
 if __name__ == '__main__':

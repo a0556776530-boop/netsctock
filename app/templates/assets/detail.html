@@ -64,11 +64,11 @@
           </tr>
           <tr>
             <td class="text-muted fw-semibold">{{ t.field_current_site }}</td>
-            <td>{{ asset.current_site.name if asset.current_site else '—' }}</td>
+            <td>{{ asset.safe_current_site.name if asset.safe_current_site else '—' }}</td>
           </tr>
           <tr>
             <td class="text-muted fw-semibold">{{ t.field_assigned_to }}</td>
-            <td>{{ asset.assignee.name if asset.assignee else '—' }}</td>
+            <td>{{ asset.safe_assignee.name if asset.safe_assignee else '—' }}</td>
           </tr>
           <tr>
             <td class="text-muted fw-semibold">{{ t.field_registered }}</td>
@@ -158,8 +158,8 @@
                   <span class="fw-semibold small">{{ event.event_label }}</span>
                   {% if event.from_site or event.to_site %}
                   <span class="text-muted small">
-                    {% if event.from_site %}{{ t.event_from_prefix }}{{ event.from_site.name }}{% endif %}
-                    {% if event.to_site %} {{ t.event_to_arrow }} {{ event.to_site.name }}{% endif %}
+                    {% if event.safe_from_site %}{{ t.event_from_prefix }}{{ event.safe_from_site.name }}{% endif %}
+                    {% if event.safe_to_site %} {{ t.event_to_arrow }} {{ event.safe_to_site.name }}{% endif %}
                   </span>
                   {% endif %}
                 </div>
@@ -167,7 +167,7 @@
                   <span class="text-muted x-small text-nowrap">{{ event.event_date.strftime('%d %b %Y %H:%M') }}</span>
                 </div>
               </div>
-              <div class="text-muted x-small mt-1">{{ t.event_by_prefix }} {{ event.performed_by_user.name }}</div>
+              <div class="text-muted x-small mt-1">{{ t.event_by_prefix }} {{ event.performer_name }}</div>
               {% if event.notes %}
               <div class="small mt-1 text-secondary">{{ event.notes }}</div>
               {% endif %}

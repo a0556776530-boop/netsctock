@@ -158,16 +158,17 @@
             <tbody>
               {% for item in estimate.items %}
               {% set unit_ils = (item.unit_price_usd|float * estimate.usd_rate|float * (estimate.maintenance_factor or 1.7) * 1.18) %}
+              {% set a = item.safe_asset %}
               <tr>
                 <td class="small font-monospace fw-semibold">
-                  {% if item.asset %}
-                  <a href="{{ url_for('assets.detail', id=item.asset.id) }}" class="text-decoration-none">
-                    {{ item.asset.serial_number }}
+                  {% if a %}
+                  <a href="{{ url_for('assets.detail', id=a.id) }}" class="text-decoration-none">
+                    {{ a.serial_number }}
                   </a>
                   {% else %}—{% endif %}
                 </td>
-                <td class="small">{{ item.asset.model if item.asset else '—' }}</td>
-                <td class="x-small text-muted">{{ item.asset.asset_type.name if item.asset and item.asset.asset_type else '—' }}</td>
+                <td class="small">{{ a.model if a else '—' }}</td>
+                <td class="x-small text-muted">{{ a.safe_asset_type.name if a and a.safe_asset_type else '—' }}</td>
                 <td class="text-center small">{{ item.quantity }}</td>
                 <td class="text-end small font-monospace">${{ '{:,.2f}'.format(item.unit_price_usd|float) }}</td>
                 <td class="text-end small font-monospace">{{ '{:,.2f}'.format(unit_ils) }} ₪</td>

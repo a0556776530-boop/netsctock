@@ -7,6 +7,13 @@ class EstimateItem(me.EmbeddedDocument):
     quantity       = me.IntField(default=1)
     unit_price_usd = me.FloatField()
 
+    @property
+    def safe_asset(self):
+        try:
+            return self.asset
+        except Exception:
+            return None
+
     def line_total_nis(self, usd_rate, maintenance_factor=1.7):
         if not self.unit_price_usd:
             return 0.0
