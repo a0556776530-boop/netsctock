@@ -26,7 +26,7 @@ class PurchaseItem(me.EmbeddedDocument):
 
 
 class Purchase(me.Document):
-    meta = {'collection': 'purchases', 'ordering': ['-created_at']}
+    meta = {'collection': 'purchases', 'ordering': ['-created_at'], 'strict': False}
 
     name            = me.StringField(required=True, max_length=200)
     bom_date        = me.DateTimeField()
