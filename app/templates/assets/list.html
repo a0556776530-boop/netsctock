@@ -196,7 +196,7 @@
               <!-- 3. Description -->
               <th style="min-width:200px;">{{ t.col_feature }}</th>
 
-              <!-- 4. Stock Qty -->
+              <!-- 4. Stock Qty (available = stock − pending commitments) -->
               <th class="text-center">
                 <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&sort=quantity&order={{ 'desc' if sort == 'quantity' and order == 'asc' else 'asc' }}"
                    class="text-decoration-none text-white d-flex align-items-center justify-content-center gap-1">
@@ -205,15 +205,7 @@
                 </a>
               </th>
 
-              <!-- 5. Commitments -->
-              <th class="text-center" title="{{ t.col_commitments_tip }}">
-                {{ t.col_commitments }}
-              </th>
-
-              <!-- 6. After Commitments -->
-              <th class="text-center">{{ t.col_after_commitments }}</th>
-
-              <!-- 7. Red Line Alert -->
+              <!-- 5. Red Line Alert -->
               <th class="text-center">{{ t.col_alert }}</th>
 
               <!-- 8. Final Price (₪) -->
@@ -247,7 +239,7 @@
           <tbody>
             {% for group_label, group_assets in grouped_assets %}
             <tr class="table-light" data-group-row="{{ group_label }}">
-              <td colspan="10" class="py-2 px-3 border-top border-2">
+              <td colspan="8" class="py-2 px-3 border-top border-2">
                 <span class="fw-semibold small">{{ group_label }}</span>
                 <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2" data-group-count="{{ group_label }}">{{ group_assets | length }}</span>
               </td>
@@ -257,7 +249,7 @@
             {% set committed = commitments.get(asset.id, 0) %}
             {% set stock = asset.quantity if asset.quantity is not none else 0 %}
             {% set after = stock - committed %}
-            {% set is_low = asset.quantity is not none and asset.min_threshold is not none and asset.min_threshold > 0 and asset.quantity <= asset.min_threshold %}
+            {% set is_low = asset.quantity is not none and asset.min_threshold is not none and asset.min_threshold > 0 and after <= asset.min_threshold %}
             <tr data-asset-row="1"
                 data-group="{{ group_label }}"
                 data-q="{{ ((asset.component_id or '') ~ ' ' ~ asset.serial_number ~ ' ' ~ (asset.model or '') ~ ' ' ~ (asset.manufacturer or '') ~ ' ' ~ (asset.barcode or '')) | lower }}"
@@ -284,22 +276,21 @@
                 <div class="text-muted x-small" data-hl>{{ asset.manufacturer or '' }}</div>
               </td>
 
-              <!-- 4. Stock Qty -->
+              <!-- 4. Stock Qty = available after pending commitments -->
               <td class="text-center">
-                <span class="small fw-semibold" style="color:#6366f1;">{{ asset.quantity if asset.quantity is not none else '—' }}</span>
+                {% if asset.quantity is not none %}
+                  <span class="small fw-semibold" style="color:#6366f1;">{{ after }}</span>
+                  {% if committed > 0 %}
+                  <div class="x-small text-muted" title="{{ t.col_commitments_tip }}">
+                    <i class="bi bi-lock-fill" style="font-size:.6rem;"></i> {{ committed }}
+                  </div>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
               </td>
 
-              <!-- 5. Commitments -->
-              <td class="text-center small">
-                {{ committed }}
-              </td>
-
-              <!-- 6. After Commitments -->
-              <td class="text-center small">
-                {% if asset.quantity is not none %}{{ after }}{% else %}<span class="text-muted">—</span>{% endif %}
-              </td>
-
-              <!-- 7. Red Line Alert -->
+              <!-- 5. Red Line Alert -->
               <td class="text-center">
                 {% if is_low %}
                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small">
@@ -360,14 +351,14 @@
 
             {% else %}
             <tr id="serverEmptyRow">
-              <td colspan="10" class="text-center text-muted py-5">
+              <td colspan="8" class="text-center text-muted py-5">
                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                 {{ t.no_assets_found }} <a href="{{ url_for('assets.new_asset') }}">{{ t.register_one_link }}</a>
               </td>
             </tr>
             {% endfor %}
             <tr id="noResultsRow" style="display:none">
-              <td colspan="10" class="text-center text-muted py-5">
+              <td colspan="8" class="text-center text-muted py-5">
                 <i class="bi bi-search fs-3 d-block mb-2 opacity-50"></i>
                 <span>{{ t.no_assets_found }}</span>
               </td>
