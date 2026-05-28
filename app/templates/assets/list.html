@@ -193,8 +193,6 @@
                 </a>
               </th>
 
-              <!-- 3. Description -->
-              <th style="min-width:200px;">{{ t.col_feature }}</th>
 
               <!-- 4. Stock Qty -->
               <th class="text-center">
@@ -247,7 +245,7 @@
           <tbody>
             {% for group_label, group_assets in grouped_assets %}
             <tr class="table-light" data-group-row="{{ group_label }}">
-              <td colspan="10" class="py-2 px-3 border-top border-2">
+              <td colspan="9" class="py-2 px-3 border-top border-2">
                 <span class="fw-semibold small">{{ group_label }}</span>
                 <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2" data-group-count="{{ group_label }}">{{ group_assets | length }}</span>
               </td>
@@ -278,11 +276,6 @@
                 {% endif %}
               </td>
 
-              <!-- 3. Description -->
-              <td style="min-width:200px;">
-                <div class="small fw-semibold" data-hl>{{ asset.model or '—' }}</div>
-                <div class="text-muted x-small" data-hl>{{ asset.manufacturer or '' }}</div>
-              </td>
 
               <!-- 4. Stock Qty -->
               <td class="text-center">
@@ -368,14 +361,14 @@
 
             {% else %}
             <tr id="serverEmptyRow">
-              <td colspan="10" class="text-center text-muted py-5">
+              <td colspan="9" class="text-center text-muted py-5">
                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                 {{ t.no_assets_found }} <a href="{{ url_for('assets.new_asset') }}">{{ t.register_one_link }}</a>
               </td>
             </tr>
             {% endfor %}
             <tr id="noResultsRow" style="display:none">
-              <td colspan="10" class="text-center text-muted py-5">
+              <td colspan="9" class="text-center text-muted py-5">
                 <i class="bi bi-search fs-3 d-block mb-2 opacity-50"></i>
                 <span>{{ t.no_assets_found }}</span>
               </td>
