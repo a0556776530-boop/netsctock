@@ -43,10 +43,9 @@ def _parse_date(val):
 
 def _parse_items(form, assets_by_id):
     items = []
-    ids    = form.getlist('item_asset_id')
-    qtys   = form.getlist('item_quantity')
-    prices = form.getlist('item_unit_price')
-    for aid, qty, price in zip(ids, qtys, prices):
+    ids  = form.getlist('item_asset_id')
+    qtys = form.getlist('item_quantity')
+    for aid, qty in zip(ids, qtys):
         if not aid or not qty:
             continue
         asset = assets_by_id.get(aid)
@@ -54,12 +53,11 @@ def _parse_items(form, assets_by_id):
             continue
         try:
             q = int(qty)
-            p = float(price.replace(',', '')) if price else 0.0
         except ValueError:
             continue
         if q < 1:
             continue
-        items.append(PurchaseItem(asset=asset, quantity=q, unit_price=p))
+        items.append(PurchaseItem(asset=asset, quantity=q))
     return items
 
 

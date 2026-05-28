@@ -109,8 +109,6 @@
             <tr>
               <th>{{ t.purchase_item_asset }}</th>
               <th class="text-center">{{ t.purchase_item_qty }}</th>
-              <th class="text-center">{{ t.purchase_item_price }}</th>
-              <th class="text-center">{{ t.purchase_item_subtotal }}</th>
             </tr>
           </thead>
           <tbody>
@@ -118,8 +116,8 @@
             <tr>
               <td class="small">
                 {% if item.asset %}
-                <a href="{{ url_for('assets.detail', id=item.asset.id) }}" class="text-decoration-none font-monospace">
-                  {{ item.asset.component_id or '' }}{% if item.asset.component_id %} — {% endif %}{{ item.asset.serial_number }}
+                <a href="{{ url_for('assets.detail', id=item.asset.id) }}" class="text-decoration-none fw-semibold">
+                  {{ item.asset.serial_number }}
                 </a>
                 {% if item.asset.model %}
                 <div class="text-muted x-small">{{ item.asset.model }}</div>
@@ -129,25 +127,13 @@
                 {% endif %}
               </td>
               <td class="text-center small fw-semibold">{{ item.quantity }}</td>
-              <td class="text-center small font-monospace">{{ '{:,.2f}'.format(item.unit_price or 0) }}</td>
-              <td class="text-center small font-monospace fw-semibold">
-                {{ '{:,.2f}'.format((item.unit_price or 0) * item.quantity) }}
-              </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="4" class="text-center text-muted py-4">{{ t.purchase_no_items }}</td>
+              <td colspan="2" class="text-center text-muted py-4">{{ t.purchase_no_items }}</td>
             </tr>
             {% endfor %}
           </tbody>
-          {% if purchase.items %}
-          <tfoot class="table-light">
-            <tr>
-              <td colspan="3" class="text-end fw-semibold small">{{ t.purchase_col_total }}</td>
-              <td class="text-center font-monospace fw-bold">{{ '{:,.2f}'.format(purchase.total_price) }}</td>
-            </tr>
-          </tfoot>
-          {% endif %}
         </table>
       </div>
     </div>

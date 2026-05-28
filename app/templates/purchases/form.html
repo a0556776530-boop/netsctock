@@ -20,69 +20,61 @@
     <div class="card-body">
       <div class="row g-3">
 
-        <!-- 1. שם משימה (required) -->
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_name }} <span class="text-danger">*</span></label>
           <input type="text" name="name" class="form-control"
                  value="{{ purchase.name if is_edit else '' }}" required maxlength="200" autofocus>
         </div>
 
-        <!-- 2. תאריך הוצאת BOM -->
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_bom_date }}</label>
           <input type="date" name="bom_date" class="form-control"
                  value="{{ purchase.bom_date.strftime('%Y-%m-%d') if is_edit and purchase.bom_date else '' }}">
         </div>
 
-        <!-- 3. מס' Estimate בינת -->
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_estimate_number }}</label>
           <input type="text" name="estimate_number" class="form-control"
                  value="{{ purchase.estimate_number or '' if is_edit else '' }}" maxlength="200">
         </div>
 
-        <!-- 4. סכום -->
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-3">
           <label class="form-label fw-semibold">{{ t.purchase_col_amount }}</label>
           <input type="text" name="amount" id="amountInput" class="form-control font-monospace"
                  value="{{ '{:,.2f}'.format(purchase.amount) if is_edit and purchase.amount else '' }}"
                  placeholder="0" autocomplete="off" inputmode="decimal">
         </div>
 
-        <!-- 5. מטבע -->
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-3">
           <label class="form-label fw-semibold">{{ t.purchase_col_currency }}</label>
           <select name="currency" class="form-select">
             {% for c in currencies %}
+            {% set ckey = 'purchase_currency_' ~ c.lower().replace(' ', '_') %}
             <option value="{{ c }}" {{ 'selected' if is_edit and purchase.currency == c else '' }}>
-              {{ t['purchase_currency_' ~ c.lower().replace(' ', '_')] if ('purchase_currency_' ~ c.lower().replace(' ', '_')) in t else c }}
+              {{ t[ckey] if ckey in t else c }}
             </option>
             {% endfor %}
           </select>
         </div>
 
-        <!-- 6. מספר EMF -->
         <div class="col-12 col-md-4">
           <label class="form-label fw-semibold">{{ t.purchase_col_emf }}</label>
           <input type="text" name="emf" class="form-control"
                  value="{{ purchase.emf or '' if is_edit else '' }}" maxlength="200">
         </div>
 
-        <!-- 7. מספר דרישה -->
         <div class="col-12 col-md-4">
           <label class="form-label fw-semibold">{{ t.purchase_col_requirement }}</label>
           <input type="text" name="requirement" class="form-control"
                  value="{{ purchase.requirement or '' if is_edit else '' }}" maxlength="200">
         </div>
 
-        <!-- 8. מספר הזמנה -->
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-4">
           <label class="form-label fw-semibold">{{ t.purchase_col_order }}</label>
           <input type="text" name="order" class="form-control"
                  value="{{ purchase.order or '' if is_edit else '' }}" maxlength="200">
         </div>
 
-        <!-- 9. סטטוס -->
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_status }}</label>
           <select name="status" class="form-select">
@@ -95,13 +87,10 @@
           </select>
         </div>
 
-        <!-- קובץ BOM -->
-        <div class="col-12">
+        <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_bom_file }}</label>
           {% if is_edit and purchase.bom_file %}
-          <div class="mb-2 small text-muted">
-            <i class="bi bi-paperclip me-1"></i>{{ purchase.bom_file }}
-          </div>
+          <div class="mb-1 small text-muted"><i class="bi bi-paperclip me-1"></i>{{ purchase.bom_file }}</div>
           {% endif %}
           <input type="file" name="bom_file" class="form-control"
                  accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.png,.jpg">
@@ -111,11 +100,11 @@
     </div>
   </div>
 
-  <!-- ── Items List ──────────────────────────────────────────────────── -->
+  <!-- ── Items (BOM Components from Inventory) ──────────────────────── -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
       <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing:.07em;">
-        <i class="bi bi-list-ul me-1"></i>{{ t.purchase_section_items }}
+        <i class="bi bi-boxes me-1"></i>{{ t.purchase_section_items }}
       </h6>
       <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">
         <i class="bi bi-plus-lg me-1"></i>{{ t.purchase_add_item }}
@@ -123,40 +112,27 @@
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0" id="itemsTable">
+        <table class="table table-sm align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th style="min-width:280px;">{{ t.purchase_item_asset }}</th>
-              <th style="min-width:100px;">{{ t.purchase_item_qty }}</th>
-              <th style="min-width:130px;">{{ t.purchase_item_price }}</th>
-              <th style="min-width:130px;">{{ t.purchase_item_subtotal }}</th>
-              <th></th>
+              <th>{{ t.purchase_item_asset }}</th>
+              <th style="min-width:110px;" class="text-center">{{ t.purchase_item_qty }}</th>
+              <th style="width:40px;"></th>
             </tr>
           </thead>
           <tbody id="itemsBody">
             {% if is_edit and purchase.items %}
               {% for item in purchase.items %}
-              <tr class="item-row">
+              {% set a = item.asset %}
+              <tr class="item-row" data-asset-id="{{ a.id if a else '' }}">
                 <td>
-                  <select name="item_asset_id" class="form-select form-select-sm asset-select" required>
-                    <option value="">— {{ t.purchase_select_asset }} —</option>
-                    {% for a in assets %}
-                    <option value="{{ a.id }}" {{ 'selected' if item.asset and item.asset.id == a.id else '' }}>
-                      {{ a.component_id or '' }}{% if a.component_id %} — {% endif %}{{ a.serial_number }}{% if a.model %} ({{ a.model }}){% endif %}
-                    </option>
-                    {% endfor %}
-                  </select>
+                  <div class="small fw-semibold">{{ a.serial_number if a else '—' }}</div>
+                  {% if a and a.model %}<div class="x-small text-muted">{{ a.model }}</div>{% endif %}
                 </td>
-                <td>
-                  <input type="number" name="item_quantity" class="form-control form-control-sm item-qty"
-                         value="{{ item.quantity }}" min="1" required>
-                </td>
-                <td>
-                  <input type="text" name="item_unit_price" class="form-control form-control-sm item-price font-monospace"
-                         value="{{ '{:,.2f}'.format(item.unit_price or 0) }}" autocomplete="off">
-                </td>
-                <td class="small font-monospace item-subtotal">
-                  {{ '{:,.2f}'.format((item.unit_price or 0) * item.quantity) }}
+                <td class="text-center">
+                  <input type="hidden" name="item_asset_id" value="{{ a.id if a else '' }}">
+                  <input type="number" name="item_quantity" class="form-control form-control-sm text-center"
+                         style="width:80px;margin:auto;" value="{{ item.quantity }}" min="1" required>
                 </td>
                 <td>
                   <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-item">
@@ -173,12 +149,8 @@
         {{ t.purchase_no_items }}
       </div>
     </div>
-    <div class="card-footer bg-transparent d-flex justify-content-end">
-      <span class="small fw-semibold">{{ t.purchase_col_total }}: <span class="font-monospace" id="grandTotal">0.00</span></span>
-    </div>
   </div>
 
-  <!-- ── Actions ────────────────────────────────────────────────────── -->
   <div class="d-flex gap-2 justify-content-end">
     <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
     <button type="submit" class="btn btn-primary">
@@ -188,35 +160,48 @@
 
 </form>
 
-<!-- Row template (hidden) -->
-<template id="itemRowTemplate">
-  <tr class="item-row">
-    <td>
-      <select name="item_asset_id" class="form-select form-select-sm asset-select" required>
-        <option value="">— {{ t.purchase_select_asset }} —</option>
-        {% for a in assets %}
-        <option value="{{ a.id }}">
-          {{ a.component_id or '' }}{% if a.component_id %} — {% endif %}{{ a.serial_number }}{% if a.model %} ({{ a.model }}){% endif %}
-        </option>
-        {% endfor %}
-      </select>
-    </td>
-    <td>
-      <input type="number" name="item_quantity" class="form-control form-control-sm item-qty"
-             value="1" min="1" required>
-    </td>
-    <td>
-      <input type="text" name="item_unit_price" class="form-control form-control-sm item-price font-monospace"
-             value="0" autocomplete="off">
-    </td>
-    <td class="small font-monospace item-subtotal">0.00</td>
-    <td>
-      <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-item">
-        <i class="bi bi-x-circle"></i>
-      </button>
-    </td>
-  </tr>
-</template>
+<!-- ── Asset picker modal ──────────────────────────────────────────── -->
+<div class="modal fade" id="assetPickerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-boxes me-2 text-primary"></i>{{ t.purchase_select_asset }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <input type="text" id="assetSearch" class="form-control mb-3"
+               placeholder="{{ t.search_placeholder }}" autocomplete="off">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm align-middle mb-0">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>{{ t.purchase_item_asset }}</th>
+              </tr>
+            </thead>
+            <tbody id="assetPickerBody">
+              {% for a in assets %}
+              <tr class="asset-option" style="cursor:pointer;"
+                  data-id="{{ a.id }}"
+                  data-component="{{ a.component_id or '' }}"
+                  data-serial="{{ a.serial_number }}"
+                  data-model="{{ a.model or '' }}"
+                  data-qty="{{ a.quantity if a.quantity is not none else '' }}"
+                  data-q="{{ ((a.component_id or '') ~ ' ' ~ a.serial_number ~ ' ' ~ (a.model or '') ~ ' ' ~ (a.manufacturer or '')) | lower }}">
+                <td>
+                  <div class="small fw-semibold">{{ a.serial_number }}</div>
+                  {% if a.model %}<div class="x-small text-muted">{{ a.model }}</div>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 </div>
 </div>
@@ -226,69 +211,94 @@
 <script>
 (function () {
   var body    = document.getElementById('itemsBody');
-  var tmpl    = document.getElementById('itemRowTemplate');
   var noMsg   = document.getElementById('noItemsMsg');
-  var totalEl = document.getElementById('grandTotal');
   var addBtn  = document.getElementById('addItemBtn');
+  var modal   = new bootstrap.Modal(document.getElementById('assetPickerModal'));
+  var search  = document.getElementById('assetSearch');
+  var pickerBody = document.getElementById('assetPickerBody');
 
-  function fmt(n) {
-    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  function parseNum(s) {
-    return parseFloat((s || '').replace(/,/g, '')) || 0;
+  // Track already-added asset IDs
+  function addedIds() {
+    var ids = new Set();
+    body.querySelectorAll('.item-row').forEach(function (r) { ids.add(r.dataset.assetId); });
+    return ids;
   }
 
-  // Amount field comma formatting
+  function syncNoMsg() {
+    noMsg.classList.toggle('d-none', body.querySelectorAll('.item-row').length > 0);
+  }
+
+  function addRow(id, component, serial, model, qty) {
+    var tr = document.createElement('tr');
+    tr.className = 'item-row';
+    tr.dataset.assetId = id;
+    tr.innerHTML =
+      '<td><div class="small fw-semibold">' + serial + '</div>' +
+        (model ? '<div class="x-small text-muted">' + model + '</div>' : '') + '</td>' +
+      '<td class="text-center">' +
+        '<input type="hidden" name="item_asset_id" value="' + id + '">' +
+        '<input type="number" name="item_quantity" class="form-control form-control-sm text-center" ' +
+               'style="width:80px;margin:auto;" value="1" min="1" required>' +
+      '</td>' +
+      '<td><button type="button" class="btn btn-sm btn-link text-danger p-0 remove-item">' +
+        '<i class="bi bi-x-circle"></i></button></td>';
+    body.appendChild(tr);
+    tr.querySelector('.remove-item').addEventListener('click', function () {
+      tr.remove(); syncNoMsg();
+    });
+    syncNoMsg();
+  }
+
+  // Wire existing remove buttons
+  body.querySelectorAll('.remove-item').forEach(function (btn) {
+    btn.addEventListener('click', function () { btn.closest('tr').remove(); syncNoMsg(); });
+  });
+
+  // Open modal
+  addBtn.addEventListener('click', function () {
+    search.value = '';
+    var added = addedIds();
+    pickerBody.querySelectorAll('.asset-option').forEach(function (r) {
+      r.style.display = added.has(r.dataset.id) ? 'none' : '';
+    });
+    modal.show();
+    setTimeout(function () { search.focus(); }, 300);
+  });
+
+  // Search filter
+  search.addEventListener('input', function () {
+    var q = this.value.toLowerCase();
+    pickerBody.querySelectorAll('.asset-option').forEach(function (r) {
+      if (addedIds().has(r.dataset.id)) { r.style.display = 'none'; return; }
+      r.style.display = (!q || r.dataset.q.indexOf(q) !== -1) ? '' : 'none';
+    });
+  });
+
+  // Pick asset
+  pickerBody.addEventListener('click', function (e) {
+    var row = e.target.closest('.asset-option');
+    if (!row) return;
+    addRow(row.dataset.id, row.dataset.component, row.dataset.serial,
+           row.dataset.model, row.dataset.qty);
+    modal.hide();
+  });
+
+  // Amount comma formatting
   var amountInput = document.getElementById('amountInput');
   if (amountInput) {
+    function fmtAmt(n) {
+      return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
     amountInput.addEventListener('blur', function () {
-      var v = parseNum(this.value);
-      this.value = v > 0 ? fmt(v) : '';
+      var v = parseFloat(this.value.replace(/,/g, '')) || 0;
+      this.value = v > 0 ? fmtAmt(v) : '';
     });
     amountInput.addEventListener('focus', function () {
       this.value = this.value.replace(/,/g, '');
     });
   }
 
-  function recalc() {
-    var total = 0;
-    body.querySelectorAll('.item-row').forEach(function (row) {
-      var qty   = parseFloat(row.querySelector('.item-qty').value) || 0;
-      var price = parseNum(row.querySelector('.item-price').value);
-      var sub   = qty * price;
-      row.querySelector('.item-subtotal').textContent = fmt(sub);
-      total += sub;
-    });
-    if (totalEl) totalEl.textContent = fmt(total);
-    noMsg.classList.toggle('d-none', body.querySelectorAll('.item-row').length > 0);
-  }
-
-  function wireRow(row) {
-    row.querySelector('.remove-item').addEventListener('click', function () {
-      row.remove(); recalc();
-    });
-    row.querySelector('.item-qty').addEventListener('input', recalc);
-    var priceEl = row.querySelector('.item-price');
-    priceEl.addEventListener('input', recalc);
-    priceEl.addEventListener('blur', function () {
-      var v = parseNum(this.value);
-      this.value = fmt(v);
-      recalc();
-    });
-    priceEl.addEventListener('focus', function () {
-      this.value = this.value.replace(/,/g, '');
-    });
-  }
-
-  body.querySelectorAll('.item-row').forEach(wireRow);
-  recalc();
-
-  addBtn.addEventListener('click', function () {
-    var clone = tmpl.content.cloneNode(true);
-    body.appendChild(clone);
-    wireRow(body.lastElementChild);
-    recalc();
-  });
+  syncNoMsg();
 })();
 </script>
 {% endblock %}
