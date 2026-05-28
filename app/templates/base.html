@@ -57,14 +57,12 @@
       <li class="nav-item mt-2">
         <span class="nav-link text-secondary small text-uppercase px-2">{{ t.nav_admin_label }}</span>
       </li>
-      {% if current_user.is_super_admin %}
       <li class="nav-item">
         <a href="{{ url_for('admin.users') }}"
            class="nav-link text-white {% if request.endpoint in ('admin.users','admin.new_user','admin.edit_user') %}active{% endif %}">
           <i class="bi bi-people me-2"></i>{{ t.nav_users }}
         </a>
       </li>
-      {% endif %}
       <li class="nav-item">
         <a href="{{ url_for('admin.export') }}"
            class="nav-link text-white {% if request.endpoint == 'admin.export' %}active{% endif %}">

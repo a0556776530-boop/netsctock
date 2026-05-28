@@ -80,7 +80,7 @@ def _localize_user_form(form, t, is_new=True):
 @admin_bp.route('/users')
 @login_required
 def users():
-    _super_admin_required()
+    _admin_required()
     all_users = list(User.objects.order_by('name'))
     user_stats = {}
     for u in all_users:
@@ -166,15 +166,24 @@ def edit_user(id):
 @admin_bp.route('/users/<id>/delete', methods=['POST'])
 @login_required
 def delete_user(id):
-    _super_admin_required()
+    _admin_required()
     t = getattr(g, 't', {})
     user = get_or_404(User, id)
+
     if user.id == current_user.id:
         flash(t.get('flash_cannot_delete_self', 'You cannot delete your own account.'), 'danger')
         return redirect(url_for('admin.users'))
+
+    # Regular admin can only delete technicians and viewers
+    if not current_user.is_super_admin:
+        if user.role not in ('technician', 'viewer'):
+            abort(403)
+
+    # Protect last super admin
     if user.is_super_admin and User.objects(role='super_admin').count() <= 1:
         flash(t.get('flash_last_super_admin', 'Cannot delete — this is the last Super Admin.'), 'danger')
         return redirect(url_for('admin.users'))
+
     name = user.name
     Asset.objects(assignee=user).update(unset__assignee=1)
     user.delete()
