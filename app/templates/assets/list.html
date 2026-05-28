@@ -4,7 +4,8 @@
 
 {% block content %}
 
-<!-- ── Markup Factor bar ─────────────────────────────────────────────────── -->
+<!-- ── Markup Factor bar (admin/super_admin only) ─────────────────────── -->
+{% if current_user.can_edit %}
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body py-2 px-3">
     <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -84,6 +85,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <div class="row g-0">
 <div class="col-12">
@@ -508,7 +510,10 @@
     }
   });
 
+  var canEdit = {{ 'true' if current_user.can_edit else 'false' }};
+
   function persistSetting(key, val) {
+    if (!canEdit) return;
     var statusEl = document.getElementById('factorSaveStatus');
     if (statusEl) { statusEl.textContent = window._t.saving; statusEl.className = 'x-small text-muted fst-italic'; }
     clearTimeout(saveTimer);

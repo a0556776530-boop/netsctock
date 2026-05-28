@@ -2,7 +2,7 @@ import json
 from datetime import date, timedelta, datetime
 
 from flask import Blueprint, render_template, jsonify, redirect, request, session, url_for
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from app.models.asset import Asset, AssetEvent, AssetType
 from app.models.task import Task
@@ -45,6 +45,8 @@ def get_settings():
 @main_bp.route('/api/settings', methods=['POST'])
 @login_required
 def save_settings():
+    if not current_user.can_edit:
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
     from app.models.settings import AppSetting
     data = request.get_json(silent=True) or {}
     for key in ('maintenance_factor', 'usd_base_rate', 'bina_factor', 'vat_factor'):
