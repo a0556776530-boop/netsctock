@@ -214,7 +214,10 @@
               <!-- 7. Red Line Alert -->
               <th class="text-center">{{ t.col_alert }}</th>
 
-              <!-- 8. Final Price (₪) -->
+              <!-- 8. Short -->
+              <th class="text-center" title="Units needed to reach red line threshold">Short</th>
+
+              <!-- 9. Final Price (₪) -->
               <th>
                 <div class="d-flex align-items-center gap-1">
                   <a href="?q={{ q }}&status={{ status_filter }}&type={{ type_filter or '' }}&sort=price_usd&order={{ 'desc' if sort == 'price_usd' and order == 'asc' else 'asc' }}"
@@ -245,7 +248,7 @@
           <tbody>
             {% for group_label, group_assets in grouped_assets %}
             <tr class="table-light" data-group-row="{{ group_label }}">
-              <td colspan="9" class="py-2 px-3 border-top border-2">
+              <td colspan="10" class="py-2 px-3 border-top border-2">
                 <span class="fw-semibold small">{{ group_label }}</span>
                 <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2" data-group-count="{{ group_label }}">{{ group_assets | length }}</span>
               </td>
@@ -256,6 +259,13 @@
             {% set stock = asset.quantity if asset.quantity is not none else 0 %}
             {% set after = stock - committed %}
             {% set is_low = asset.quantity is not none and ((asset.min_threshold is not none and asset.min_threshold > 0 and after <= asset.min_threshold) or after < 0) %}
+            {% if asset.min_threshold is not none and asset.min_threshold > 0 and after < asset.min_threshold %}
+              {% set short_qty = asset.min_threshold - after %}
+            {% elif after < 0 %}
+              {% set short_qty = -after %}
+            {% else %}
+              {% set short_qty = 0 %}
+            {% endif %}
             <tr data-asset-row="1"
                 data-group="{{ group_label }}"
                 data-q="{{ ((asset.component_id or '') ~ ' ' ~ asset.serial_number ~ ' ' ~ (asset.model or '') ~ ' ' ~ (asset.manufacturer or '') ~ ' ' ~ (asset.barcode or '')) | lower }}"
@@ -311,7 +321,16 @@
                 {% endif %}
               </td>
 
-              <!-- 8. Final Price (₪) — bold dark green -->
+              <!-- 8. Short -->
+              <td class="text-center">
+                {% if short_qty > 0 %}
+                <span class="fw-bold small" style="color:#ea580c;">{{ short_qty }}</span>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+
+              <!-- 9. Final Price (₪) — bold dark green -->
               <td class="small font-monospace fw-bold" style="color:#146c43;">
                 {% if asset.price_usd %}
                 <span class="price-cell" data-usd="{{ asset.price_usd|float }}">****</span>
@@ -361,14 +380,14 @@
 
             {% else %}
             <tr id="serverEmptyRow">
-              <td colspan="9" class="text-center text-muted py-5">
+              <td colspan="10" class="text-center text-muted py-5">
                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                 {{ t.no_assets_found }} <a href="{{ url_for('assets.new_asset') }}">{{ t.register_one_link }}</a>
               </td>
             </tr>
             {% endfor %}
             <tr id="noResultsRow" style="display:none">
-              <td colspan="9" class="text-center text-muted py-5">
+              <td colspan="10" class="text-center text-muted py-5">
                 <i class="bi bi-search fs-3 d-block mb-2 opacity-50"></i>
                 <span>{{ t.no_assets_found }}</span>
               </td>
