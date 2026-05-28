@@ -70,6 +70,19 @@ def _parse_amount(val):
         return None
 
 
+def _grouped_assets():
+    from collections import defaultdict
+    assets = list(Asset.objects.order_by('component_id'))
+    groups = defaultdict(list)
+    for a in assets:
+        try:
+            cat = a.asset_type.name if a.asset_type else '—'
+        except Exception:
+            cat = '—'
+        groups[cat].append(a)
+    return assets, sorted(groups.items())
+
+
 @purchases_bp.route('/')
 @login_required
 def list_purchases():
@@ -83,7 +96,7 @@ def new_purchase():
     if not current_user.can_edit:
         abort(403)
     t = getattr(g, 't', {})
-    assets = list(Asset.objects.order_by('component_id'))
+    assets, grouped_assets = _grouped_assets()
     assets_by_id = {str(a.id): a for a in assets}
 
     if request.method == 'POST':
@@ -119,7 +132,8 @@ def new_purchase():
         return redirect(url_for('purchases.list_purchases'))
 
     return render_template('purchases/form.html', purchase=None,
-                           assets=assets, statuses=STATUSES, currencies=CURRENCIES)
+                           assets=assets, grouped_assets=grouped_assets,
+                           statuses=STATUSES, currencies=CURRENCIES)
 
 
 @purchases_bp.route('/<id>')
@@ -136,7 +150,7 @@ def edit(id):
         abort(403)
     t = getattr(g, 't', {})
     purchase = get_or_404(Purchase, id)
-    assets = list(Asset.objects.order_by('component_id'))
+    assets, grouped_assets = _grouped_assets()
     assets_by_id = {str(a.id): a for a in assets}
 
     if request.method == 'POST':
@@ -171,7 +185,8 @@ def edit(id):
         return redirect(url_for('purchases.detail', id=purchase.id))
 
     return render_template('purchases/form.html', purchase=purchase,
-                           assets=assets, statuses=STATUSES, currencies=CURRENCIES)
+                           assets=assets, grouped_assets=grouped_assets,
+                           statuses=STATUSES, currencies=CURRENCIES)
 
 
 @purchases_bp.route('/<id>/delete', methods=['POST'])

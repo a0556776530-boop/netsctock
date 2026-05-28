@@ -181,19 +181,28 @@
               </tr>
             </thead>
             <tbody id="assetPickerBody">
-              {% for a in assets %}
+              {% for category, cat_assets in grouped_assets %}
+              <tr class="category-header-row" data-category-row="1">
+                <td class="py-1 px-2 fw-bold small text-uppercase"
+                    style="background:#f1f5f9;color:#475569;letter-spacing:.06em;border-top:2px solid #e2e8f0;">
+                  {{ category }}
+                  <span class="badge bg-secondary bg-opacity-25 text-secondary ms-1" style="font-size:.7rem;">{{ cat_assets | length }}</span>
+                </td>
+              </tr>
+              {% for a in cat_assets %}
               <tr class="asset-option" style="cursor:pointer;"
                   data-id="{{ a.id }}"
                   data-component="{{ a.component_id or '' }}"
                   data-serial="{{ a.serial_number }}"
                   data-model="{{ a.model or '' }}"
                   data-qty="{{ a.quantity if a.quantity is not none else '' }}"
-                  data-q="{{ ((a.component_id or '') ~ ' ' ~ a.serial_number ~ ' ' ~ (a.model or '') ~ ' ' ~ (a.manufacturer or '')) | lower }}">
-                <td>
+                  data-q="{{ ((a.component_id or '') ~ ' ' ~ a.serial_number ~ ' ' ~ (a.model or '') ~ ' ' ~ (a.manufacturer or '') ~ ' ' ~ category) | lower }}">
+                <td class="ps-3">
                   <div class="small fw-semibold">{{ a.serial_number }}</div>
                   {% if a.model %}<div class="x-small text-muted">{{ a.model }}</div>{% endif %}
                 </td>
               </tr>
+              {% endfor %}
               {% endfor %}
             </tbody>
           </table>
@@ -268,9 +277,20 @@
   // Search filter
   search.addEventListener('input', function () {
     var q = this.value.toLowerCase();
+    var added = addedIds();
     pickerBody.querySelectorAll('.asset-option').forEach(function (r) {
-      if (addedIds().has(r.dataset.id)) { r.style.display = 'none'; return; }
+      if (added.has(r.dataset.id)) { r.style.display = 'none'; return; }
       r.style.display = (!q || r.dataset.q.indexOf(q) !== -1) ? '' : 'none';
+    });
+    // Hide category headers with no visible assets
+    pickerBody.querySelectorAll('[data-category-row]').forEach(function (hdr) {
+      var next = hdr.nextElementSibling;
+      var hasVisible = false;
+      while (next && !next.dataset.categoryRow) {
+        if (next.style.display !== 'none') { hasVisible = true; break; }
+        next = next.nextElementSibling;
+      }
+      hdr.style.display = hasVisible ? '' : 'none';
     });
   });
 
