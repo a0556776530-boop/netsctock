@@ -76,10 +76,10 @@ def create_app(config_class=Config):
     from .seed import register_commands
     register_commands(app)
 
-    @app.errorhandler(Exception)
-    def handle_any_exception(e):
+    @app.errorhandler(500)
+    def handle_500(e):
         tb = _tb.format_exc()
-        app.logger.error('Unhandled exception:\n' + tb)
+        app.logger.error('500 error:\n' + tb)
         from flask import render_template_string
         return render_template_string(
             '<html><body style="font-family:monospace;padding:20px;direction:ltr">'

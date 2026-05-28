@@ -87,7 +87,13 @@ def _grouped_assets():
 @purchases_bp.route('/')
 @login_required
 def list_purchases():
-    purchases = list(Purchase.objects.order_by('-created_at'))
+    try:
+        purchases = list(Purchase.objects.order_by('-created_at'))
+    except Exception:
+        err = traceback.format_exc()
+        current_app.logger.error('list_purchases error:\n' + err)
+        flash('שגיאה בטעינת רכשים: ' + err.splitlines()[-1], 'danger')
+        purchases = []
     return render_template('purchases/list.html', purchases=purchases, statuses=STATUSES)
 
 
