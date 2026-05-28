@@ -183,23 +183,13 @@ def export():
 @login_required
 def export_assets():
     _admin_required()
-    headers = ['Asset ID','Serial Number','Barcode','Type','Category','Model','Manufacturer',
-               'Status','Current Site','Assigned To','Notes','Created At']
+    headers = ['מקט רכיב', 'מקט יצרן', 'כמות במחסן']
     rows = []
-    for a in Asset.objects.order_by('serial_number').select_related():
+    for a in Asset.objects.order_by('serial_number'):
         rows.append([
             a.component_id or '',
-            a.serial_number,
-            a.barcode or '',
-            a.asset_type.name if a.asset_type else '',
-            a.asset_type.category if a.asset_type else '',
-            a.model or '',
-            a.manufacturer or '',
-            a.status_label,
-            a.current_site.name if a.current_site else '',
-            a.assignee.name if a.assignee else '',
-            (a.notes or '').replace('\n', ' '),
-            a.created_at.strftime('%d/%m/%Y %H:%M') if a.created_at else '',
+            a.serial_number or '',
+            a.quantity if a.quantity is not None else '',
         ])
     return _csv_response(rows, headers, 'inventory_assets.csv')
 
