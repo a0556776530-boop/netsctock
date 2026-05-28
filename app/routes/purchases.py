@@ -1,4 +1,5 @@
 import os
+import traceback
 from datetime import datetime
 from flask import (Blueprint, render_template, redirect, url_for, flash,
                    request, abort, g, current_app)
@@ -100,42 +101,58 @@ def new_purchase():
     assets_by_id = {str(a.id): a for a in assets}
 
     if request.method == 'POST':
-        bom_filename = _save_bom_file(request.files.get('bom_file'))
-        status = request.form.get('status', 'BOM Transferred')
-        if status not in STATUSES:
-            status = 'BOM Transferred'
-        currency = request.form.get('currency', 'ILS')
-        if currency not in CURRENCIES:
-            currency = 'ILS'
-
-        name = request.form.get('name', '').strip()
-        if not name:
-            flash(t.get('flash_name_required', 'Purchase name is required.'), 'danger')
-            return render_template('purchases/form.html', purchase=None,
-                                   assets=assets, statuses=STATUSES, currencies=CURRENCIES)
-
-        p = Purchase(
-            name            = name,
-            bom_date        = _parse_date(request.form.get('bom_date')),
-            estimate_number = request.form.get('estimate_number', '').strip() or None,
-            amount          = _parse_amount(request.form.get('amount')),
-            currency        = currency,
-            emf             = request.form.get('emf', '').strip() or None,
-            requirement     = request.form.get('requirement', '').strip() or None,
-            order           = request.form.get('order', '').strip() or None,
-            status          = status,
-            bom_file        = bom_filename,
-            items           = _parse_items(request.form, assets_by_id),
-        )
         try:
+            bom_filename = None
+            f = request.files.get('bom_file')
+            if f and f.filename:
+                bom_filename = _save_bom_file(f)
+
+            status = request.form.get('status', 'BOM Transferred')
+            if status not in STATUSES:
+                status = 'BOM Transferred'
+            currency = request.form.get('currency', 'ILS')
+            if currency not in CURRENCIES:
+                currency = 'ILS'
+
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash(t.get('flash_name_required', 'Purchase name is required.'), 'danger')
+                return render_template('purchases/form.html', purchase=None,
+                                       assets=assets, grouped_assets=grouped_assets,
+                                       statuses=STATUSES, currencies=CURRENCIES)
+
+            bom_date = _parse_date(request.form.get('bom_date'))
+            estimate_number = request.form.get('estimate_number', '').strip() or None
+            amount = _parse_amount(request.form.get('amount'))
+            emf = request.form.get('emf', '').strip() or None
+            requirement = request.form.get('requirement', '').strip() or None
+            order = request.form.get('order', '').strip() or None
+            items = _parse_items(request.form, assets_by_id)
+
+            p = Purchase(
+                name            = name,
+                bom_date        = bom_date,
+                estimate_number = estimate_number,
+                amount          = amount,
+                currency        = currency,
+                emf             = emf,
+                requirement     = requirement,
+                order           = order,
+                status          = status,
+                bom_file        = bom_filename,
+                items           = items,
+            )
             p.save()
-        except Exception as e:
-            flash(f'Error saving purchase: {e}', 'danger')
+            flash(t.get('flash_purchase_created', 'Purchase created successfully.'), 'success')
+            return redirect(url_for('purchases.list_purchases'))
+
+        except Exception:
+            err = traceback.format_exc()
+            current_app.logger.error('Purchase create error:\n' + err)
+            flash('שגיאה ביצירת רכש: ' + err.splitlines()[-1], 'danger')
             return render_template('purchases/form.html', purchase=None,
                                    assets=assets, grouped_assets=grouped_assets,
                                    statuses=STATUSES, currencies=CURRENCIES)
-        flash(t.get('flash_purchase_created', 'Purchase created successfully.'), 'success')
-        return redirect(url_for('purchases.list_purchases'))
 
     return render_template('purchases/form.html', purchase=None,
                            assets=assets, grouped_assets=grouped_assets,
