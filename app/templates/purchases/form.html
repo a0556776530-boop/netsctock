@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+{% set is_edit = purchase is not none %}
+{% block title %}{{ t.edit_purchase_title if is_edit else t.new_purchase_title }}{% endblock %}
+{% block page_title %}{{ t.edit_purchase_title if is_edit else t.new_purchase_title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-12 col-xl-10">
+
+<form method="POST" enctype="multipart/form-data" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <!-- ── General Info ────────────────────────────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent border-0 pt-3 pb-0">
+      <h6 class="fw-bold text-uppercase text-muted small" style="letter-spacing:.07em;">
+        <i class="bi bi-info-circle me-1"></i>{{ t.purchase_section_general }}
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold">{{ t.purchase_col_name }} <span class="text-danger">*</span></label>
+          <input type="text" name="name" class="form-control"
+                 value="{{ purchase.name if is_edit else '' }}" required maxlength="200" autofocus>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold">{{ t.purchase_col_status }}</label>
+          <select name="status" class="form-select">
+            {% for s in statuses %}
+            <option value="{{ s }}" {{ 'selected' if is_edit and purchase.status == s else '' }}>
+              {{ t['purchase_status_' ~ s.lower().replace(' ', '_')] if ('purchase_status_' ~ s.lower().replace(' ', '_')) in t else s }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label fw-semibold">{{ t.purchase_col_bom }}</label>
+          <input type="text" name="bom" class="form-control"
+                 value="{{ purchase.bom if is_edit else '' }}" maxlength="200">
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label fw-semibold">{{ t.purchase_col_emf }}</label>
+          <input type="text" name="emf" class="form-control"
+                 value="{{ purchase.emf if is_edit else '' }}" maxlength="200">
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label fw-semibold">{{ t.purchase_col_currency }}</label>
+          <select name="currency" class="form-select">
+            {% for c in currencies %}
+            <option value="{{ c }}" {{ 'selected' if is_edit and purchase.currency == c else '' }}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold">{{ t.purchase_col_requirement }}</label>
+          <input type="text" name="requirement" class="form-control"
+                 value="{{ purchase.requirement if is_edit else '' }}" maxlength="200">
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold">{{ t.purchase_col_order }}</label>
+          <input type="text" name="order" class="form-control"
+                 value="{{ purchase.order if is_edit else '' }}" maxlength="200">
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">{{ t.purchase_col_bom_file }}</label>
+          {% if is_edit and purchase.bom_file %}
+          <div class="mb-2 small text-muted">
+            <i class="bi bi-paperclip me-1"></i>{{ purchase.bom_file }}
+          </div>
+          {% endif %}
+          <input type="file" name="bom_file" class="form-control"
+                 accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.png,.jpg">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Items List ──────────────────────────────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
+      <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing:.07em;">
+        <i class="bi bi-list-ul me-1"></i>{{ t.purchase_section_items }}
+      </h6>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">
+        <i class="bi bi-plus-lg me-1"></i>{{ t.purchase_add_item }}
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0" id="itemsTable">
+          <thead class="table-light">
+            <tr>
+              <th style="min-width:280px;">{{ t.purchase_item_asset }}</th>
+              <th style="min-width:100px;">{{ t.purchase_item_qty }}</th>
+              <th style="min-width:120px;">{{ t.purchase_item_price }}</th>
+              <th style="min-width:120px;">{{ t.purchase_item_subtotal }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody">
+            {% if is_edit and purchase.items %}
+              {% for item in purchase.items %}
+              <tr class="item-row">
+                <td>
+                  <select name="item_asset_id" class="form-select form-select-sm asset-select" required>
+                    <option value="">— {{ t.purchase_select_asset }} —</option>
+                    {% for a in assets %}
+                    <option value="{{ a.id }}" {{ 'selected' if item.asset and item.asset.id == a.id else '' }}>
+                      {{ a.component_id or '' }} — {{ a.serial_number }}{% if a.model %} ({{ a.model }}){% endif %}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <input type="number" name="item_quantity" class="form-control form-control-sm item-qty"
+                         value="{{ item.quantity }}" min="1" required>
+                </td>
+                <td>
+                  <input type="number" name="item_unit_price" class="form-control form-control-sm item-price"
+                         value="{{ item.unit_price or 0 }}" min="0" step="0.01">
+                </td>
+                <td class="small font-monospace item-subtotal">
+                  {{ '{:,.2f}'.format((item.unit_price or 0) * item.quantity) }}
+                </td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-item">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      <div id="noItemsMsg" class="text-center text-muted small py-3 {{ 'd-none' if is_edit and purchase.items }}">
+        {{ t.purchase_no_items }}
+      </div>
+    </div>
+    <div class="card-footer bg-transparent d-flex justify-content-end">
+      <span class="small fw-semibold">{{ t.purchase_col_total }}: <span class="font-monospace" id="grandTotal">0.00</span></span>
+    </div>
+  </div>
+
+  <!-- ── Actions ────────────────────────────────────────────────────── -->
+  <div class="d-flex gap-2 justify-content-end">
+    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check-lg me-1"></i>{{ t.form_save if is_edit else t.form_create_purchase }}
+    </button>
+  </div>
+
+</form>
+
+<!-- Row template (hidden) -->
+<template id="itemRowTemplate">
+  <tr class="item-row">
+    <td>
+      <select name="item_asset_id" class="form-select form-select-sm asset-select" required>
+        <option value="">— {{ t.purchase_select_asset }} —</option>
+        {% for a in assets %}
+        <option value="{{ a.id }}">
+          {{ a.component_id or '' }} — {{ a.serial_number }}{% if a.model %} ({{ a.model }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </td>
+    <td>
+      <input type="number" name="item_quantity" class="form-control form-control-sm item-qty"
+             value="1" min="1" required>
+    </td>
+    <td>
+      <input type="number" name="item_unit_price" class="form-control form-control-sm item-price"
+             value="0" min="0" step="0.01">
+    </td>
+    <td class="small font-monospace item-subtotal">0.00</td>
+    <td>
+      <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-item">
+        <i class="bi bi-x-circle"></i>
+      </button>
+    </td>
+  </tr>
+</template>
+
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var body     = document.getElementById('itemsBody');
+  var tmpl     = document.getElementById('itemRowTemplate');
+  var noMsg    = document.getElementById('noItemsMsg');
+  var totalEl  = document.getElementById('grandTotal');
+  var addBtn   = document.getElementById('addItemBtn');
+
+  function fmt(n) {
+    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function recalc() {
+    var total = 0;
+    body.querySelectorAll('.item-row').forEach(function (row) {
+      var qty   = parseFloat(row.querySelector('.item-qty').value)   || 0;
+      var price = parseFloat(row.querySelector('.item-price').value) || 0;
+      var sub   = qty * price;
+      row.querySelector('.item-subtotal').textContent = fmt(sub);
+      total += sub;
+    });
+    if (totalEl) totalEl.textContent = fmt(total);
+    noMsg.classList.toggle('d-none', body.querySelectorAll('.item-row').length > 0);
+  }
+
+  function wireRow(row) {
+    row.querySelector('.remove-item').addEventListener('click', function () {
+      row.remove();
+      recalc();
+    });
+    row.querySelector('.item-qty').addEventListener('input', recalc);
+    row.querySelector('.item-price').addEventListener('input', recalc);
+  }
+
+  body.querySelectorAll('.item-row').forEach(wireRow);
+  recalc();
+
+  addBtn.addEventListener('click', function () {
+    var clone = tmpl.content.cloneNode(true);
+    var row   = clone.querySelector('tr');
+    body.appendChild(clone);
+    wireRow(body.lastElementChild);
+    recalc();
+  });
+})();
+</script>
+{% endblock %}

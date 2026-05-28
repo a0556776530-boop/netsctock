@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}{{ purchase.name }}{% endblock %}
+{% block page_title %}{{ purchase.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end gap-2 mb-3">
+  {% if current_user.can_edit %}
+  <a href="{{ url_for('purchases.edit', id=purchase.id) }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-pencil me-1"></i>{{ t.btn_edit }}
+  </a>
+  {% endif %}
+  {% if current_user.is_admin %}
+  <form method="POST" action="{{ url_for('purchases.delete', id=purchase.id) }}" class="d-inline"
+        onsubmit="return confirm('{{ t.confirm_delete_purchase }}')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-sm btn-outline-danger">
+      <i class="bi bi-trash3 me-1"></i>{{ t.action_delete }}
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+
+  <!-- ── General Info ────────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="fw-bold text-uppercase text-muted small mb-3" style="letter-spacing:.07em;">
+          <i class="bi bi-info-circle me-1"></i>{{ t.purchase_section_general }}
+        </h6>
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td class="text-muted small fw-semibold" style="width:40%;">{{ t.purchase_col_status }}</td>
+              <td>
+                <span class="badge bg-{{ purchase.status_color }}-subtle text-{{ purchase.status_color }} border border-{{ purchase.status_color }}-subtle">
+                  {{ t['purchase_status_' ~ purchase.status.lower().replace(' ', '_')] if ('purchase_status_' ~ purchase.status.lower().replace(' ', '_')) in t else purchase.status }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_bom }}</td>
+              <td class="small">{{ purchase.bom or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_emf }}</td>
+              <td class="small">{{ purchase.emf or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_requirement }}</td>
+              <td class="small">{{ purchase.requirement or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_order }}</td>
+              <td class="small">{{ purchase.order or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_currency }}</td>
+              <td class="small fw-semibold">{{ purchase.currency }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_bom_file }}</td>
+              <td class="small">
+                {% if purchase.bom_file %}
+                <a href="{{ url_for('static', filename='uploads/bom/' ~ purchase.bom_file) }}"
+                   target="_blank" class="text-decoration-none">
+                  <i class="bi bi-paperclip me-1"></i>{{ purchase.bom_file }}
+                </a>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.col_created }}</td>
+              <td class="small">{{ purchase.created_at.strftime('%d %b %Y') if purchase.created_at else '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Items ───────────────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-3 pb-0">
+        <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing:.07em;">
+          <i class="bi bi-list-ul me-1"></i>{{ t.purchase_section_items }}
+          <span class="badge bg-secondary ms-1">{{ purchase.items | length }}</span>
+        </h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>{{ t.purchase_item_asset }}</th>
+              <th class="text-center">{{ t.purchase_item_qty }}</th>
+              <th class="text-center">{{ t.purchase_item_price }}</th>
+              <th class="text-center">{{ t.purchase_item_subtotal }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in purchase.items %}
+            <tr>
+              <td class="small">
+                {% if item.asset %}
+                <a href="{{ url_for('assets.detail', id=item.asset.id) }}" class="text-decoration-none font-monospace">
+                  {{ item.asset.component_id or '' }}{% if item.asset.component_id %} — {% endif %}{{ item.asset.serial_number }}
+                </a>
+                {% if item.asset.model %}
+                <div class="text-muted x-small">{{ item.asset.model }}</div>
+                {% endif %}
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-center small fw-semibold">{{ item.quantity }}</td>
+              <td class="text-center small font-monospace">{{ '{:,.2f}'.format(item.unit_price or 0) }}</td>
+              <td class="text-center small font-monospace fw-semibold">
+                {{ '{:,.2f}'.format((item.unit_price or 0) * item.quantity) }}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-4">{{ t.purchase_no_items }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% if purchase.items %}
+          <tfoot class="table-light">
+            <tr>
+              <td colspan="3" class="text-end fw-semibold small">{{ t.purchase_col_total }}</td>
+              <td class="text-center font-monospace fw-bold">{{ '{:,.2f}'.format(purchase.total_price) }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

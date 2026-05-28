@@ -37,6 +37,7 @@ def create_app(config_class=Config):
     from .routes.tasks import tasks_bp
     from .routes.admin import admin_bp
     from .routes.estimates import estimates_bp
+    from .routes.purchases import purchases_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -44,6 +45,7 @@ def create_app(config_class=Config):
     app.register_blueprint(tasks_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(estimates_bp)
+    app.register_blueprint(purchases_bp)
 
     from datetime import datetime
     from .utils.translations import TRANSLATIONS
