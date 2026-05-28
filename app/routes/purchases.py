@@ -97,7 +97,15 @@ def new_purchase():
     if not current_user.can_edit:
         abort(403)
     t = getattr(g, 't', {})
-    assets, grouped_assets = _grouped_assets()
+
+    try:
+        assets, grouped_assets = _grouped_assets()
+    except Exception:
+        err = traceback.format_exc()
+        current_app.logger.error('new_purchase _grouped_assets error:\n' + err)
+        flash('Error loading assets: ' + err.splitlines()[-1], 'danger')
+        return redirect(url_for('purchases.list_purchases'))
+
     assets_by_id = {str(a.id): a for a in assets}
 
     if request.method == 'POST':
@@ -150,9 +158,6 @@ def new_purchase():
             err = traceback.format_exc()
             current_app.logger.error('Purchase create error:\n' + err)
             flash('שגיאה ביצירת רכש: ' + err.splitlines()[-1], 'danger')
-            return render_template('purchases/form.html', purchase=None,
-                                   assets=assets, grouped_assets=grouped_assets,
-                                   statuses=STATUSES, currencies=CURRENCIES)
 
     return render_template('purchases/form.html', purchase=None,
                            assets=assets, grouped_assets=grouped_assets,
@@ -173,7 +178,13 @@ def edit(id):
         abort(403)
     t = getattr(g, 't', {})
     purchase = get_or_404(Purchase, id)
-    assets, grouped_assets = _grouped_assets()
+    try:
+        assets, grouped_assets = _grouped_assets()
+    except Exception:
+        err = traceback.format_exc()
+        current_app.logger.error('edit _grouped_assets error:\n' + err)
+        flash('Error loading assets: ' + err.splitlines()[-1], 'danger')
+        return redirect(url_for('purchases.detail', id=id))
     assets_by_id = {str(a.id): a for a in assets}
 
     if request.method == 'POST':

@@ -1,3 +1,4 @@
+import traceback as _tb
 from flask import Flask
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
@@ -74,5 +75,18 @@ def create_app(config_class=Config):
 
     from .seed import register_commands
     register_commands(app)
+
+    @app.errorhandler(Exception)
+    def handle_any_exception(e):
+        tb = _tb.format_exc()
+        app.logger.error('Unhandled exception:\n' + tb)
+        from flask import render_template_string
+        return render_template_string(
+            '<html><body style="font-family:monospace;padding:20px;direction:ltr">'
+            '<h2 style="color:#dc2626">Server Error</h2>'
+            '<pre style="background:#fee2e2;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:.85rem">{{ tb }}</pre>'
+            '<a href="/">Back to Home</a></body></html>',
+            tb=tb
+        ), 500
 
     return app

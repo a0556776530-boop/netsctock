@@ -35,7 +35,7 @@
       <thead class="table-dark">
         <tr>
           <th>{{ t.purchase_col_name }}</th>
-          <th>{{ t.purchase_col_bom }}</th>
+          <th>{{ t.purchase_col_bom_date }}</th>
           <th>{{ t.purchase_col_emf }}</th>
           <th>{{ t.purchase_col_status }}</th>
           <th>{{ t.purchase_col_currency }}</th>
@@ -51,7 +51,7 @@
           <td class="fw-semibold">
             <a href="{{ url_for('purchases.detail', id=p.id) }}" class="text-decoration-none">{{ p.name }}</a>
           </td>
-          <td class="small text-muted">{{ p.bom or '—' }}</td>
+          <td class="small text-muted">{{ p.bom_date.strftime('%d %b %Y') if p.bom_date else '—' }}</td>
           <td class="small text-muted">{{ p.emf or '—' }}</td>
           <td>
             <span class="badge bg-{{ p.status_color }}-subtle text-{{ p.status_color }} border border-{{ p.status_color }}-subtle small">
