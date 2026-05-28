@@ -14,7 +14,7 @@
           <div class="mb-3">
             {{ form.title.label(class="form-label fw-semibold") }}
             {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""),
-                          placeholder="e.g. Replace SFP at Beit VaGan rack 3") }}
+                          placeholder="e.g. Replace SFP in rack 3") }}
             {% for e in form.title.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
           </div>
 

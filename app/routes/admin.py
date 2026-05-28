@@ -11,7 +11,6 @@ from wtforms.validators import DataRequired, Length, Optional
 from app import bcrypt
 from app.models.user import User
 from app.models.asset import Asset, AssetEvent
-from app.models.site import Site
 from app.models.task import Task
 from app.utils.translations import localize_form
 from app.utils.mongo_helpers import get_or_404
@@ -171,12 +170,10 @@ def export():
     asset_count = Asset.objects.count()
     event_count = AssetEvent.objects.count()
     task_count  = Task.objects.count()
-    sites       = list(Site.objects.order_by('name'))
     return render_template('admin/export.html',
                            asset_count=asset_count,
                            event_count=event_count,
-                           task_count=task_count,
-                           sites=sites)
+                           task_count=task_count)
 
 
 @admin_bp.route('/export/assets.csv')
@@ -230,25 +227,6 @@ def export_tasks():
     return _csv_response(rows, headers, 'inventory_tasks.csv')
 
 
-@admin_bp.route('/report/site/<id>.csv')
-@login_required
-def export_site_csv(id):
-    _admin_required()
-    site = get_or_404(Site, id)
-    headers = ['Asset ID','Serial Number','Type','Model','Manufacturer','Status','Assigned To']
-    rows = []
-    for a in Asset.objects(current_site=site).order_by('serial_number').select_related():
-        rows.append([
-            a.component_id or '',
-            a.serial_number,
-            a.asset_type.name if a.asset_type else '',
-            a.model or '',
-            a.manufacturer or '',
-            a.status_label,
-            a.assignee.name if a.assignee else '',
-        ])
-    filename = f'inventory_site_{site.name.replace(" ","_")}.csv'
-    return _csv_response(rows, headers, filename)
 
 
 def _csv_response(rows, headers, filename):

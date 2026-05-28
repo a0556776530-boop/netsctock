@@ -256,7 +256,6 @@ function renderResult(data, query) {
             <span class="badge bg-${a.status_color} bg-opacity-15 text-${a.status_color} border border-${a.status_color} border-opacity-25">
               ${a.status_label}
             </span>
-            ${a.site ? `<span class="small text-muted"><i class="bi bi-geo-alt me-1"></i>${a.site}</span>` : ''}
             ${a.assignee ? `<span class="small text-muted"><i class="bi bi-person me-1"></i>${a.assignee}</span>` : ''}
           </div>
           <a href="${a.detail_url}" class="btn btn-sm btn-primary mt-3">

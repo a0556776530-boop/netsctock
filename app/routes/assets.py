@@ -109,7 +109,6 @@ def list_assets():
     q             = request.args.get('q', '').strip()
     status_filter = request.args.get('status', '')
     type_filter   = request.args.get('type', '')
-    site_filter   = request.args.get('site', '')
     sort          = request.args.get('sort', 'created_at')
     order         = request.args.get('order', 'desc')
 
@@ -130,10 +129,6 @@ def list_assets():
         at = AssetType.objects(id=type_filter).first()
         if at:
             qs = qs(asset_type=at)
-    if site_filter:
-        s = Site.objects(id=site_filter).first()
-        if s:
-            qs = qs(current_site=s)
 
     sort_map = {
         'component_id': 'component_id', 'serial_number': 'serial_number',
@@ -167,7 +162,6 @@ def list_assets():
     all_types   = list(AssetType.objects)
     asset_types = sorted(all_types,
                          key=lambda t: CATEGORY_ORDER.index(t.name) if t.name in CATEGORY_ORDER else len(CATEGORY_ORDER))
-    sites = list(Site.objects.order_by('name'))
 
     from app.models.settings import AppSetting
     global_settings = json.dumps(AppSetting.all_as_dict())
@@ -186,11 +180,9 @@ def list_assets():
         assets=assets,
         grouped_assets=grouped_assets,
         asset_types=asset_types,
-        sites=sites,
         q=q,
         status_filter=status_filter,
         type_filter=type_filter,
-        site_filter=site_filter,
         sort=sort,
         order=order,
         global_settings=global_settings,
@@ -260,35 +252,13 @@ def detail(id):
     asset  = get_or_404(Asset, id)
     events = list(AssetEvent.objects(asset=asset).order_by('-event_date').select_related())
 
-    dismantle_form = DismantleForm(prefix='dismantle')
-    dismantle_form.populate_choices()
-    if asset.current_site:
-        dismantle_form.from_site_id.data = str(asset.current_site.id)
-    localize_form(dismantle_form, t, submit_key='form_confirm_dismantle')
-
-    assign_form = AssignForm(prefix='assign')
-    assign_form.populate_choices()
-    localize_form(assign_form, t, submit_key='form_confirm_assignment',
-                  extra={'to_site_id': 'form_deploy_to_site'})
-
-    move_form = MoveForm(prefix='move')
-    move_form.populate_choices()
-    localize_form(move_form, t, submit_key='form_confirm_move',
-                  extra={'to_site_id': 'form_move_to_site'})
-
-    return_form = ReturnForm(prefix='ret')
-    return_form.populate_choices()
-    localize_form(return_form, t, submit_key='form_confirm_return',
-                  extra={'to_site_id': 'form_return_to_site'})
-
     retire_form = RetireForm(prefix='retire')
     localize_form(retire_form, t, submit_key='form_retire_asset')
 
     return render_template(
         'assets/detail.html',
         asset=asset, events=events,
-        dismantle_form=dismantle_form, assign_form=assign_form,
-        move_form=move_form, return_form=return_form, retire_form=retire_form,
+        retire_form=retire_form,
     )
 
 

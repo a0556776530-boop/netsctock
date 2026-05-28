@@ -52,7 +52,6 @@ def _open_browser(url, delay=2.5):
 def _first_run_setup(app):
     from app import bcrypt
     from app.models.user import User
-    from app.models.site import Site
     from app.models.asset import AssetType
     from app.models.settings import AppSetting
 
@@ -70,9 +69,6 @@ def _first_run_setup(app):
                 password_hash=bcrypt.generate_password_hash('admin1234').decode('utf-8'),
                 role='admin',
             ).save()
-
-            for name in ['Beit VaGan', 'Tel Aviv HQ', 'Haifa DC', 'Storage Warehouse']:
-                Site(name=name).save()
 
             for name, dept in [
                 ('Routers',         'Networking'),

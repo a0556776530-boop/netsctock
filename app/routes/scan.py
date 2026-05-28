@@ -37,7 +37,6 @@ def lookup():
                 'type': asset.asset_type.name if asset.asset_type else None,
                 'model': asset.model or '',
                 'manufacturer': asset.manufacturer or '',
-                'site': asset.current_site.name if asset.current_site else None,
                 'assignee': asset.assignee.name if asset.assignee else None,
                 'detail_url': url_for('assets.detail', id=asset.id),
             }

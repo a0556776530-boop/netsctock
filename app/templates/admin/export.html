@@ -52,23 +52,4 @@
 
 </div>
 
-<!-- Site reports -->
-<div class="card border-0 shadow-sm mt-4">
-  <div class="card-header bg-transparent fw-semibold">
-    <i class="bi bi-geo-alt me-2"></i>{{ t.site_reports_title }}
-  </div>
-  <div class="card-body">
-    <div class="row g-2">
-      {% for site in sites %}
-      <div class="col-auto">
-        <a href="{{ url_for('admin.export_site_csv', id=site.id) }}" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-download me-1"></i>{{ site.name }}
-        </a>
-      </div>
-      {% else %}
-      <p class="text-muted small mb-0">{{ t.no_sites_msg }}</p>
-      {% endfor %}
-    </div>
-  </div>
-</div>
 {% endblock %}

@@ -1,7 +1,6 @@
 import click
 from app import bcrypt
 from app.models.user import User
-from app.models.site import Site
 from app.models.asset import AssetType
 
 
@@ -17,11 +16,6 @@ def register_commands(app):
                 role='admin',
             ).save()
             click.echo('  Created admin user: admin@inventory.app / admin1234')
-
-        for name in ['Beit VaGan', 'Tel Aviv HQ', 'Haifa DC', 'Storage Warehouse']:
-            if not Site.objects(name=name).first():
-                Site(name=name).save()
-                click.echo(f'  Created site: {name}')
 
         for name, category in [
             ('SFP Module', 'Networking'), ('Switch', 'Networking'),
