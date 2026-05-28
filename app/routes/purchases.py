@@ -127,7 +127,13 @@ def new_purchase():
             bom_file        = bom_filename,
             items           = _parse_items(request.form, assets_by_id),
         )
-        p.save()
+        try:
+            p.save()
+        except Exception as e:
+            flash(f'Error saving purchase: {e}', 'danger')
+            return render_template('purchases/form.html', purchase=None,
+                                   assets=assets, grouped_assets=grouped_assets,
+                                   statuses=STATUSES, currencies=CURRENCIES)
         flash(t.get('flash_purchase_created', 'Purchase created successfully.'), 'success')
         return redirect(url_for('purchases.list_purchases'))
 
@@ -180,7 +186,13 @@ def edit(id):
         purchase.status          = status
         purchase.bom_file        = bom_filename
         purchase.items           = _parse_items(request.form, assets_by_id)
-        purchase.save()
+        try:
+            purchase.save()
+        except Exception as e:
+            flash(f'Error saving purchase: {e}', 'danger')
+            return render_template('purchases/form.html', purchase=purchase,
+                                   assets=assets, grouped_assets=grouped_assets,
+                                   statuses=STATUSES, currencies=CURRENCIES)
         flash(t.get('flash_purchase_updated', 'Purchase updated successfully.'), 'success')
         return redirect(url_for('purchases.detail', id=purchase.id))
 

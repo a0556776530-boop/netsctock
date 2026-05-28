@@ -21,8 +21,8 @@ STATUS_COLORS = {
 
 class PurchaseItem(me.EmbeddedDocument):
     asset      = me.ReferenceField('Asset', required=True)
-    quantity   = me.IntField(min_value=1, required=True)
-    unit_price = me.FloatField(min_value=0, default=0)
+    quantity   = me.IntField(required=True)
+    unit_price = me.FloatField(default=0)
 
 
 class Purchase(me.Document):
@@ -31,7 +31,7 @@ class Purchase(me.Document):
     name            = me.StringField(required=True, max_length=200)
     bom_date        = me.DateTimeField()
     estimate_number = me.StringField(max_length=200)
-    amount          = me.FloatField(min_value=0)
+    amount          = me.FloatField()
     currency        = me.StringField(choices=CURRENCIES, default='ILS')
     emf             = me.StringField(max_length=200)
     requirement     = me.StringField(max_length=200)
