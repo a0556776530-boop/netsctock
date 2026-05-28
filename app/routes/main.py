@@ -69,16 +69,12 @@ def dashboard():
     pipeline_status = [{'$group': {'_id': '$status', 'count': {'$sum': 1}}}]
     status_counts = {r['_id']: r['count'] for r in Asset._get_collection().aggregate(pipeline_status) if r['_id']}
 
-    # Recent events — safe load, skip any with broken references
+    # Recent events — skip any with broken references (deleted users/assets)
     recent_events = []
-    for event in AssetEvent.objects.order_by('-event_date').limit(50).only(
-        'event_type', 'event_date', 'notes', 'performed_by_id', 'asset_id'
-    ):
+    for event in AssetEvent.objects.order_by('-event_date').limit(50):
         try:
-            name = event.performer_name
-            sn   = event.asset.serial_number
-            if name == '—' or not sn:
-                continue
+            _ = event.performed_by_user.name
+            _ = event.asset.serial_number
             recent_events.append(event)
         except Exception:
             continue
