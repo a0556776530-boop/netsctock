@@ -9,9 +9,9 @@
 
       <div class="card-body text-center pt-4 pb-3 border-bottom">
         <div class="role-avatar mx-auto mb-3
-          {% if user.role == 'admin' %}role-admin{% elif user.role == 'technician' %}role-tech{% else %}role-viewer{% endif %}"
+          {% if user.role == 'super_admin' %}role-super{% elif user.role == 'admin' %}role-admin{% elif user.role == 'technician' %}role-tech{% else %}role-viewer{% endif %}"
           id="headerAvatar">
-          <i class="bi {% if user.role == 'admin' %}bi-crown-fill{% elif user.role == 'technician' %}bi-cpu-fill{% else %}bi-eye-fill{% endif %}"
+          <i class="bi {% if user.role == 'super_admin' %}bi-shield-fill-check{% elif user.role == 'admin' %}bi-crown-fill{% elif user.role == 'technician' %}bi-cpu-fill{% else %}bi-eye-fill{% endif %}"
              id="headerIcon"></i>
         </div>
         <h5 class="mb-0 fw-bold" id="headerName">{{ user.name }}</h5>
@@ -34,8 +34,8 @@
             <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_role }}</label>
             <div class="d-flex align-items-center gap-2">
               <div id="rolePreview" class="role-avatar-sm flex-shrink-0
-                {% if user.role == 'admin' %}role-admin{% elif user.role == 'technician' %}role-tech{% else %}role-viewer{% endif %}">
-                <i id="roleIcon" class="bi {% if user.role == 'admin' %}bi-crown-fill{% elif user.role == 'technician' %}bi-cpu-fill{% else %}bi-eye-fill{% endif %}"></i>
+                {% if user.role == 'super_admin' %}role-super{% elif user.role == 'admin' %}role-admin{% elif user.role == 'technician' %}role-tech{% else %}role-viewer{% endif %}">
+                <i id="roleIcon" class="bi {% if user.role == 'super_admin' %}bi-shield-fill-check{% elif user.role == 'admin' %}bi-crown-fill{% elif user.role == 'technician' %}bi-cpu-fill{% else %}bi-eye-fill{% endif %}"></i>
               </div>
               {{ form.role(class="form-select", id="roleSelect") }}
             </div>
@@ -82,9 +82,10 @@
 {% block scripts %}
 <script>
 var _roles = {
-  admin:      { cls: 'role-admin',  icon: 'bi-crown-fill' },
-  technician: { cls: 'role-tech',   icon: 'bi-cpu-fill'   },
-  viewer:     { cls: 'role-viewer', icon: 'bi-eye-fill'   },
+  super_admin: { cls: 'role-super',  icon: 'bi-shield-fill-check' },
+  admin:       { cls: 'role-admin',  icon: 'bi-crown-fill'        },
+  technician:  { cls: 'role-tech',   icon: 'bi-cpu-fill'          },
+  viewer:      { cls: 'role-viewer', icon: 'bi-eye-fill'          },
 };
 function applyRole(val) {
   var r = _roles[val] || _roles.viewer;

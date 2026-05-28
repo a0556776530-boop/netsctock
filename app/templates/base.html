@@ -57,12 +57,14 @@
       <li class="nav-item mt-2">
         <span class="nav-link text-secondary small text-uppercase px-2">{{ t.nav_admin_label }}</span>
       </li>
+      {% if current_user.is_super_admin %}
       <li class="nav-item">
         <a href="{{ url_for('admin.users') }}"
            class="nav-link text-white {% if request.endpoint in ('admin.users','admin.new_user','admin.edit_user') %}active{% endif %}">
           <i class="bi bi-people me-2"></i>{{ t.nav_users }}
         </a>
       </li>
+      {% endif %}
       <li class="nav-item">
         <a href="{{ url_for('admin.export') }}"
            class="nav-link text-white {% if request.endpoint == 'admin.export' %}active{% endif %}">
@@ -74,7 +76,9 @@
 
     <div class="mt-auto border-top border-secondary pt-3">
       <div class="d-flex align-items-center gap-2 mb-2">
-        {% if current_user.role == 'admin' %}
+        {% if current_user.role == 'super_admin' %}
+        <div class="role-avatar role-super"><i class="bi bi-shield-fill-check"></i></div>
+        {% elif current_user.role == 'admin' %}
         <div class="role-avatar role-admin"><i class="bi bi-crown-fill"></i></div>
         {% elif current_user.role == 'technician' %}
         <div class="role-avatar role-tech"><i class="bi bi-cpu-fill"></i></div>
@@ -84,13 +88,14 @@
         <div>
           <div class="text-white fw-semibold" style="font-size:.88rem;">{{ current_user.name }}</div>
           <div style="font-size:.75rem; color:rgba(255,255,255,.45);">
-            {% if current_user.role == 'admin' %}{{ t.role_admin }}
+            {% if current_user.role == 'super_admin' %}{{ t.role_super_admin or 'Super Admin' }}
+            {% elif current_user.role == 'admin' %}{{ t.role_admin }}
             {% elif current_user.role == 'technician' %}{{ t.role_technician }}
             {% else %}{{ t.role_viewer }}{% endif %}
           </div>
         </div>
       </div>
-      {% if current_user.is_admin %}
+      {% if current_user.is_super_admin %}
       <a href="{{ url_for('admin.settings') }}"
          class="nav-link small {% if request.endpoint == 'admin.settings' %}text-white{% else %}text-secondary{% endif %}">
         <i class="bi bi-gear me-1"></i>{{ t.nav_settings }}

@@ -76,6 +76,12 @@ body {
 .role-avatar    { width: 44px; height: 44px; font-size: 1.15rem; }
 .role-avatar-sm { width: 30px; height: 30px; font-size: .82rem; }
 
+/* Super Admin — red / crimson (highest authority) */
+.role-super {
+  background: #1a0000;
+  color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239,68,68,.55), 0 2px 10px rgba(239,68,68,.25);
+}
 /* Admin — amber / gold (authority) */
 .role-admin {
   background: #1c1200;

@@ -34,7 +34,10 @@
           </td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              {% if user.role == 'admin' %}
+              {% if user.role == 'super_admin' %}
+              <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
+              <span class="small fw-semibold" style="color:#dc2626;">{{ t.role_super_admin or 'Super Admin' }}</span>
+              {% elif user.role == 'admin' %}
               <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
               <span class="small fw-semibold" style="color:#b45309;">{{ t.role_admin }}</span>
               {% elif user.role == 'technician' %}

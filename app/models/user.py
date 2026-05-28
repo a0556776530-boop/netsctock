@@ -19,12 +19,16 @@ class User(UserMixin, me.Document):
         return f'<User {self.name}>'
 
     @property
+    def is_super_admin(self):
+        return self.role == 'super_admin'
+
+    @property
     def is_admin(self):
-        return self.role == 'admin'
+        return self.role in ('admin', 'super_admin')
 
     @property
     def can_edit(self):
-        return self.role == 'admin'
+        return self.role in ('admin', 'super_admin')
 
 
 @login_manager.user_loader
