@@ -303,18 +303,27 @@
     modal.hide();
   });
 
-  // Amount comma formatting
+  // Amount comma formatting — live while typing
   var amountInput = document.getElementById('amountInput');
   if (amountInput) {
-    function fmtAmt(n) {
-      return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function fmtLive(s) {
+      var parts = s.replace(/,/g, '').split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      return parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
     }
-    amountInput.addEventListener('blur', function () {
-      var v = parseFloat(this.value.replace(/,/g, '')) || 0;
-      this.value = v > 0 ? fmtAmt(v) : '';
-    });
-    amountInput.addEventListener('focus', function () {
-      this.value = this.value.replace(/,/g, '');
+    amountInput.addEventListener('input', function () {
+      var pos = this.selectionStart;
+      var before = this.value.slice(0, pos).replace(/,/g, '').length;
+      var raw = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+      var formatted = fmtLive(raw);
+      this.value = formatted;
+      // restore cursor accounting for added commas
+      var newPos = 0, count = 0;
+      for (var i = 0; i < formatted.length && count < before; i++) {
+        if (formatted[i] !== ',') count++;
+        newPos = i + 1;
+      }
+      this.setSelectionRange(newPos, newPos);
     });
   }
 
