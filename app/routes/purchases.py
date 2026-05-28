@@ -32,6 +32,15 @@ def _save_bom_file(file):
     return filename
 
 
+def _parse_date(val):
+    if not val:
+        return None
+    try:
+        return datetime.strptime(val.strip(), '%Y-%m-%d')
+    except ValueError:
+        return None
+
+
 def _parse_items(form, assets_by_id):
     items = []
     ids    = form.getlist('item_asset_id')
@@ -45,13 +54,22 @@ def _parse_items(form, assets_by_id):
             continue
         try:
             q = int(qty)
-            p = float(price) if price else 0.0
+            p = float(price.replace(',', '')) if price else 0.0
         except ValueError:
             continue
         if q < 1:
             continue
         items.append(PurchaseItem(asset=asset, quantity=q, unit_price=p))
     return items
+
+
+def _parse_amount(val):
+    if not val:
+        return None
+    try:
+        return float(str(val).replace(',', ''))
+    except ValueError:
+        return None
 
 
 @purchases_bp.route('/')
@@ -79,21 +97,25 @@ def new_purchase():
         if currency not in CURRENCIES:
             currency = 'ILS'
 
-        p = Purchase(
-            name        = request.form.get('name', '').strip(),
-            bom         = request.form.get('bom', '').strip(),
-            emf         = request.form.get('emf', '').strip(),
-            requirement = request.form.get('requirement', '').strip(),
-            order       = request.form.get('order', '').strip(),
-            status      = status,
-            currency    = currency,
-            bom_file    = bom_filename,
-            items       = _parse_items(request.form, assets_by_id),
-        )
-        if not p.name:
+        name = request.form.get('name', '').strip()
+        if not name:
             flash(t.get('flash_name_required', 'Purchase name is required.'), 'danger')
             return render_template('purchases/form.html', purchase=None,
                                    assets=assets, statuses=STATUSES, currencies=CURRENCIES)
+
+        p = Purchase(
+            name            = name,
+            bom_date        = _parse_date(request.form.get('bom_date')),
+            estimate_number = request.form.get('estimate_number', '').strip() or None,
+            amount          = _parse_amount(request.form.get('amount')),
+            currency        = currency,
+            emf             = request.form.get('emf', '').strip() or None,
+            requirement     = request.form.get('requirement', '').strip() or None,
+            order           = request.form.get('order', '').strip() or None,
+            status          = status,
+            bom_file        = bom_filename,
+            items           = _parse_items(request.form, assets_by_id),
+        )
         p.save()
         flash(t.get('flash_purchase_created', 'Purchase created successfully.'), 'success')
         return redirect(url_for('purchases.list_purchases'))
@@ -134,15 +156,18 @@ def edit(id):
         if currency not in CURRENCIES:
             currency = purchase.currency
 
-        purchase.name        = request.form.get('name', '').strip() or purchase.name
-        purchase.bom         = request.form.get('bom', '').strip()
-        purchase.emf         = request.form.get('emf', '').strip()
-        purchase.requirement = request.form.get('requirement', '').strip()
-        purchase.order       = request.form.get('order', '').strip()
-        purchase.status      = status
-        purchase.currency    = currency
-        purchase.bom_file    = bom_filename
-        purchase.items       = _parse_items(request.form, assets_by_id)
+        name = request.form.get('name', '').strip() or purchase.name
+        purchase.name            = name
+        purchase.bom_date        = _parse_date(request.form.get('bom_date'))
+        purchase.estimate_number = request.form.get('estimate_number', '').strip() or None
+        purchase.amount          = _parse_amount(request.form.get('amount'))
+        purchase.currency        = currency
+        purchase.emf             = request.form.get('emf', '').strip() or None
+        purchase.requirement     = request.form.get('requirement', '').strip() or None
+        purchase.order           = request.form.get('order', '').strip() or None
+        purchase.status          = status
+        purchase.bom_file        = bom_filename
+        purchase.items           = _parse_items(request.form, assets_by_id)
         purchase.save()
         flash(t.get('flash_purchase_updated', 'Purchase updated successfully.'), 'success')
         return redirect(url_for('purchases.detail', id=purchase.id))

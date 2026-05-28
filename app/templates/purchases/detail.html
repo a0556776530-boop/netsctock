@@ -32,16 +32,25 @@
         <table class="table table-sm table-borderless mb-0">
           <tbody>
             <tr>
-              <td class="text-muted small fw-semibold" style="width:40%;">{{ t.purchase_col_status }}</td>
-              <td>
-                <span class="badge bg-{{ purchase.status_color }}-subtle text-{{ purchase.status_color }} border border-{{ purchase.status_color }}-subtle">
-                  {{ t['purchase_status_' ~ purchase.status.lower().replace(' ', '_')] if ('purchase_status_' ~ purchase.status.lower().replace(' ', '_')) in t else purchase.status }}
-                </span>
+              <td class="text-muted small fw-semibold" style="width:45%;">{{ t.purchase_col_bom_date }}</td>
+              <td class="small">{{ purchase.bom_date.strftime('%d %b %Y') if purchase.bom_date else '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_estimate_number }}</td>
+              <td class="small font-monospace">{{ purchase.estimate_number or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_amount }}</td>
+              <td class="small font-monospace fw-semibold">
+                {% if purchase.amount %}{{ '{:,.2f}'.format(purchase.amount) }}{% else %}—{% endif %}
               </td>
             </tr>
             <tr>
-              <td class="text-muted small fw-semibold">{{ t.purchase_col_bom }}</td>
-              <td class="small">{{ purchase.bom or '—' }}</td>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_currency }}</td>
+              <td class="small fw-semibold">
+                {% set ckey = 'purchase_currency_' ~ purchase.currency.lower().replace(' ', '_') %}
+                {{ t[ckey] if ckey in t else purchase.currency }}
+              </td>
             </tr>
             <tr>
               <td class="text-muted small fw-semibold">{{ t.purchase_col_emf }}</td>
@@ -56,8 +65,13 @@
               <td class="small">{{ purchase.order or '—' }}</td>
             </tr>
             <tr>
-              <td class="text-muted small fw-semibold">{{ t.purchase_col_currency }}</td>
-              <td class="small fw-semibold">{{ purchase.currency }}</td>
+              <td class="text-muted small fw-semibold">{{ t.purchase_col_status }}</td>
+              <td>
+                {% set skey = 'purchase_status_' ~ purchase.status.lower().replace(' ', '_') %}
+                <span class="badge bg-{{ purchase.status_color }}-subtle text-{{ purchase.status_color }} border border-{{ purchase.status_color }}-subtle">
+                  {{ t[skey] if skey in t else purchase.status }}
+                </span>
+              </td>
             </tr>
             <tr>
               <td class="text-muted small fw-semibold">{{ t.purchase_col_bom_file }}</td>

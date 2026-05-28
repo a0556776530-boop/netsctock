@@ -20,56 +20,82 @@
     <div class="card-body">
       <div class="row g-3">
 
+        <!-- 1. שם משימה (required) -->
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_name }} <span class="text-danger">*</span></label>
           <input type="text" name="name" class="form-control"
                  value="{{ purchase.name if is_edit else '' }}" required maxlength="200" autofocus>
         </div>
 
+        <!-- 2. תאריך הוצאת BOM -->
         <div class="col-12 col-md-6">
-          <label class="form-label fw-semibold">{{ t.purchase_col_status }}</label>
-          <select name="status" class="form-select">
-            {% for s in statuses %}
-            <option value="{{ s }}" {{ 'selected' if is_edit and purchase.status == s else '' }}>
-              {{ t['purchase_status_' ~ s.lower().replace(' ', '_')] if ('purchase_status_' ~ s.lower().replace(' ', '_')) in t else s }}
+          <label class="form-label fw-semibold">{{ t.purchase_col_bom_date }}</label>
+          <input type="date" name="bom_date" class="form-control"
+                 value="{{ purchase.bom_date.strftime('%Y-%m-%d') if is_edit and purchase.bom_date else '' }}">
+        </div>
+
+        <!-- 3. מס' Estimate בינת -->
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold">{{ t.purchase_col_estimate_number }}</label>
+          <input type="text" name="estimate_number" class="form-control"
+                 value="{{ purchase.estimate_number or '' if is_edit else '' }}" maxlength="200">
+        </div>
+
+        <!-- 4. סכום -->
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold">{{ t.purchase_col_amount }}</label>
+          <input type="text" name="amount" id="amountInput" class="form-control font-monospace"
+                 value="{{ '{:,.2f}'.format(purchase.amount) if is_edit and purchase.amount else '' }}"
+                 placeholder="0" autocomplete="off" inputmode="decimal">
+        </div>
+
+        <!-- 5. מטבע -->
+        <div class="col-12 col-md-4">
+          <label class="form-label fw-semibold">{{ t.purchase_col_currency }}</label>
+          <select name="currency" class="form-select">
+            {% for c in currencies %}
+            <option value="{{ c }}" {{ 'selected' if is_edit and purchase.currency == c else '' }}>
+              {{ t['purchase_currency_' ~ c.lower().replace(' ', '_')] if ('purchase_currency_' ~ c.lower().replace(' ', '_')) in t else c }}
             </option>
             {% endfor %}
           </select>
         </div>
 
-        <div class="col-12 col-md-4">
-          <label class="form-label fw-semibold">{{ t.purchase_col_bom }}</label>
-          <input type="text" name="bom" class="form-control"
-                 value="{{ purchase.bom if is_edit else '' }}" maxlength="200">
-        </div>
-
+        <!-- 6. מספר EMF -->
         <div class="col-12 col-md-4">
           <label class="form-label fw-semibold">{{ t.purchase_col_emf }}</label>
           <input type="text" name="emf" class="form-control"
-                 value="{{ purchase.emf if is_edit else '' }}" maxlength="200">
+                 value="{{ purchase.emf or '' if is_edit else '' }}" maxlength="200">
         </div>
 
+        <!-- 7. מספר דרישה -->
         <div class="col-12 col-md-4">
-          <label class="form-label fw-semibold">{{ t.purchase_col_currency }}</label>
-          <select name="currency" class="form-select">
-            {% for c in currencies %}
-            <option value="{{ c }}" {{ 'selected' if is_edit and purchase.currency == c else '' }}>{{ c }}</option>
+          <label class="form-label fw-semibold">{{ t.purchase_col_requirement }}</label>
+          <input type="text" name="requirement" class="form-control"
+                 value="{{ purchase.requirement or '' if is_edit else '' }}" maxlength="200">
+        </div>
+
+        <!-- 8. מספר הזמנה -->
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold">{{ t.purchase_col_order }}</label>
+          <input type="text" name="order" class="form-control"
+                 value="{{ purchase.order or '' if is_edit else '' }}" maxlength="200">
+        </div>
+
+        <!-- 9. סטטוס -->
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold">{{ t.purchase_col_status }}</label>
+          <select name="status" class="form-select">
+            {% for s in statuses %}
+            {% set key = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
+            <option value="{{ s }}" {{ 'selected' if is_edit and purchase.status == s else '' }}>
+              {{ t[key] if key in t else s }}
+            </option>
             {% endfor %}
           </select>
         </div>
 
-        <div class="col-12 col-md-6">
-          <label class="form-label fw-semibold">{{ t.purchase_col_requirement }}</label>
-          <input type="text" name="requirement" class="form-control"
-                 value="{{ purchase.requirement if is_edit else '' }}" maxlength="200">
-        </div>
-
-        <div class="col-12 col-md-6">
-          <label class="form-label fw-semibold">{{ t.purchase_col_order }}</label>
-          <input type="text" name="order" class="form-control"
-                 value="{{ purchase.order if is_edit else '' }}" maxlength="200">
-        </div>
-
+        <!-- קובץ BOM -->
         <div class="col-12">
           <label class="form-label fw-semibold">{{ t.purchase_col_bom_file }}</label>
           {% if is_edit and purchase.bom_file %}
@@ -102,8 +128,8 @@
             <tr>
               <th style="min-width:280px;">{{ t.purchase_item_asset }}</th>
               <th style="min-width:100px;">{{ t.purchase_item_qty }}</th>
-              <th style="min-width:120px;">{{ t.purchase_item_price }}</th>
-              <th style="min-width:120px;">{{ t.purchase_item_subtotal }}</th>
+              <th style="min-width:130px;">{{ t.purchase_item_price }}</th>
+              <th style="min-width:130px;">{{ t.purchase_item_subtotal }}</th>
               <th></th>
             </tr>
           </thead>
@@ -116,7 +142,7 @@
                     <option value="">— {{ t.purchase_select_asset }} —</option>
                     {% for a in assets %}
                     <option value="{{ a.id }}" {{ 'selected' if item.asset and item.asset.id == a.id else '' }}>
-                      {{ a.component_id or '' }} — {{ a.serial_number }}{% if a.model %} ({{ a.model }}){% endif %}
+                      {{ a.component_id or '' }}{% if a.component_id %} — {% endif %}{{ a.serial_number }}{% if a.model %} ({{ a.model }}){% endif %}
                     </option>
                     {% endfor %}
                   </select>
@@ -126,8 +152,8 @@
                          value="{{ item.quantity }}" min="1" required>
                 </td>
                 <td>
-                  <input type="number" name="item_unit_price" class="form-control form-control-sm item-price"
-                         value="{{ item.unit_price or 0 }}" min="0" step="0.01">
+                  <input type="text" name="item_unit_price" class="form-control form-control-sm item-price font-monospace"
+                         value="{{ '{:,.2f}'.format(item.unit_price or 0) }}" autocomplete="off">
                 </td>
                 <td class="small font-monospace item-subtotal">
                   {{ '{:,.2f}'.format((item.unit_price or 0) * item.quantity) }}
@@ -170,7 +196,7 @@
         <option value="">— {{ t.purchase_select_asset }} —</option>
         {% for a in assets %}
         <option value="{{ a.id }}">
-          {{ a.component_id or '' }} — {{ a.serial_number }}{% if a.model %} ({{ a.model }}){% endif %}
+          {{ a.component_id or '' }}{% if a.component_id %} — {% endif %}{{ a.serial_number }}{% if a.model %} ({{ a.model }}){% endif %}
         </option>
         {% endfor %}
       </select>
@@ -180,8 +206,8 @@
              value="1" min="1" required>
     </td>
     <td>
-      <input type="number" name="item_unit_price" class="form-control form-control-sm item-price"
-             value="0" min="0" step="0.01">
+      <input type="text" name="item_unit_price" class="form-control form-control-sm item-price font-monospace"
+             value="0" autocomplete="off">
     </td>
     <td class="small font-monospace item-subtotal">0.00</td>
     <td>
@@ -199,21 +225,36 @@
 {% block scripts %}
 <script>
 (function () {
-  var body     = document.getElementById('itemsBody');
-  var tmpl     = document.getElementById('itemRowTemplate');
-  var noMsg    = document.getElementById('noItemsMsg');
-  var totalEl  = document.getElementById('grandTotal');
-  var addBtn   = document.getElementById('addItemBtn');
+  var body    = document.getElementById('itemsBody');
+  var tmpl    = document.getElementById('itemRowTemplate');
+  var noMsg   = document.getElementById('noItemsMsg');
+  var totalEl = document.getElementById('grandTotal');
+  var addBtn  = document.getElementById('addItemBtn');
 
   function fmt(n) {
     return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function parseNum(s) {
+    return parseFloat((s || '').replace(/,/g, '')) || 0;
+  }
+
+  // Amount field comma formatting
+  var amountInput = document.getElementById('amountInput');
+  if (amountInput) {
+    amountInput.addEventListener('blur', function () {
+      var v = parseNum(this.value);
+      this.value = v > 0 ? fmt(v) : '';
+    });
+    amountInput.addEventListener('focus', function () {
+      this.value = this.value.replace(/,/g, '');
+    });
   }
 
   function recalc() {
     var total = 0;
     body.querySelectorAll('.item-row').forEach(function (row) {
-      var qty   = parseFloat(row.querySelector('.item-qty').value)   || 0;
-      var price = parseFloat(row.querySelector('.item-price').value) || 0;
+      var qty   = parseFloat(row.querySelector('.item-qty').value) || 0;
+      var price = parseNum(row.querySelector('.item-price').value);
       var sub   = qty * price;
       row.querySelector('.item-subtotal').textContent = fmt(sub);
       total += sub;
@@ -224,11 +265,19 @@
 
   function wireRow(row) {
     row.querySelector('.remove-item').addEventListener('click', function () {
-      row.remove();
-      recalc();
+      row.remove(); recalc();
     });
     row.querySelector('.item-qty').addEventListener('input', recalc);
-    row.querySelector('.item-price').addEventListener('input', recalc);
+    var priceEl = row.querySelector('.item-price');
+    priceEl.addEventListener('input', recalc);
+    priceEl.addEventListener('blur', function () {
+      var v = parseNum(this.value);
+      this.value = fmt(v);
+      recalc();
+    });
+    priceEl.addEventListener('focus', function () {
+      this.value = this.value.replace(/,/g, '');
+    });
   }
 
   body.querySelectorAll('.item-row').forEach(wireRow);
@@ -236,7 +285,6 @@
 
   addBtn.addEventListener('click', function () {
     var clone = tmpl.content.cloneNode(true);
-    var row   = clone.querySelector('tr');
     body.appendChild(clone);
     wireRow(body.lastElementChild);
     recalc();
