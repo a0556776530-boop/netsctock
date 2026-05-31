@@ -110,7 +110,7 @@ def dashboard():
             break
 
     # ── Expiring allocations (expired or within 14 days) ─────────────────────
-    cutoff = today + timedelta(days=14)
+    cutoff = today + timedelta(days=7)
     expiring_estimates = list(
         Estimate.objects(
             Q(status='pending') & Q(record_type__ne='estimate') & Q(valid_until__lte=cutoff)
