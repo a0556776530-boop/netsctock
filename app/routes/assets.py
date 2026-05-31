@@ -166,10 +166,11 @@ def list_assets():
     from app.models.settings import AppSetting
     global_settings = json.dumps(AppSetting.all_as_dict())
 
-    # Commitments: sum of quantities in PENDING estimate items per asset
+    # Commitments: sum of quantities in PENDING allocations only (not budget estimates)
     from app.models.estimate import Estimate
+    from mongoengine import Q as MQ
     commitments = {}
-    for est in Estimate.objects(status='pending').select_related():
+    for est in Estimate.objects(MQ(status='pending') & MQ(record_type__ne='estimate')).select_related():
         for item in est.items:
             if item.asset:
                 aid = str(item.asset.id)
