@@ -63,15 +63,27 @@ def save_settings():
 @main_bp.route('/')
 @login_required
 def dashboard():
+    from mongoengine import Q
+    from app.models.estimate import Estimate
+    from app.models.purchase import Purchase
+
     today = date.today()
 
+    # ── Core counts ───────────────────────────────────────────────────────────
     total_assets = Asset.objects.count()
+    open_tasks_count = Task.objects(status__ne='done').count()
+    pending_allocations_count = Estimate.objects(
+        Q(status='pending') & Q(record_type__ne='estimate')
+    ).count()
+    open_purchases_count = Purchase.objects(
+        status__ne='Order Received in Warehouse'
+    ).count()
 
-    # Status counts — MongoDB aggregation (no Python-side loading)
+    # ── Status counts ─────────────────────────────────────────────────────────
     pipeline_status = [{'$group': {'_id': '$status', 'count': {'$sum': 1}}}]
     status_counts = {r['_id']: r['count'] for r in Asset._get_collection().aggregate(pipeline_status) if r['_id']}
 
-    # Recent events — skip any with broken references (deleted users/assets)
+    # ── Recent events ─────────────────────────────────────────────────────────
     recent_events = []
     for event in AssetEvent.objects.order_by('-event_date').limit(50):
         try:
@@ -80,18 +92,49 @@ def dashboard():
             recent_events.append(event)
         except Exception:
             continue
-        if len(recent_events) >= 10:
+        if len(recent_events) >= 8:
             break
 
-    open_tasks_count = Task.objects(status__ne='done').count()
+    # ── Low stock (respects min_threshold) ───────────────────────────────────
+    low_stock_assets = []
+    for a in Asset.objects(quantity__exists=True, quantity__ne=None).only(
+        'component_id', 'serial_number', 'model', 'quantity', 'min_threshold', 'price_usd'
+    ).order_by('quantity').limit(50):
+        threshold = a.min_threshold if a.min_threshold else 5
+        if (a.quantity or 0) < threshold:
+            low_stock_assets.append(a)
+        if len(low_stock_assets) >= 10:
+            break
 
-    low_stock_assets = list(
-        Asset.objects(quantity__exists=True, quantity__ne=None, quantity__lt=5)
-        .only('component_id', 'serial_number', 'model', 'quantity', 'min_threshold')
-        .order_by('quantity').limit(10)
+    # ── Expiring allocations (expired or within 14 days) ─────────────────────
+    cutoff = today + timedelta(days=14)
+    expiring_estimates = list(
+        Estimate.objects(
+            Q(status='pending') & Q(record_type__ne='estimate') & Q(valid_until__lte=cutoff)
+        ).order_by('valid_until').limit(8)
     )
 
-    # Status chart
+    # ── Purchases by status (pipeline) ───────────────────────────────────────
+    from app.models.purchase import STATUSES as PURCHASE_STATUSES
+    purchase_status_counts = {}
+    for p in Purchase.objects.only('status'):
+        purchase_status_counts[p.status] = purchase_status_counts.get(p.status, 0) + 1
+    purchases_pipeline = [(s, purchase_status_counts.get(s, 0)) for s in PURCHASE_STATUSES]
+
+    # ── Top committed assets ──────────────────────────────────────────────────
+    commitments = {}
+    for est in Estimate.objects(Q(status='pending') & Q(record_type__ne='estimate')).select_related():
+        for item in est.items:
+            if item.asset:
+                aid = str(item.asset.id)
+                commitments[aid] = commitments.get(aid, 0) + item.quantity
+    top_committed = []
+    for aid, qty in sorted(commitments.items(), key=lambda x: -x[1])[:6]:
+        asset = Asset.objects(id=aid).only('serial_number', 'model', 'quantity', 'component_id').first()
+        if asset:
+            top_committed.append({'asset': asset, 'committed': qty})
+
+    # ── Charts ────────────────────────────────────────────────────────────────
     all_statuses = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
     status_chart = {
         'labels': [_STATUS_LABELS[s] for s in all_statuses],
@@ -99,24 +142,6 @@ def dashboard():
         'colors': [_STATUS_COLORS[s] for s in all_statuses],
     }
 
-    # Type chart — MongoDB aggregation via lookup
-    pipeline_type = [
-        {'$group': {'_id': '$asset_type_id', 'count': {'$sum': 1}}},
-        {'$lookup': {'from': 'asset_types', 'localField': '_id', 'foreignField': '_id', 'as': 'type_info'}},
-        {'$sort': {'count': -1}},
-        {'$limit': 8},
-    ]
-    type_rows = []
-    for r in Asset._get_collection().aggregate(pipeline_type):
-        name = r['type_info'][0]['name'] if r.get('type_info') else 'Unknown'
-        type_rows.append((name, r['count']))
-    type_chart = {
-        'labels': [r[0] for r in type_rows],
-        'data':   [r[1] for r in type_rows],
-    }
-
-    # Activity chart — one aggregation instead of 14 queries
-    from datetime import timezone
     day_start_14 = datetime.combine(today - timedelta(days=13), datetime.min.time())
     pipeline_activity = [
         {'$match': {'event_date': {'$gte': day_start_14}}},
@@ -136,9 +161,13 @@ def dashboard():
         status_counts=status_counts,
         recent_events=recent_events,
         open_tasks_count=open_tasks_count,
+        pending_allocations_count=pending_allocations_count,
+        open_purchases_count=open_purchases_count,
         low_stock_assets=low_stock_assets,
+        expiring_estimates=expiring_estimates,
+        purchases_pipeline=purchases_pipeline,
+        top_committed=top_committed,
         today=today,
         status_chart=json.dumps(status_chart),
-        type_chart=json.dumps(type_chart),
         activity_chart=json.dumps(activity_chart),
     )
