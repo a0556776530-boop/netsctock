@@ -37,7 +37,7 @@
           <th>{{ t.purchase_col_name }}</th>
           <th>{{ t.purchase_col_bom_date }}</th>
           <th>{{ t.purchase_col_estimate_number }}</th>
-          <th class="text-end pe-4 ps-4">{{ t.purchase_col_amount }}</th>
+          <th class="text-end pe-4" style="padding-left:4rem;">{{ t.purchase_col_amount }}</th>
           <th>{{ t.purchase_col_currency }}</th>
           <th>{{ t.purchase_col_emf }}</th>
           <th>{{ t.purchase_col_requirement }}</th>
@@ -54,7 +54,7 @@
           </td>
           <td class="small text-muted">{{ p.bom_date.strftime('%d %b %Y') if p.bom_date else '—' }}</td>
           <td class="small">{{ p.estimate_number or '—' }}</td>
-          <td class="text-end small font-monospace pe-4 ps-4">
+          <td class="text-end small font-monospace pe-4" style="padding-left:4rem;">
             {% if p.amount %}{{ '{:,.2f}'.format(p.amount) }}{% else %}—{% endif %}
           </td>
           <td class="small">{{ p.currency or '—' }}</td>
