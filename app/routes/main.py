@@ -63,6 +63,8 @@ def save_settings():
 @main_bp.route('/')
 @login_required
 def dashboard():
+    if current_user.is_warehouse:
+        return redirect(url_for('estimates.list_estimates'))
     from mongoengine import Q
     from app.models.estimate import Estimate
     from app.models.purchase import Purchase

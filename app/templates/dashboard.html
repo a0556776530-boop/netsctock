@@ -123,7 +123,8 @@
 <!-- ── Purchases Pipeline + Expiring ────────────────────────────────── -->
 <div class="row g-3 mb-4">
 
-  <!-- User activity -->
+  <!-- User activity (admin only) -->
+  {% if current_user.is_admin %}
   <div class="col-12 col-md-5">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-transparent fw-semibold small border-0 pt-3">
@@ -198,6 +199,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <!-- Expiring allocations -->
   <div class="col-12 col-md-7">
