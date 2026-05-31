@@ -364,38 +364,6 @@ if (actEl) {
 (function() {
   var isHe = '{{ lang }}' === 'he';
 
-  function fmtAgo(diffSec) {
-    if (diffSec === null || diffSec === undefined) return '';
-    var m = Math.floor(diffSec / 60);
-    var h = Math.floor(m / 60);
-    var d = Math.floor(h / 24);
-    if (isHe) {
-      if (m < 1)  return 'עכשיו';
-      if (m === 1) return 'לפני דקה';
-      if (m < 60) return 'לפני ' + m + ' דקות';
-      if (h === 1) return 'לפני שעה';
-      if (h < 24) return 'לפני ' + h + ' שעות';
-      if (d === 1) return 'לפני יום';
-      return 'לפני ' + d + ' ימים';
-    } else {
-      if (m < 1)  return 'just now';
-      if (m === 1) return '1 minute ago';
-      if (m < 60) return m + ' minutes ago';
-      if (h === 1) return '1 hour ago';
-      if (h < 24) return h + ' hours ago';
-      if (d === 1) return '1 day ago';
-      return d + ' days ago';
-    }
-  }
-
-  var lbl = {
-    online:  isHe ? 'מחובר'        : 'Active',
-    away:    isHe ? 'לא פעיל'      : 'Away',
-    offline: isHe ? 'לא מחובר'     : 'Offline',
-    never:   isHe ? 'לא נכנס מעולם': 'Never logged in',
-    updated: isHe ? 'עודכן'        : 'Updated',
-  };
-
   function refreshActivity() {
     fetch('/api/user-activity')
       .then(function(r) { return r.json(); })
@@ -405,7 +373,7 @@ if (actEl) {
         var byId = {};
         data.users.forEach(function(u) { byId[u.id] = u; });
 
-        // Sort rows by diff_sec (nulls last)
+        // Sort: online first, then by recency, never last
         var list = document.querySelector('#userActivityList ul');
         var items = Array.from(rows);
         items.sort(function(a, b) {
@@ -420,22 +388,46 @@ if (actEl) {
         rows.forEach(function(row) {
           var u = byId[row.dataset.uid];
           if (!u) return;
-          var dot  = row.querySelector('.status-dot');
-          var txt  = row.querySelector('.status-text');
+          var dot     = row.querySelector('.status-dot');
+          var txt     = row.querySelector('.status-text');
           var loginEl = row.querySelector('.login-date');
+          var ds      = u.diff_sec;
 
           if (u.status === 'online') {
+            // Active within the last 5 minutes
             dot.style.background = '#16a34a';
-            txt.innerHTML = '<span class="text-success fw-semibold">' + lbl.online + ' <span class="fw-normal">' + fmtAgo(u.diff_sec) + '</span></span>';
-          } else if (u.status === 'away') {
+            txt.innerHTML = '<span class="text-success fw-semibold">• ' + (isHe ? 'מחובר' : 'Active') + '</span>';
+
+          } else if (ds !== null && ds < 3600) {
+            // Inactive but seen under 60 minutes ago → relative time
+            var mins = Math.max(1, Math.floor(ds / 60));
             dot.style.background = '#f59e0b';
-            txt.innerHTML = '<span class="text-warning fw-semibold">' + lbl.online + '</span> <span class="text-muted">' + fmtAgo(u.diff_sec) + '</span>';
-          } else if (u.status === 'offline') {
-            dot.style.background = '#d1d5db';
-            txt.innerHTML = '<span class="text-muted">' + lbl.online + ' ' + fmtAgo(u.diff_sec) + '</span>';
+            if (isHe) {
+              txt.innerHTML = '<span class="text-warning fw-semibold">לא פעיל</span>'
+                + ' <span class="text-muted x-small">— נראה לאחרונה לפני ' + mins + ' דקות</span>';
+            } else {
+              txt.innerHTML = '<span class="text-warning fw-semibold">Inactive</span>'
+                + ' <span class="text-muted x-small">— last seen ' + mins + ' min ago</span>';
+            }
+
+          } else if (ds !== null) {
+            // Inactive more than 60 minutes → absolute clock time
+            var t   = new Date(Date.now() - ds * 1000);
+            var hh  = String(t.getHours()).padStart(2, '0');
+            var mm  = String(t.getMinutes()).padStart(2, '0');
+            dot.style.background = '#9ca3af';
+            if (isHe) {
+              txt.innerHTML = '<span class="text-muted">לא פעיל</span>'
+                + ' <span class="text-muted x-small">— נראה לאחרונה בשעה ' + hh + ':' + mm + '</span>';
+            } else {
+              txt.innerHTML = '<span class="text-muted">Inactive</span>'
+                + ' <span class="text-muted x-small">— last seen at ' + hh + ':' + mm + '</span>';
+            }
+
           } else {
+            // No login record at all
             dot.style.background = '#d1d5db';
-            txt.innerHTML = '<span class="text-muted fst-italic">' + lbl.never + '</span>';
+            txt.innerHTML = '<span class="text-muted fst-italic">' + (isHe ? 'לא נכנס מעולם' : 'Never logged in') + '</span>';
           }
 
           if (loginEl && u.last_login) loginEl.textContent = u.last_login;
@@ -444,7 +436,8 @@ if (actEl) {
         var updated = document.getElementById('activityUpdated');
         if (updated) {
           var now = new Date();
-          updated.textContent = lbl.updated + ' ' + now.toLocaleTimeString(isHe ? 'he-IL' : 'en-GB', {hour:'2-digit', minute:'2-digit'});
+          updated.textContent = (isHe ? 'עודכן ' : 'Updated ')
+            + now.toLocaleTimeString(isHe ? 'he-IL' : 'en-GB', {hour: '2-digit', minute: '2-digit'});
         }
       })
       .catch(function() {});
