@@ -59,6 +59,15 @@
           <i class="bi bi-clock-history me-2"></i>{{ t.nav_estimates_history }}
         </a>
       </li>
+      {% if current_user.is_super_admin %}
+      <li class="nav-item ps-2">
+        <a href="{{ url_for('estimates.list_budget_estimates') }}"
+           class="nav-link text-white {% if request.endpoint == 'estimates.list_budget_estimates' %}active{% endif %}"
+           style="font-size:.9em; opacity:.85;">
+          <i class="bi bi-calculator me-2"></i>{{ t.nav_budget_estimates }}
+        </a>
+      </li>
+      {% endif %}
       {% if current_user.is_admin %}
       <li class="nav-item mt-2">
         <span class="nav-link text-secondary small text-uppercase px-2">{{ t.nav_admin_label }}</span>

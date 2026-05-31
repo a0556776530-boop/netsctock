@@ -3,7 +3,8 @@ import io
 import json
 from datetime import date, timedelta, datetime, timezone
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, Response, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, Response, jsonify, g
+from mongoengine import Q
 from flask_login import login_required, current_user
 
 from app.models.estimate import Estimate, EstimateItem
@@ -27,8 +28,21 @@ def _next_allocation_number():
 @estimates_bp.route('/')
 @login_required
 def list_estimates():
-    estimates = list(Estimate.objects(status='pending').order_by('-created_at'))
+    # Show allocations (legacy docs without record_type are treated as allocations)
+    estimates = list(
+        Estimate.objects(Q(status='pending') & Q(record_type__ne='estimate')).order_by('-created_at')
+    )
     return render_template('estimates/list.html', estimates=estimates)
+
+
+@estimates_bp.route('/budget')
+@login_required
+def list_budget_estimates():
+    if not current_user.is_super_admin:
+        abort(403)
+    t = getattr(g, 't', {})
+    estimates = list(Estimate.objects(record_type='estimate').order_by('-created_at'))
+    return render_template('estimates/budget_list.html', estimates=estimates)
 
 
 @estimates_bp.route('/history')
@@ -93,6 +107,10 @@ def new_estimate():
             )
             return redirect(url_for('estimates.new_estimate'))
 
+        record_type  = request.form.get('record_type', 'allocation')
+        if record_type not in ('allocation', 'estimate'):
+            record_type = 'allocation'
+
         maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
         estimate = Estimate(
             allocation_number=next_num,
@@ -102,6 +120,7 @@ def new_estimate():
             valid_until=validity,
             usd_rate=usd_rate,
             maintenance_factor=maint_factor,
+            record_type=record_type,
             created_by=current_user._get_current_object(),
         )
 
@@ -123,6 +142,8 @@ def new_estimate():
         estimate.total_nis = round(total_nis, 2)
         estimate.save()
         flash(f'Estimate "{task_name}" saved successfully.', 'success')
+        if record_type == 'estimate':
+            return redirect(url_for('estimates.list_budget_estimates'))
         return redirect(url_for('estimates.list_estimates'))
 
     assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())

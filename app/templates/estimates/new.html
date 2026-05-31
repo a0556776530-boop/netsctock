@@ -6,6 +6,28 @@
 <form method="POST" id="estimateForm" novalidate>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="items_json" id="itemsJson" value="[]">
+  <input type="hidden" name="record_type" id="recordTypeInput" value="allocation">
+
+  <!-- ── Type Selector ────────────────────────────────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+      <p class="text-muted small fw-semibold mb-2 text-uppercase" style="letter-spacing:.06em;">{{ t.record_type_label }}</p>
+      <div class="d-flex gap-3">
+        <button type="button" id="btnAllocation"
+                class="btn btn-lg flex-fill type-toggle active-type"
+                style="border:2px solid #3b82f6;background:#eff6ff;color:#1d4ed8;"
+                data-type="allocation" onclick="selectType('allocation')">
+          <i class="bi bi-archive me-2"></i>{{ t.record_type_allocation }}
+        </button>
+        <button type="button" id="btnEstimate"
+                class="btn btn-lg flex-fill type-toggle"
+                style="border:2px solid #e2e8f0;background:#f8fafc;color:#64748b;"
+                data-type="estimate" onclick="selectType('estimate')">
+          <i class="bi bi-calculator me-2"></i>{{ t.record_type_estimate }}
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Task Header ──────────────────────────────────────────────────────── -->
   <div class="card border-0 shadow-sm mb-4">
@@ -343,5 +365,27 @@
   // ── Boot ──────────────────────────────────────────────────────────────────
   renderAll();
 })();
+
+// ── Type selector ─────────────────────────────────────────────────────────
+function selectType(type) {
+  document.getElementById('recordTypeInput').value = type;
+  var btnA = document.getElementById('btnAllocation');
+  var btnE = document.getElementById('btnEstimate');
+  if (type === 'allocation') {
+    btnA.style.border = '2px solid #3b82f6';
+    btnA.style.background = '#eff6ff';
+    btnA.style.color = '#1d4ed8';
+    btnE.style.border = '2px solid #e2e8f0';
+    btnE.style.background = '#f8fafc';
+    btnE.style.color = '#64748b';
+  } else {
+    btnE.style.border = '2px solid #8b5cf6';
+    btnE.style.background = '#f5f3ff';
+    btnE.style.color = '#6d28d9';
+    btnA.style.border = '2px solid #e2e8f0';
+    btnA.style.background = '#f8fafc';
+    btnA.style.color = '#64748b';
+  }
+}
 </script>
 {% endblock %}

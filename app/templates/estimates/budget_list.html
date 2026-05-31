@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.budget_estimates_title }}{% endblock %}
+{% block page_title %}{{ t.budget_estimates_title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <span class="text-muted small">{{ estimates | length }} {{ t.purchases_count_suffix if false else t.budget_estimates_count }}</span>
+  {% if current_user.can_edit %}
+  <a href="{{ url_for('estimates.new_estimate') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>{{ t.new_estimate_title }}
+  </a>
+  {% endif %}
+</div>
+
+<div class="mb-3">
+  <input type="text" id="budgetSearch" class="form-control"
+         placeholder="{{ t.ph_search_estimates }}"
+         oninput="filterBudget(this.value)">
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" id="budgetTable">
+      <thead class="table-light">
+        <tr>
+          <th>{{ t.col_assignment_no }}</th>
+          <th>{{ t.col_requester }}</th>
+          <th>{{ t.col_project }}</th>
+          <th>{{ t.col_date }}</th>
+          <th>{{ t.col_valid_until }}</th>
+          <th class="text-end">{{ t.col_total_usd }}</th>
+          <th class="text-end">{{ t.col_total_ils }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in estimates %}
+        <tr data-assignment="{{ e.allocation_number or '' }}"
+            data-requester="{{ e.task_name | lower }}"
+            data-project="{{ (e.project_name or '') | lower }}">
+          <td>
+            <span class="badge bg-purple font-monospace" style="background:#8b5cf6!important;">{{ e.allocation_number or '—' }}</span>
+          </td>
+          <td class="fw-semibold">
+            <a href="{{ url_for('estimates.detail', id=e.id) }}" class="text-decoration-none">{{ e.task_name }}</a>
+          </td>
+          <td class="small text-muted">{{ e.project_name or '—' }}</td>
+          <td class="small">{{ e.created_date.strftime('%d %b %Y') }}</td>
+          <td class="small {% if e.valid_until < now.date() %}text-danger fw-semibold{% endif %}">
+            {{ e.valid_until.strftime('%d %b %Y') }}
+            {% if e.valid_until < now.date() %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small ms-1">{{ t.badge_expired }}</span>{% endif %}
+          </td>
+          <td class="text-end font-monospace fw-semibold text-success">{{ e.formatted_total_usd }}</td>
+          <td class="text-end font-monospace fw-semibold text-success">{{ e.formatted_total }}</td>
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.action_view }}">
+              <i class="bi bi-eye"></i>
+            </a>
+            {% if current_user.can_edit %}
+            <a href="{{ url_for('estimates.edit', id=e.id) }}" class="btn btn-sm btn-outline-primary" title="{{ t.btn_edit }}">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% if current_user.is_admin %}
+            <form method="POST" action="{{ url_for('estimates.delete', id=e.id) }}" class="d-inline"
+                  onsubmit="return confirm('{{ t.confirm_delete_estimate.format(name=e.task_name) }}')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ t.action_delete }}">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </form>
+            {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr id="emptyRow">
+          <td colspan="8" class="text-center text-muted py-5">
+            <i class="bi bi-calculator fs-3 d-block mb-2 opacity-50"></i>
+            {{ t.no_budget_estimates }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterBudget(q) {
+  q = (q || '').trim().toLowerCase();
+  var rows = document.querySelectorAll('#budgetTable tbody tr[data-assignment]');
+  var visible = 0;
+  rows.forEach(function(row) {
+    var show = !q ||
+      (row.getAttribute('data-assignment') || '').includes(q) ||
+      (row.getAttribute('data-requester') || '').includes(q) ||
+      (row.getAttribute('data-project') || '').includes(q);
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+}
+</script>
+{% endblock %}
