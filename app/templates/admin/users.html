@@ -45,6 +45,9 @@
               {% elif user.role == 'technician' %}
               <div class="role-avatar-sm role-tech"><i class="bi bi-cpu-fill"></i></div>
               <span class="small fw-semibold" style="color:#15803d;">{{ t.role_technician }}</span>
+              {% elif user.role == 'warehouse' %}
+              <div class="role-avatar-sm role-tech"><i class="bi bi-box-seam-fill"></i></div>
+              <span class="small fw-semibold" style="color:#0369a1;">{{ t.role_warehouse }}</span>
               {% else %}
               <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
               <span class="small fw-semibold" style="color:#7e22ce;">{{ t.role_viewer }}</span>
