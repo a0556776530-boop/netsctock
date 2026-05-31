@@ -49,6 +49,7 @@
               <option value="admin"      {% if user.role == 'admin' %}selected{% endif %}>{{ t.role_admin }}</option>
               <option value="technician" {% if user.role == 'technician' %}selected{% endif %}>{{ t.role_technician }}</option>
               <option value="viewer"     {% if user.role == 'viewer' %}selected{% endif %}>{{ t.role_viewer }}</option>
+              <option value="warehouse"  {% if user.role == 'warehouse' %}selected{% endif %}>{{ t.role_warehouse }}</option>
             </select>
             {% endif %}
           </td>
