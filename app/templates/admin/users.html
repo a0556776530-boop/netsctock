@@ -42,9 +42,6 @@
               {% elif user.role == 'admin' %}
               <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
               <span class="small fw-semibold" style="color:#b45309;">{{ t.role_admin }}</span>
-              {% elif user.role == 'technician' %}
-              <div class="role-avatar-sm role-tech"><i class="bi bi-cpu-fill"></i></div>
-              <span class="small fw-semibold" style="color:#15803d;">{{ t.role_technician }}</span>
               {% elif user.role == 'warehouse' %}
               <div class="role-avatar-sm role-tech"><i class="bi bi-box-seam-fill"></i></div>
               <span class="small fw-semibold" style="color:#0369a1;">{{ t.role_warehouse }}</span>
@@ -67,7 +64,7 @@
             </a>
             {% endif %}
             {% if user.id != current_user.id %}
-              {% set can_delete = current_user.is_super_admin or (current_user.is_admin and user.role in ('technician', 'viewer')) %}
+              {% set can_delete = current_user.is_super_admin or (current_user.is_admin and user.role == 'viewer') %}
               {% if can_delete %}
               <form method="POST" action="{{ url_for('admin.delete_user', id=user.id) }}" class="d-inline"
                     onsubmit="return confirm('{{ t.confirm_delete_user.format(name=user.name) }}')">

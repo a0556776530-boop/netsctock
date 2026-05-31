@@ -56,13 +56,12 @@ class ResetPasswordForm(FlaskForm):
     submit       = SubmitField('Reset Password')
 
 
-VALID_ROLES = ('super_admin', 'admin', 'technician', 'viewer', 'warehouse')
+VALID_ROLES = ('super_admin', 'admin', 'viewer', 'warehouse')
 
 def _role_choices(t):
     return [
         ('super_admin', t.get('role_super_admin', 'Super Admin')),
         ('admin',       t.get('role_admin',       'Admin')),
-        ('technician',  t.get('role_technician',  'Technician')),
         ('viewer',      t.get('role_viewer',      'Viewer')),
         ('warehouse',   t.get('role_warehouse',   'Warehouse')),
     ]
@@ -177,9 +176,9 @@ def delete_user(id):
         flash(t.get('flash_cannot_delete_self', 'You cannot delete your own account.'), 'danger')
         return redirect(url_for('admin.users'))
 
-    # Regular admin can only delete technicians and viewers
+    # Regular admin can only delete viewers
     if not current_user.is_super_admin:
-        if user.role not in ('technician', 'viewer'):
+        if user.role not in ('viewer',):
             abort(403)
 
     # Protect last super admin

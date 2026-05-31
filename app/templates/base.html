@@ -117,7 +117,7 @@
         {% elif current_user.role == 'admin' %}
         <div class="role-avatar role-admin"><i class="bi bi-crown-fill"></i></div>
         {% elif current_user.role == 'technician' %}
-        <div class="role-avatar role-tech"><i class="bi bi-cpu-fill"></i></div>
+        <div class="role-avatar role-viewer"><i class="bi bi-eye-fill"></i></div>
         {% elif current_user.role == 'warehouse' %}
         <div class="role-avatar role-tech"><i class="bi bi-box-seam-fill"></i></div>
         {% else %}
@@ -128,7 +128,7 @@
           <div style="font-size:.75rem; color:rgba(255,255,255,.45);">
             {% if current_user.role == 'super_admin' %}{{ t.role_super_admin or 'Super Admin' }}
             {% elif current_user.role == 'admin' %}{{ t.role_admin }}
-            {% elif current_user.role == 'technician' %}{{ t.role_technician }}
+            {% elif current_user.role == 'technician' %}{{ t.role_viewer }}
             {% elif current_user.role == 'warehouse' %}{{ t.role_warehouse }}
             {% else %}{{ t.role_viewer }}{% endif %}
           </div>
