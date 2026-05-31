@@ -324,6 +324,18 @@ def export_csv(id):
                     headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
 
+@estimates_bp.route('/<id>/convert-to-allocation', methods=['POST'])
+@login_required
+def convert_to_allocation(id):
+    if not current_user.is_super_admin:
+        abort(403)
+    estimate = get_or_404(Estimate, id)
+    estimate.record_type = 'allocation'
+    estimate.save()
+    flash(f'Estimate "{estimate.task_name}" transferred to allocations list.', 'success')
+    return redirect(url_for('estimates.list_estimates'))
+
+
 @estimates_bp.route('/<id>/delete', methods=['POST'])
 @login_required
 def delete(id):

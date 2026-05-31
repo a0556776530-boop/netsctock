@@ -80,6 +80,15 @@
     </a>
     {% if current_user.can_edit %}
     {% if estimate.status == 'pending' %}
+    {% if estimate.record_type == 'estimate' %}
+    <form method="POST" action="{{ url_for('estimates.convert_to_allocation', id=estimate.id) }}"
+          onsubmit="return confirm('{{ t.confirm_convert_to_allocation }}')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-success fw-semibold">
+        <i class="bi bi-arrow-right-circle me-1"></i>{{ t.btn_convert_to_allocation }}
+      </button>
+    </form>
+    {% else %}
     <form method="POST" action="{{ url_for('estimates.withdraw', id=estimate.id) }}"
           onsubmit="return confirm('{{ t.confirm_mark_withdrawn }}')">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -87,6 +96,7 @@
         <i class="bi bi-check2-circle me-1"></i>{{ t.btn_mark_withdrawn }}
       </button>
     </form>
+    {% endif %}
     {% endif %}
     {% if estimate.status == 'withdrawn' %}
     <form method="POST" action="{{ url_for('estimates.restore', id=estimate.id) }}"
