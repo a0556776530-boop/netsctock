@@ -11,6 +11,8 @@ class User(UserMixin, me.Document):
     password_hash = me.StringField(max_length=255, required=True)
     role          = me.StringField(max_length=20, default='technician')
     created_at    = me.DateTimeField(default=datetime.utcnow)
+    last_seen      = me.DateTimeField()
+    last_login     = me.DateTimeField()
 
     def get_id(self):
         return str(self.id)

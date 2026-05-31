@@ -123,39 +123,72 @@
 <!-- ── Purchases Pipeline + Expiring ────────────────────────────────── -->
 <div class="row g-3 mb-4">
 
-  <!-- Purchases pipeline -->
+  <!-- User activity -->
   <div class="col-12 col-md-5">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-transparent fw-semibold small border-0 pt-3">
-        <i class="bi bi-diagram-3 me-1 text-primary"></i>{{ t.purchases_pipeline_title }}
+        <i class="bi bi-people me-1 text-primary"></i>{{ t.user_activity_title }}
       </div>
-      <div class="card-body pt-1">
-        {% set pipeline_colors = ['secondary', 'info', 'primary', 'success'] %}
-        {% set pipeline_icons  = ['bi-file-earmark-text', 'bi-pencil-square', 'bi-pen', 'bi-box-seam-fill'] %}
-        {% set total_p = purchases_pipeline | sum(attribute=1) %}
-        {% for label, count in purchases_pipeline %}
-        {% set color = pipeline_colors[loop.index0] %}
-        {% set icon  = pipeline_icons[loop.index0] %}
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-               style="width:32px;height:32px;background:var(--bs-{{ color }}-bg-subtle,#f0f0f0);">
-            <i class="bi {{ icon }} text-{{ color }}" style="font-size:.8rem;"></i>
-          </div>
-          <div class="flex-grow-1">
-            <div class="d-flex justify-content-between small mb-1">
-              <span>{{ label }}</span>
-              <span class="fw-bold">{{ count }}</span>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for u in all_users %}
+          <li class="list-group-item d-flex align-items-center gap-3 py-2 px-3">
+            <!-- Role avatar -->
+            <div class="position-relative flex-shrink-0">
+              {% if u.role == 'super_admin' %}
+              <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
+              {% elif u.role == 'admin' %}
+              <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
+              {% elif u.role == 'technician' %}
+              <div class="role-avatar-sm role-tech"><i class="bi bi-cpu-fill"></i></div>
+              {% elif u.role == 'warehouse' %}
+              <div class="role-avatar-sm role-tech"><i class="bi bi-box-seam-fill"></i></div>
+              {% else %}
+              <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
+              {% endif %}
+              <!-- Online indicator dot -->
+              {% if u._online_status == 'online' %}
+              <span class="position-absolute bottom-0 end-0 rounded-circle border border-white"
+                    style="width:9px;height:9px;background:#16a34a;" title="{{ t.online_now }}"></span>
+              {% elif u._online_status == 'away' %}
+              <span class="position-absolute bottom-0 end-0 rounded-circle border border-white"
+                    style="width:9px;height:9px;background:#f59e0b;" title="{{ t.away }}"></span>
+              {% endif %}
             </div>
-            <div class="progress" style="height:5px;">
-              <div class="progress-bar bg-{{ color }}"
-                   style="width:{{ ((count / total_p * 100)|round) if total_p > 0 else 0 }}%"></div>
+            <!-- Name + last seen -->
+            <div class="flex-grow-1 overflow-hidden">
+              <div class="small fw-semibold text-truncate">
+                {{ u.name }}
+                {% if u.id == current_user.id %}
+                <span class="badge bg-secondary bg-opacity-15 text-secondary ms-1" style="font-size:.65rem;">{{ t.you_badge }}</span>
+                {% endif %}
+              </div>
+              <div class="x-small text-muted">
+                {% if u._online_status == 'online' %}
+                <span class="text-success fw-semibold">● {{ t.online_now }}</span>
+                {% elif u.last_seen %}
+                  {% set diff_min = ((now_utc - u.last_seen).total_seconds() / 60) | int %}
+                  {% if diff_min < 60 %}
+                    {{ t.last_seen_label }} {{ diff_min }}m ago
+                  {% elif diff_min < 1440 %}
+                    {{ t.last_seen_label }} {{ (diff_min / 60) | int }}h ago
+                  {% else %}
+                    {{ t.last_seen_label }} {{ u.last_seen.strftime('%d %b %H:%M') }}
+                  {% endif %}
+                {% else %}
+                <span class="text-muted fst-italic">{{ t.never_logged_in }}</span>
+                {% endif %}
+              </div>
             </div>
-          </div>
-        </div>
-        {% endfor %}
-        {% if total_p == 0 %}
-        <p class="text-muted small text-center py-3">{{ t.no_purchases_found }}</p>
-        {% endif %}
+            <!-- Last login badge -->
+            {% if u.last_login %}
+            <div class="x-small text-muted text-nowrap flex-shrink-0">
+              {{ u.last_login.strftime('%d %b') }}
+            </div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
   </div>

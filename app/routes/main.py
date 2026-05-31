@@ -66,6 +66,7 @@ def dashboard():
     from mongoengine import Q
     from app.models.estimate import Estimate
     from app.models.purchase import Purchase
+    from app.models.user import User
 
     today = date.today()
 
@@ -134,6 +135,22 @@ def dashboard():
         if asset:
             top_committed.append({'asset': asset, 'committed': qty})
 
+    # ── Users activity ───────────────────────────────────────────────────────
+    from datetime import timezone
+    now_utc = datetime.utcnow()
+    all_users = list(User.objects.order_by('-last_seen'))
+    for u in all_users:
+        if u.last_seen:
+            diff = (now_utc - u.last_seen).total_seconds()
+            if diff < 300:
+                u._online_status = 'online'
+            elif diff < 1800:
+                u._online_status = 'away'
+            else:
+                u._online_status = 'offline'
+        else:
+            u._online_status = 'never'
+
     # ── Charts ────────────────────────────────────────────────────────────────
     all_statuses = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
     status_chart = {
@@ -167,6 +184,8 @@ def dashboard():
         expiring_estimates=expiring_estimates,
         purchases_pipeline=purchases_pipeline,
         top_committed=top_committed,
+        all_users=all_users,
+        now_utc=now_utc,
         today=today,
         status_chart=json.dumps(status_chart),
         activity_chart=json.dumps(activity_chart),

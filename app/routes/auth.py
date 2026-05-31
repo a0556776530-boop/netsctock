@@ -38,6 +38,10 @@ def login():
                 matched = u
                 break
         if matched:
+            from datetime import datetime
+            matched.last_login = datetime.utcnow()
+            matched.last_seen  = datetime.utcnow()
+            matched.save()
             login_user(matched, remember=form.remember.data)
             next_page = request.args.get('next', '')
             parsed = urlparse(next_page)
