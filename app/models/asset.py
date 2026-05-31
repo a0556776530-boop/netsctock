@@ -13,7 +13,11 @@ class AssetType(me.Document):
 
 
 class Asset(me.Document):
-    meta = {'collection': 'assets', 'strict': False}
+    meta = {
+        'collection': 'assets',
+        'strict': False,
+        'indexes': ['status', 'quantity', 'serial_number', 'component_id'],
+    }
 
     STATUSES = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
     STATUS_LABELS = {
@@ -75,7 +79,11 @@ class Asset(me.Document):
 
 
 class AssetEvent(me.Document):
-    meta = {'collection': 'asset_events', 'ordering': ['-event_date']}
+    meta = {
+        'collection': 'asset_events',
+        'ordering': ['-event_date'],
+        'indexes': ['-event_date'],
+    }
 
     EVENT_TYPES = ['dismantled', 'moved', 'assigned', 'returned', 'repaired',
                    'created', 'retired', 'status_change']

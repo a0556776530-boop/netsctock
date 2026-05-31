@@ -16,13 +16,11 @@ estimates_bp = Blueprint('estimates', __name__, url_prefix='/estimates')
 
 
 def _next_allocation_number():
-    used = {e.allocation_number for e in Estimate.objects(allocation_number__exists=True) if e.allocation_number}
-    if not used:
-        return 1001
-    n = min(used)
-    while n in used:
-        n += 1
-    return n
+    result = list(Estimate._get_collection().aggregate([
+        {'$match': {'allocation_number': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': None, 'max_num': {'$max': '$allocation_number'}}},
+    ]))
+    return (result[0]['max_num'] + 1) if result else 1001
 
 
 @estimates_bp.route('/')

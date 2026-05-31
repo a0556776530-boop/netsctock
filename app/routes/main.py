@@ -123,7 +123,7 @@ def dashboard():
 
     # ── Recent events ─────────────────────────────────────────────────────────
     recent_events = []
-    for event in AssetEvent.objects.order_by('-event_date').limit(50):
+    for event in AssetEvent.objects.order_by('-event_date').limit(50).select_related(max_depth=1):
         try:
             _ = event.performed_by_user.name
             _ = event.asset.serial_number
@@ -154,23 +154,24 @@ def dashboard():
 
     # ── Purchases by status (pipeline) ───────────────────────────────────────
     from app.models.purchase import STATUSES as PURCHASE_STATUSES
-    purchase_status_counts = {}
-    for p in Purchase.objects.only('status'):
-        purchase_status_counts[p.status] = purchase_status_counts.get(p.status, 0) + 1
+    _p_agg = Purchase._get_collection().aggregate([{'$group': {'_id': '$status', 'count': {'$sum': 1}}}])
+    purchase_status_counts = {r['_id']: r['count'] for r in _p_agg if r['_id']}
     purchases_pipeline = [(s, purchase_status_counts.get(s, 0)) for s in PURCHASE_STATUSES]
 
-    # ── Top committed assets ──────────────────────────────────────────────────
-    commitments = {}
-    for est in Estimate.objects(Q(status='pending') & Q(record_type__ne='estimate')).select_related():
-        for item in est.items:
-            if item.asset:
-                aid = str(item.asset.id)
-                commitments[aid] = commitments.get(aid, 0) + item.quantity
+    # ── Top committed assets (server-side aggregation) ────────────────────────
+    _commit_pipeline = [
+        {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
+        {'$unwind': '$items'},
+        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': '$items.asset', 'committed': {'$sum': '$items.quantity'}}},
+        {'$sort': {'committed': -1}},
+        {'$limit': 6},
+    ]
     top_committed = []
-    for aid, qty in sorted(commitments.items(), key=lambda x: -x[1])[:6]:
-        asset = Asset.objects(id=aid).only('serial_number', 'model', 'quantity', 'component_id').first()
+    for row in Estimate._get_collection().aggregate(_commit_pipeline):
+        asset = Asset.objects(id=row['_id']).only('serial_number', 'model', 'quantity', 'component_id').first()
         if asset:
-            top_committed.append({'asset': asset, 'committed': qty})
+            top_committed.append({'asset': asset, 'committed': row['committed']})
 
     # ── Users activity ───────────────────────────────────────────────────────
     now_utc = datetime.utcnow()

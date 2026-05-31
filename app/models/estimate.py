@@ -21,7 +21,10 @@ class EstimateItem(me.EmbeddedDocument):
 
 
 class Estimate(me.Document):
-    meta = {'collection': 'estimates'}
+    meta = {
+        'collection': 'estimates',
+        'indexes': ['status', 'record_type', 'warehouse_status', 'valid_until', 'allocation_number'],
+    }
 
     allocation_number  = me.IntField(unique=True, sparse=True)
     status             = me.StringField(default='pending')
