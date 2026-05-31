@@ -136,20 +136,22 @@ def dashboard():
             top_committed.append({'asset': asset, 'committed': qty})
 
     # ── Users activity ───────────────────────────────────────────────────────
-    from datetime import timezone
     now_utc = datetime.utcnow()
-    all_users = list(User.objects.order_by('-last_seen'))
-    for u in all_users:
+    all_users = []
+    for u in User.objects.order_by('-last_seen'):
         if u.last_seen:
             diff = (now_utc - u.last_seen).total_seconds()
             if diff < 300:
-                u._online_status = 'online'
+                status = 'online'
             elif diff < 1800:
-                u._online_status = 'away'
+                status = 'away'
             else:
-                u._online_status = 'offline'
+                status = 'offline'
+            diff_min = int(diff / 60)
         else:
-            u._online_status = 'never'
+            status = 'never'
+            diff_min = None
+        all_users.append({'user': u, 'status': status, 'diff_min': diff_min})
 
     # ── Charts ────────────────────────────────────────────────────────────────
     all_statuses = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']

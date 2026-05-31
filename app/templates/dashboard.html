@@ -131,9 +131,12 @@
       </div>
       <div class="card-body p-0">
         <ul class="list-group list-group-flush">
-          {% for u in all_users %}
+          {% for row in all_users %}
+          {% set u = row.user %}
+          {% set status = row.status %}
+          {% set diff_min = row.diff_min %}
           <li class="list-group-item d-flex align-items-center gap-3 py-2 px-3">
-            <!-- Role avatar -->
+            <!-- Role avatar + online dot -->
             <div class="position-relative flex-shrink-0">
               {% if u.role == 'super_admin' %}
               <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
@@ -146,16 +149,18 @@
               {% else %}
               <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
               {% endif %}
-              <!-- Online indicator dot -->
-              {% if u._online_status == 'online' %}
-              <span class="position-absolute bottom-0 end-0 rounded-circle border border-white"
-                    style="width:9px;height:9px;background:#16a34a;" title="{{ t.online_now }}"></span>
-              {% elif u._online_status == 'away' %}
-              <span class="position-absolute bottom-0 end-0 rounded-circle border border-white"
-                    style="width:9px;height:9px;background:#f59e0b;" title="{{ t.away }}"></span>
+              {% if status == 'online' %}
+              <span class="position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
+                    style="width:10px;height:10px;background:#16a34a;"></span>
+              {% elif status == 'away' %}
+              <span class="position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
+                    style="width:10px;height:10px;background:#f59e0b;"></span>
+              {% else %}
+              <span class="position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
+                    style="width:10px;height:10px;background:#d1d5db;"></span>
               {% endif %}
             </div>
-            <!-- Name + last seen -->
+            <!-- Name + status -->
             <div class="flex-grow-1 overflow-hidden">
               <div class="small fw-semibold text-truncate">
                 {{ u.name }}
@@ -163,28 +168,29 @@
                 <span class="badge bg-secondary bg-opacity-15 text-secondary ms-1" style="font-size:.65rem;">{{ t.you_badge }}</span>
                 {% endif %}
               </div>
-              <div class="x-small text-muted">
-                {% if u._online_status == 'online' %}
+              <div class="x-small">
+                {% if status == 'online' %}
                 <span class="text-success fw-semibold">● {{ t.online_now }}</span>
-                {% elif u.last_seen %}
-                  {% set diff_min = ((now_utc - u.last_seen).total_seconds() / 60) | int %}
-                  {% if diff_min < 60 %}
-                    {{ t.last_seen_label }} {{ diff_min }}m ago
-                  {% elif diff_min < 1440 %}
-                    {{ t.last_seen_label }} {{ (diff_min / 60) | int }}h ago
-                  {% else %}
-                    {{ t.last_seen_label }} {{ u.last_seen.strftime('%d %b %H:%M') }}
-                  {% endif %}
+                {% elif status == 'away' and diff_min is not none %}
+                  <span class="text-warning fw-semibold">● {{ t.away }}</span>
+                  <span class="text-muted"> —
+                    {% if diff_min < 60 %}{{ diff_min }}m ago
+                    {% else %}{{ (diff_min / 60) | int }}h ago{% endif %}
+                  </span>
+                {% elif status == 'offline' and diff_min is not none %}
+                  <span class="text-muted">
+                    {% if diff_min < 60 %}{{ diff_min }}m ago
+                    {% elif diff_min < 1440 %}{{ (diff_min / 60) | int }}h ago
+                    {% else %}{{ u.last_seen.strftime('%d %b %H:%M') }}{% endif %}
+                  </span>
                 {% else %}
                 <span class="text-muted fst-italic">{{ t.never_logged_in }}</span>
                 {% endif %}
               </div>
             </div>
-            <!-- Last login badge -->
+            <!-- Last login date -->
             {% if u.last_login %}
-            <div class="x-small text-muted text-nowrap flex-shrink-0">
-              {{ u.last_login.strftime('%d %b') }}
-            </div>
+            <div class="x-small text-muted text-nowrap flex-shrink-0">{{ u.last_login.strftime('%d %b') }}</div>
             {% endif %}
           </li>
           {% endfor %}
