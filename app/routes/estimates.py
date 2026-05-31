@@ -170,6 +170,13 @@ def new_estimate():
 @login_required
 def detail(id):
     estimate = get_or_404(Estimate, id)
+    rec_type = getattr(estimate, 'record_type', 'allocation') or 'allocation'
+    # Budget estimates are super-admin only
+    if rec_type == 'estimate' and not current_user.is_super_admin:
+        abort(403)
+    # Warehouse workers can only view allocations
+    if current_user.is_warehouse and rec_type != 'allocation':
+        abort(403)
     return render_template('estimates/detail.html', estimate=estimate)
 
 

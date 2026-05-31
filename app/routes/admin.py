@@ -56,12 +56,15 @@ class ResetPasswordForm(FlaskForm):
     submit       = SubmitField('Reset Password')
 
 
+VALID_ROLES = ('super_admin', 'admin', 'technician', 'viewer', 'warehouse')
+
 def _role_choices(t):
     return [
         ('super_admin', t.get('role_super_admin', 'Super Admin')),
         ('admin',       t.get('role_admin',       'Admin')),
         ('technician',  t.get('role_technician',  'Technician')),
         ('viewer',      t.get('role_viewer',      'Viewer')),
+        ('warehouse',   t.get('role_warehouse',   'Warehouse')),
     ]
 
 
@@ -99,7 +102,7 @@ def new_user():
     form = NewUserForm()
     _localize_user_form(form, t, is_new=True)
     if form.validate_on_submit():
-        if form.role.data not in ('super_admin', 'admin', 'technician', 'viewer'):
+        if form.role.data not in VALID_ROLES:
             abort(400)
         u = User(
             name=form.name.data.strip(),
@@ -225,7 +228,7 @@ def update_role(id):
     if user.id == current_user.id:
         return jsonify(ok=False, error='Cannot change your own role'), 400
     new_role = (request.get_json(force=True) or {}).get('role', '')
-    if new_role not in ('super_admin', 'admin', 'technician', 'viewer'):
+    if new_role not in VALID_ROLES:
         return jsonify(ok=False, error='Invalid role'), 400
     if user.role == 'super_admin' and new_role != 'super_admin':
         if User.objects(role='super_admin').count() <= 1:

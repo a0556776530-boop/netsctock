@@ -23,6 +23,16 @@
     </a>
 
     <ul class="nav nav-pills flex-column gap-1 flex-grow-1">
+      {% if current_user.is_warehouse %}
+      {# ── Warehouse: allocations only ── #}
+      <li class="nav-item">
+        <a href="{{ url_for('estimates.list_estimates') }}"
+           class="nav-link text-white {% if request.blueprint == 'estimates' %}active{% endif %}">
+          <i class="bi bi-archive me-2"></i>{{ t.nav_allocations }}
+        </a>
+      </li>
+      {% else %}
+      {# ── Regular nav ── #}
       <li class="nav-item">
         <a href="{{ url_for('main.dashboard') }}"
            class="nav-link text-white {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
@@ -48,7 +58,7 @@
       </li>
       <li class="nav-item">
         <a href="{{ url_for('estimates.list_estimates') }}"
-           class="nav-link text-white {% if request.blueprint == 'estimates' and request.endpoint != 'estimates.history' %}active{% endif %}">
+           class="nav-link text-white {% if request.blueprint == 'estimates' and request.endpoint not in ('estimates.history','estimates.list_budget_estimates') %}active{% endif %}">
           <i class="bi bi-clipboard2-data me-2"></i>{{ t.nav_estimates }}
         </a>
       </li>
@@ -67,6 +77,7 @@
           <i class="bi bi-calculator me-2"></i>{{ t.nav_budget_estimates }}
         </a>
       </li>
+      {% endif %}
       {% endif %}
       {% if current_user.is_admin %}
       <li class="nav-item mt-2">
@@ -95,6 +106,8 @@
         <div class="role-avatar role-admin"><i class="bi bi-crown-fill"></i></div>
         {% elif current_user.role == 'technician' %}
         <div class="role-avatar role-tech"><i class="bi bi-cpu-fill"></i></div>
+        {% elif current_user.role == 'warehouse' %}
+        <div class="role-avatar role-tech"><i class="bi bi-box-seam-fill"></i></div>
         {% else %}
         <div class="role-avatar role-viewer"><i class="bi bi-eye-fill"></i></div>
         {% endif %}
@@ -104,6 +117,7 @@
             {% if current_user.role == 'super_admin' %}{{ t.role_super_admin or 'Super Admin' }}
             {% elif current_user.role == 'admin' %}{{ t.role_admin }}
             {% elif current_user.role == 'technician' %}{{ t.role_technician }}
+            {% elif current_user.role == 'warehouse' %}{{ t.role_warehouse }}
             {% else %}{{ t.role_viewer }}{% endif %}
           </div>
         </div>

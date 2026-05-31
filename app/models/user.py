@@ -30,6 +30,10 @@ class User(UserMixin, me.Document):
     def can_edit(self):
         return self.role in ('admin', 'super_admin')
 
+    @property
+    def is_warehouse(self):
+        return self.role == 'warehouse'
+
 
 @login_manager.user_loader
 def load_user(user_id):

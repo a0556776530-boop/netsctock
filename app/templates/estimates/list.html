@@ -29,8 +29,10 @@
           <th>{{ t.col_project }}</th>
           <th>{{ t.col_date }}</th>
           <th>{{ t.col_valid_until }}</th>
+          {% if not current_user.is_warehouse %}
           <th class="text-end">{{ t.col_total_usd }}</th>
           <th class="text-end">{{ t.col_total_ils }}</th>
+          {% endif %}
           <th></th>
         </tr>
       </thead>
@@ -51,8 +53,10 @@
             {{ e.valid_until.strftime('%d %b %Y') }}
             {% if e.valid_until < now.date() %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle x-small ms-1">{{ t.badge_expired }}</span>{% endif %}
           </td>
+          {% if not current_user.is_warehouse %}
           <td class="text-end font-monospace fw-semibold text-success">{{ e.formatted_total_usd }}</td>
           <td class="text-end font-monospace fw-semibold text-success">{{ e.formatted_total }}</td>
+          {% endif %}
           <td class="text-end text-nowrap">
             <a href="{{ url_for('estimates.detail', id=e.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.action_view }}">
               <i class="bi bi-eye"></i>
@@ -75,7 +79,7 @@
         </tr>
         {% else %}
         <tr id="emptyRow">
-          <td colspan="8" class="text-center text-muted py-5">
+          <td colspan="{{ 6 if current_user.is_warehouse else 8 }}" class="text-center text-muted py-5">
             <i class="bi bi-clipboard2-x fs-3 d-block mb-2"></i>
             {{ t.no_estimates }}
             {% if current_user.can_edit %}
