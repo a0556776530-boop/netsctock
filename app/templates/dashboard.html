@@ -362,15 +362,27 @@ if (actEl) {
 </style>
 <script>
 (function() {
+  var isHe = '{{ lang }}' === 'he';
+  var lbl = {
+    now:    isHe ? 'עכשיו'  : 'now',
+    min:    isHe ? 'ד'      : 'm',
+    hour:   isHe ? 'ש׳'     : 'h',
+    day:    isHe ? 'י׳'     : 'd',
+    ago:    isHe ? ''       : ' ago',
+    online: isHe ? 'מחובר'  : 'Online',
+    away:   isHe ? 'לא פעיל': 'Away',
+    never:  isHe ? 'לא נכנס מעולם' : 'Never logged in',
+    updated:isHe ? 'עודכן'  : 'Updated',
+  };
   function fmtTime(diffSec) {
     if (diffSec === null || diffSec === undefined) return '';
     var m = Math.floor(diffSec / 60);
     var h = Math.floor(m / 60);
     var d = Math.floor(h / 24);
-    if (m < 1)   return 'עכשיו';
-    if (m < 60)  return m + 'ד׳ ago';
-    if (h < 24)  return h + 'ש׳ ago';
-    return d + 'd ago';
+    if (m < 1)   return lbl.now;
+    if (m < 60)  return m + lbl.min + lbl.ago;
+    if (h < 24)  return h + lbl.hour + lbl.ago;
+    return d + lbl.day + lbl.ago;
   }
 
   function refreshActivity() {
@@ -403,16 +415,16 @@ if (actEl) {
 
           if (u.status === 'online') {
             dot.style.background = '#16a34a';
-            txt.innerHTML = '<span class="text-success fw-semibold">● מחובר</span>';
+            txt.innerHTML = '<span class="text-success fw-semibold">● ' + lbl.online + '</span>';
           } else if (u.status === 'away') {
             dot.style.background = '#f59e0b';
-            txt.innerHTML = '<span class="text-warning fw-semibold">● לא פעיל</span> <span class="text-muted">— ' + fmtTime(u.diff_sec) + '</span>';
+            txt.innerHTML = '<span class="text-warning fw-semibold">● ' + lbl.away + '</span> <span class="text-muted">— ' + fmtTime(u.diff_sec) + '</span>';
           } else if (u.status === 'offline') {
             dot.style.background = '#d1d5db';
             txt.innerHTML = '<span class="text-muted">' + fmtTime(u.diff_sec) + '</span>';
           } else {
             dot.style.background = '#d1d5db';
-            txt.innerHTML = '<span class="text-muted fst-italic">לא נכנס מעולם</span>';
+            txt.innerHTML = '<span class="text-muted fst-italic">' + lbl.never + '</span>';
           }
 
           if (loginEl && u.last_login) loginEl.textContent = u.last_login;
@@ -421,7 +433,7 @@ if (actEl) {
         var updated = document.getElementById('activityUpdated');
         if (updated) {
           var now = new Date();
-          updated.textContent = 'עודכן ' + now.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+          updated.textContent = lbl.updated + ' ' + now.toLocaleTimeString(isHe ? 'he-IL' : 'en-GB', {hour:'2-digit', minute:'2-digit'});
         }
       })
       .catch(function() {});
