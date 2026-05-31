@@ -30,7 +30,9 @@ def _next_allocation_number():
 def list_estimates():
     # Show allocations (legacy docs without record_type are treated as allocations)
     estimates = list(
-        Estimate.objects(Q(status='pending') & Q(record_type__ne='estimate')).order_by('-created_at')
+        Estimate.objects(
+            Q(status='pending') & Q(record_type__ne='estimate') & Q(warehouse_status__ne='completed')
+        ).order_by('-created_at')
     )
     return render_template('estimates/list.html', estimates=estimates)
 
@@ -322,6 +324,42 @@ def export_csv(id):
     filename = f"estimate_{estimate.task_name.replace(' ', '_')}_{estimate.created_date}.csv"
     return Response(buf.getvalue(), mimetype='text/csv',
                     headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+
+
+@estimates_bp.route('/<id>/warehouse-receive', methods=['POST'])
+@login_required
+def warehouse_receive(id):
+    if not current_user.is_warehouse and not current_user.is_admin:
+        abort(403)
+    estimate = get_or_404(Estimate, id)
+    estimate.warehouse_status = 'received'
+    estimate.save()
+    flash('ההזמנה סומנה כהתקבלה.', 'success')
+    return redirect(url_for('estimates.detail', id=str(estimate.id)))
+
+
+@estimates_bp.route('/<id>/warehouse-complete', methods=['POST'])
+@login_required
+def warehouse_complete(id):
+    if not current_user.is_warehouse and not current_user.is_admin:
+        abort(403)
+    estimate = get_or_404(Estimate, id)
+    estimate.warehouse_status = 'completed'
+    estimate.warehouse_completed_at = datetime.now(timezone(timedelta(hours=3))).replace(tzinfo=None)
+    estimate.save()
+    flash('ההזמנה סומנה כבוצעה ועברה להיסטוריה.', 'success')
+    return redirect(url_for('estimates.list_estimates'))
+
+
+@estimates_bp.route('/warehouse-history')
+@login_required
+def warehouse_history():
+    if not current_user.is_warehouse and not current_user.is_admin:
+        abort(403)
+    estimates = list(
+        Estimate.objects(record_type__ne='estimate', warehouse_status='completed').order_by('-warehouse_completed_at')
+    )
+    return render_template('estimates/warehouse_history.html', estimates=estimates)
 
 
 @estimates_bp.route('/<id>/convert-to-allocation', methods=['POST'])

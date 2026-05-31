@@ -6,26 +6,48 @@
 
 {% if current_user.is_warehouse %}
 {# ── Warehouse simplified view ──────────────────────────────────────── #}
-<div class="d-flex justify-content-between align-items-center mb-4 d-print-none">
-  <div class="d-flex align-items-center gap-2">
+{% set wstatus = estimate.warehouse_status or 'pending' %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2 d-print-none">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
     <span class="badge bg-primary font-monospace" style="font-size:1rem;padding:.4em .7em;">
-      {{ estimate.allocation_number or '—' }}
+      #{{ estimate.allocation_number or '—' }}
     </span>
     <h5 class="mb-0 fw-bold">{{ estimate.task_name }}</h5>
     {% if estimate.project_name %}
     <span class="text-muted small">· {{ estimate.project_name }}</span>
+    {% endif %}
+    {% if wstatus == 'received' %}
+    <span class="badge bg-info text-dark"><i class="bi bi-box-arrow-in-down me-1"></i>{{ t.wh_status_received }}</span>
+    {% elif wstatus == 'completed' %}
+    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>{{ t.wh_status_completed }}</span>
     {% endif %}
   </div>
   <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-printer me-1"></i>{{ t.btn_print }}
   </button>
 </div>
+
+<!-- Dates row -->
+<div class="d-flex gap-3 mb-3 small text-muted d-print-none">
+  <span><i class="bi bi-calendar3 me-1"></i>{{ t.col_date }}: <strong class="text-dark">{{ estimate.created_date.strftime('%d %b %Y') }}</strong></span>
+  <span><i class="bi bi-calendar-x me-1"></i>{{ t.col_valid_until }}:
+    <strong class="{% if estimate.valid_until < now.date() %}text-danger{% else %}text-dark{% endif %}">
+      {{ estimate.valid_until.strftime('%d %b %Y') }}
+    </strong>
+  </span>
+</div>
+
+<!-- Print header -->
 <div class="d-none d-print-block mb-3">
   <h4 class="fw-bold">{{ t.nav_allocations }} #{{ estimate.allocation_number or '—' }} — {{ estimate.task_name }}</h4>
   {% if estimate.project_name %}<div class="text-muted">{{ estimate.project_name }}</div>{% endif %}
+  <div class="small mt-1">{{ estimate.created_date.strftime('%d %b %Y') }} — {{ t.col_valid_until }}: {{ estimate.valid_until.strftime('%d %b %Y') }}</div>
 </div>
 
-<div class="card border-0 shadow-sm">
+<!-- Items table -->
+<div class="card border-0 shadow-sm mb-3">
   <div class="table-responsive">
     <table class="table table-bordered align-middle mb-0" style="font-size:1rem;">
       <thead class="table-dark">
@@ -52,6 +74,27 @@
     </table>
   </div>
 </div>
+
+<!-- Action buttons -->
+{% if wstatus != 'completed' %}
+<div class="d-flex gap-2 d-print-none">
+  {% if wstatus == 'pending' %}
+  <form method="POST" action="{{ url_for('estimates.warehouse_receive', id=estimate.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-info fw-semibold">
+      <i class="bi bi-box-arrow-in-down me-1"></i>{{ t.wh_btn_received }}
+    </button>
+  </form>
+  {% endif %}
+  <form method="POST" action="{{ url_for('estimates.warehouse_complete', id=estimate.id) }}"
+        onsubmit="return confirm('{{ t.wh_confirm_complete }}')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-success fw-semibold">
+      <i class="bi bi-check-circle me-1"></i>{{ t.wh_btn_complete }}
+    </button>
+  </form>
+</div>
+{% endif %}
 
 {% else %}
 {# ── Full admin view ─────────────────────────────────────────────────── #}

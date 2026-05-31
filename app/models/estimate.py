@@ -26,6 +26,8 @@ class Estimate(me.Document):
     allocation_number  = me.IntField(unique=True, sparse=True)
     status             = me.StringField(default='pending')
     record_type        = me.StringField(default='allocation')  # 'allocation' | 'estimate'
+    warehouse_status   = me.StringField(default='pending')     # 'pending' | 'received' | 'completed'
+    warehouse_completed_at = me.DateTimeField()
     task_name          = me.StringField(max_length=200, required=True)
     project_name       = me.StringField(max_length=200)
     created_date       = me.DateField()
