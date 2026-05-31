@@ -330,36 +330,6 @@
 
 </div>
 
-<!-- ── Recent Activity ───────────────────────────────────────────── -->
-<div class="row g-3">
-  <div class="col-12">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-transparent fw-semibold small border-0 pt-3">
-        <i class="bi bi-clock me-1 text-primary"></i>{{ t.recent_activity }}
-      </div>
-      <div class="card-body p-0">
-        {% if recent_events %}
-        <ul class="list-group list-group-flush">
-          {% for event in recent_events %}
-          <li class="list-group-item d-flex align-items-start gap-3 py-2 px-3">
-            <div class="mt-1 text-muted"><i class="bi {{ event.event_icon }}"></i></div>
-            <div class="flex-grow-1">
-              <div class="small">
-                <a href="{{ url_for('assets.detail', id=event.asset.id) }}" class="fw-semibold font-monospace text-decoration-none">{{ event.asset.serial_number }}</a>
-                — {{ event.event_label }}
-              </div>
-              <div class="text-muted x-small">{{ event.performer_name }} · {{ event.event_date.strftime('%d %b %H:%M') }}</div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="text-muted text-center small py-4">{{ t.no_recent_activity }}</p>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
