@@ -27,6 +27,41 @@ def set_lang(code):
     return redirect(request.referrer or url_for('main.dashboard'))
 
 
+@main_bp.route('/api/user-activity')
+@login_required
+def user_activity_api():
+    if not current_user.is_admin:
+        return jsonify({'ok': False}), 403
+    from app.models.user import User
+    now_utc = datetime.utcnow()
+    result = []
+    for u in User.objects.order_by('-last_seen'):
+        if u.last_seen:
+            diff = (now_utc - u.last_seen).total_seconds()
+            if diff < 300:
+                status = 'online'
+            elif diff < 1800:
+                status = 'away'
+            else:
+                status = 'offline'
+            diff_min = int(diff / 60)
+            diff_sec = int(diff)
+        else:
+            status = 'never'
+            diff_min = None
+            diff_sec = None
+        result.append({
+            'id':         str(u.id),
+            'name':       u.name,
+            'role':       u.role,
+            'status':     status,
+            'diff_sec':   diff_sec,
+            'diff_min':   diff_min,
+            'last_login': u.last_login.strftime('%d %b') if u.last_login else None,
+        })
+    return jsonify({'ok': True, 'users': result, 'now': now_utc.isoformat()})
+
+
 @main_bp.route('/api/rate')
 @login_required
 def exchange_rate():

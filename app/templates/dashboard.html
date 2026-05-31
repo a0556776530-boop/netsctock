@@ -127,41 +127,35 @@
   {% if current_user.is_admin %}
   <div class="col-12 col-md-5">
     <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-transparent fw-semibold small border-0 pt-3">
-        <i class="bi bi-people me-1 text-primary"></i>{{ t.user_activity_title }}
+      <div class="card-header bg-transparent fw-semibold small border-0 pt-3 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-people me-1 text-primary"></i>{{ t.user_activity_title }}</span>
+        <span class="x-small text-muted" id="activityUpdated"></span>
       </div>
-      <div class="card-body p-0">
+      <div class="card-body p-0" id="userActivityList">
         <ul class="list-group list-group-flush">
           {% for row in all_users %}
           {% set u = row.user %}
           {% set status = row.status %}
           {% set diff_min = row.diff_min %}
-          <li class="list-group-item d-flex align-items-center gap-3 py-2 px-3">
-            <!-- Role avatar + online dot -->
+          <li class="list-group-item d-flex align-items-center gap-3 py-2 px-3"
+              data-uid="{{ u.id }}"
+              data-role="{{ u.role }}"
+              data-name="{{ u.name }}"
+              data-you="{{ 'true' if u.id == current_user.id else 'false' }}"
+              data-lastlogin="{{ u.last_login.strftime('%d %b') if u.last_login else '' }}">
             <div class="position-relative flex-shrink-0">
               {% if u.role == 'super_admin' %}
               <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
               {% elif u.role == 'admin' %}
               <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
-              {% elif u.role == 'technician' %}
-              <div class="role-avatar-sm role-tech"><i class="bi bi-cpu-fill"></i></div>
               {% elif u.role == 'warehouse' %}
               <div class="role-avatar-sm role-tech"><i class="bi bi-box-seam-fill"></i></div>
               {% else %}
               <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
               {% endif %}
-              {% if status == 'online' %}
-              <span class="position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
-                    style="width:10px;height:10px;background:#16a34a;"></span>
-              {% elif status == 'away' %}
-              <span class="position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
-                    style="width:10px;height:10px;background:#f59e0b;"></span>
-              {% else %}
-              <span class="position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
+              <span class="status-dot position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
                     style="width:10px;height:10px;background:#d1d5db;"></span>
-              {% endif %}
             </div>
-            <!-- Name + status -->
             <div class="flex-grow-1 overflow-hidden">
               <div class="small fw-semibold text-truncate">
                 {{ u.name }}
@@ -169,30 +163,9 @@
                 <span class="badge bg-secondary bg-opacity-15 text-secondary ms-1" style="font-size:.65rem;">{{ t.you_badge }}</span>
                 {% endif %}
               </div>
-              <div class="x-small">
-                {% if status == 'online' %}
-                <span class="text-success fw-semibold">● {{ t.online_now }}</span>
-                {% elif status == 'away' and diff_min is not none %}
-                  <span class="text-warning fw-semibold">● {{ t.away }}</span>
-                  <span class="text-muted"> —
-                    {% if diff_min < 60 %}{{ diff_min }}m ago
-                    {% else %}{{ (diff_min / 60) | int }}h ago{% endif %}
-                  </span>
-                {% elif status == 'offline' and diff_min is not none %}
-                  <span class="text-muted">
-                    {% if diff_min < 60 %}{{ diff_min }}m ago
-                    {% elif diff_min < 1440 %}{{ (diff_min / 60) | int }}h ago
-                    {% else %}{{ u.last_seen.strftime('%d %b %H:%M') }}{% endif %}
-                  </span>
-                {% else %}
-                <span class="text-muted fst-italic">{{ t.never_logged_in }}</span>
-                {% endif %}
-              </div>
+              <div class="x-small status-text text-muted">—</div>
             </div>
-            <!-- Last login date -->
-            {% if u.last_login %}
-            <div class="x-small text-muted text-nowrap flex-shrink-0">{{ u.last_login.strftime('%d %b') }}</div>
-            {% endif %}
+            <div class="x-small text-muted text-nowrap flex-shrink-0 login-date">{{ u.last_login.strftime('%d %b') if u.last_login else '' }}</div>
           </li>
           {% endfor %}
         </ul>
@@ -387,4 +360,75 @@ if (actEl) {
 .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.1)!important; }
 .kpi-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.3rem; }
 </style>
+<script>
+(function() {
+  function fmtTime(diffSec) {
+    if (diffSec === null || diffSec === undefined) return '';
+    var m = Math.floor(diffSec / 60);
+    var h = Math.floor(m / 60);
+    var d = Math.floor(h / 24);
+    if (m < 1)   return 'עכשיו';
+    if (m < 60)  return m + 'ד׳ ago';
+    if (h < 24)  return h + 'ש׳ ago';
+    return d + 'd ago';
+  }
+
+  function refreshActivity() {
+    fetch('/api/user-activity')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.ok) return;
+        var rows = document.querySelectorAll('#userActivityList li[data-uid]');
+        var byId = {};
+        data.users.forEach(function(u) { byId[u.id] = u; });
+
+        // Sort rows by diff_sec (nulls last)
+        var list = document.querySelector('#userActivityList ul');
+        var items = Array.from(rows);
+        items.sort(function(a, b) {
+          var ua = byId[a.dataset.uid];
+          var ub = byId[b.dataset.uid];
+          var sa = ua ? (ua.diff_sec !== null ? ua.diff_sec : 999999) : 999999;
+          var sb = ub ? (ub.diff_sec !== null ? ub.diff_sec : 999999) : 999999;
+          return sa - sb;
+        });
+        items.forEach(function(el) { list.appendChild(el); });
+
+        rows.forEach(function(row) {
+          var u = byId[row.dataset.uid];
+          if (!u) return;
+          var dot  = row.querySelector('.status-dot');
+          var txt  = row.querySelector('.status-text');
+          var loginEl = row.querySelector('.login-date');
+
+          if (u.status === 'online') {
+            dot.style.background = '#16a34a';
+            txt.innerHTML = '<span class="text-success fw-semibold">● מחובר</span>';
+          } else if (u.status === 'away') {
+            dot.style.background = '#f59e0b';
+            txt.innerHTML = '<span class="text-warning fw-semibold">● לא פעיל</span> <span class="text-muted">— ' + fmtTime(u.diff_sec) + '</span>';
+          } else if (u.status === 'offline') {
+            dot.style.background = '#d1d5db';
+            txt.innerHTML = '<span class="text-muted">' + fmtTime(u.diff_sec) + '</span>';
+          } else {
+            dot.style.background = '#d1d5db';
+            txt.innerHTML = '<span class="text-muted fst-italic">לא נכנס מעולם</span>';
+          }
+
+          if (loginEl && u.last_login) loginEl.textContent = u.last_login;
+        });
+
+        var updated = document.getElementById('activityUpdated');
+        if (updated) {
+          var now = new Date();
+          updated.textContent = 'עודכן ' + now.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+        }
+      })
+      .catch(function() {});
+  }
+
+  refreshActivity();
+  setInterval(refreshActivity, 30000);
+})();
+</script>
 {% endblock %}
