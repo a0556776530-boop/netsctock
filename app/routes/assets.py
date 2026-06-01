@@ -464,7 +464,7 @@ def delete(id):
 @assets_bp.route('/import-qty/template')
 @login_required
 def import_qty_template():
-    sample = 'mfr. part no.,stock qty\nFTX1234A5BC,50\nGLC-SX-MMD,30\nWS-C2960X,10\n'
+    sample = 'מקט רכיב,כמות\nFTX1234A5BC,50\nGLC-SX-MMD,30\nWS-C2960X,10\n'
     return Response(sample.encode('utf-8-sig'), mimetype='text/csv; charset=utf-8-sig',
                     headers={'Content-Disposition': 'attachment; filename="qty_template.csv"'})
 
@@ -505,13 +505,14 @@ def import_qty():
     updated, not_found, invalid, skipped = [], [], [], []
 
     for i, row in enumerate(reader, start=2):
-        serial = _col(row, 'מקט יצרן', 'מקט', 'mfr part no', 'manufacturer part no',
-                      'manufacturer part number', 'serial number', 'serial', 'part no',
-                      'part number', 'partnumber', 'partno')
+        serial = _col(row, 'מקט יצרן', 'מקט', 'מקט רכיב', 'שם רכיב',
+                      'mfr part no', 'manufacturer part no', 'manufacturer part number',
+                      'serial number', 'serial', 'part no', 'part number',
+                      'partnumber', 'partno', 'component id', 'component', 'componentid')
         qty_raw = _col(row, 'stock qty', 'stockqty', 'כמות', 'quantity', 'qty')
 
         if not serial:
-            skipped.append(f'שורה {i}: אין מקט יצרן')
+            skipped.append(f'שורה {i}: אין מקט')
             continue
 
         try:
@@ -522,8 +523,10 @@ def import_qty():
             invalid.append({'id': serial, 'reason': f'כמות לא תקינה: "{qty_raw}"'})
             continue
 
-        asset = Asset.objects(serial_number__iexact=serial).first()
-        comp_id = serial
+        # Search by component_id first, then fall back to serial_number
+        asset = Asset.objects(component_id__iexact=serial).first()
+        if not asset:
+            asset = Asset.objects(serial_number__iexact=serial).first()
 
         if not asset:
             not_found.append(serial)
