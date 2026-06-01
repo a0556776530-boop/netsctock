@@ -115,14 +115,14 @@ def search_estimates():
         pass
 
     results = []
-    for e in Estimate.objects(qs & Q(record_type='estimate')).limit(10):
+    for e in Estimate.objects(qs & Q(record_type__ne='estimate')).limit(10):
         results.append({
             'id':                str(e.id),
             'task_name':         e.task_name,
             'project_name':      e.project_name or '',
             'allocation_number': e.allocation_number,
             'total_nis':         round(e.total_nis or 0, 2),
-            'total_usd':         round(e.total_usd, 2),
+            'total_usd':         round(e.total_usd or 0, 2),
             'status':            e.status,
         })
     return jsonify(results)
