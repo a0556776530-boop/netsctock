@@ -232,8 +232,8 @@
     }
     data.forEach(e => {
       const amt  = currency === 'ILS'
-        ? '₪' + Math.round(e.total_nis).toLocaleString('he-IL')
-        : '$' + e.total_usd.toFixed(2);
+        ? '₪' + Math.round(e.total_nis).toLocaleString('en-US')
+        : '$' + e.total_usd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
       const item = document.createElement('button');
       item.type  = 'button';
       item.className = 'list-group-item list-group-item-action py-2';
