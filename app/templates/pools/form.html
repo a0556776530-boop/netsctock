@@ -29,7 +29,10 @@
           <div class="row g-3 mb-3">
             <div class="col-8">
               {{ form.total_amount.label(class='form-label fw-semibold') }}
-              {{ form.total_amount(class='form-control' + (' is-invalid' if form.total_amount.errors else ''), placeholder='0.00') }}
+              <input type="text" id="amountDisplay" class="form-control{{ ' is-invalid' if form.total_amount.errors else '' }}"
+                     placeholder="0" inputmode="numeric" autocomplete="off" dir="ltr">
+              <input type="hidden" name="total_amount" id="amountHidden"
+                     value="{{ form.total_amount.data or '' }}">
               {% for e in form.total_amount.errors %}
               <div class="invalid-feedback">{{ e }}</div>
               {% endfor %}
@@ -54,4 +57,31 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var display = document.getElementById('amountDisplay');
+  var hidden  = document.getElementById('amountHidden');
+
+  // Pre-fill on edit
+  if (hidden.value) {
+    var num = parseFloat(hidden.value);
+    if (!isNaN(num)) display.value = parseInt(num).toLocaleString('en-US');
+  }
+
+  display.addEventListener('input', function () {
+    var cursor = this.selectionStart;
+    var oldLen = this.value.length;
+    var raw    = this.value.replace(/,/g, '');
+    if (raw === '' || isNaN(raw)) { hidden.value = ''; return; }
+    var num       = parseInt(raw);
+    hidden.value  = num;
+    this.value    = num.toLocaleString('en-US');
+    var diff      = this.value.length - oldLen;
+    this.setSelectionRange(cursor + diff, cursor + diff);
+  });
+})();
+</script>
 {% endblock %}
