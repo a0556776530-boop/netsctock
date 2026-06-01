@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% block title %}{{ pool.name }}{% endblock %}
+{% block page_title %}פול: {{ pool.name }}{% endblock %}
+
+{% block content %}
+{# ── Header ── #}
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+  <div>
+    <h5 class="mb-0 fw-bold">{{ pool.name }}</h5>
+    <span class="text-muted small font-monospace">EMF: {{ pool.emf_number }}</span>
+  </div>
+  <div class="d-flex gap-2">
+    {% if current_user.can_edit %}
+    <a href="{{ url_for('pools.edit_pool', id=pool.id) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-pencil me-1"></i>עריכה
+    </a>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#linkModal">
+      <i class="bi bi-link-45deg me-1"></i>קשר הקצאה
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Balance cards ── #}
+{% set pct = pool.balance_pct %}
+{% set bar_color = 'bg-success' if pct < 60 else ('bg-warning' if pct < 85 else 'bg-danger') %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="text-muted small mb-1">סה"כ</div>
+      <div class="fw-bold fs-5">{{ pool.fmt(pool.total_amount) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="text-muted small mb-1">נוצל</div>
+      <div class="fw-bold fs-5 text-danger">{{ pool.fmt(pool.consumed_amount) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="text-muted small mb-1">יתרה</div>
+      <div class="fw-bold fs-5 {% if pool.balance < pool.total_amount * 0.15 %}text-danger{% else %}text-success{% endif %}">
+        {{ pool.fmt(pool.balance) }}
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="text-muted small mb-1">ניצול</div>
+      <div class="fw-bold fs-5">{{ pct }}%</div>
+    </div>
+  </div>
+</div>
+
+{# ── Progress bar ── #}
+<div class="mb-4">
+  <div class="progress" style="height:12px; border-radius:6px;">
+    <div class="progress-bar {{ bar_color }}" style="width:{{ pct }}%;"></div>
+  </div>
+</div>
+
+{% if pool.notes %}
+<div class="alert alert-light border mb-4 small">
+  <i class="bi bi-sticky me-1 text-muted"></i>{{ pool.notes }}
+</div>
+{% endif %}
+
+{# ── Transactions table ── #}
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">הקצאות מקושרות</span>
+    <span class="badge bg-secondary bg-opacity-15 text-secondary">{{ pool.transactions | length }}</span>
+  </div>
+  {% if pool.transactions %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>הקצאה</th>
+          <th>פרויקט</th>
+          <th class="text-end">סכום</th>
+          <th>תאריך</th>
+          <th>הערות</th>
+          {% if current_user.can_edit %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in pool.transactions %}
+        {% set ed = tx.estimate_display %}
+        <tr>
+          <td class="text-muted small">{{ loop.index }}</td>
+          <td>
+            {% if ed.deleted %}
+            <span class="text-muted fst-italic small">הקצאה נמחקה</span>
+            {% else %}
+            <a href="{{ url_for('estimates.detail', id=ed.id) }}" class="text-decoration-none fw-semibold">
+              {{ ed.label }}
+            </a>
+            {% endif %}
+          </td>
+          <td class="small text-muted">{{ ed.project }}</td>
+          <td class="text-end fw-semibold">{{ pool.fmt(tx.amount_drawn) }}</td>
+          <td class="small text-muted">{{ tx.created_at.strftime('%d %b %Y') if tx.created_at else '—' }}</td>
+          <td class="small text-muted">{{ tx.notes or '' }}</td>
+          {% if current_user.can_edit %}
+          <td class="text-end">
+            <form method="POST" action="{{ url_for('pools.unlink_estimate', id=pool.id, tx_index=loop.index0) }}"
+                  onsubmit="return confirm('לבטל קישור ולהחזיר {{ pool.fmt(tx.amount_drawn) }} לפול?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="בטל קישור">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-4 text-muted small">
+    <i class="bi bi-link-slash d-block fs-3 mb-2 opacity-25"></i>
+    אין הקצאות מקושרות לפול זה.
+  </div>
+  {% endif %}
+</div>
+
+{# ── Delete (admin only) ── #}
+{% if current_user.is_admin and pool.transactions | length == 0 %}
+<div class="mt-4 text-end">
+  <form method="POST" action="{{ url_for('pools.delete_pool', id=pool.id) }}"
+        onsubmit="return confirm('למחוק פול זה לצמיתות?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-sm btn-outline-danger">
+      <i class="bi bi-trash me-1"></i>מחק פול
+    </button>
+  </form>
+</div>
+{% endif %}
+
+{# ── Link-estimate modal ── #}
+{% if current_user.can_edit %}
+<div class="modal fade" id="linkModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">קשר הקצאה לפול</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">חיפוש הקצאה</label>
+          <input type="text" id="searchInput" class="form-control" placeholder="שם משימה, פרויקט או מספר הקצאה..." autocomplete="off">
+          <div id="searchResults" class="list-group mt-1" style="max-height:300px; overflow-y:auto;"></div>
+        </div>
+
+        <form id="linkForm" method="POST" action="{{ url_for('pools.link_estimate', id=pool.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="estimate_id" id="selectedEstimateId">
+
+          <div id="selectedPreview" class="d-none alert alert-info py-2 small mb-3">
+            <strong id="previewName"></strong>
+            <span id="previewAmt" class="ms-2 fw-semibold"></span>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small">הערות (אופציונלי)</label>
+            <input type="text" name="notes" class="form-control form-control-sm" placeholder="הערה לטרנזקציה...">
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ביטול</button>
+            <button type="submit" id="linkSubmit" class="btn btn-primary btn-sm" disabled>
+              <i class="bi bi-link-45deg me-1"></i>קשר וחייב
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const input    = document.getElementById('searchInput');
+  const results  = document.getElementById('searchResults');
+  const hiddenId = document.getElementById('selectedEstimateId');
+  const preview  = document.getElementById('selectedPreview');
+  const prevName = document.getElementById('previewName');
+  const prevAmt  = document.getElementById('previewAmt');
+  const submit   = document.getElementById('linkSubmit');
+  const currency = '{{ pool.currency }}';
+
+  let debounce;
+  input.addEventListener('input', function() {
+    clearTimeout(debounce);
+    const q = this.value.trim();
+    if (q.length < 2) { results.innerHTML = ''; return; }
+    debounce = setTimeout(() => {
+      fetch('/pools/api/search-estimates?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+          results.innerHTML = '';
+          if (!data.length) {
+            results.innerHTML = '<div class="list-group-item text-muted small">לא נמצאו תוצאות</div>';
+            return;
+          }
+          data.forEach(e => {
+            const amt  = currency === 'ILS' ? '₪' + e.total_nis.toLocaleString('he-IL', {maximumFractionDigits:0})
+                                             : '$' + e.total_usd.toFixed(2);
+            const item = document.createElement('button');
+            item.type  = 'button';
+            item.className = 'list-group-item list-group-item-action py-2';
+            item.innerHTML = `
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="badge bg-primary font-monospace me-1">#${e.allocation_number || '—'}</span>
+                  <strong>${e.task_name}</strong>
+                  ${e.project_name ? '<span class="text-muted small ms-1">· ' + e.project_name + '</span>' : ''}
+                </div>
+                <span class="fw-semibold text-success small">${amt}</span>
+              </div>`;
+            item.addEventListener('click', () => {
+              hiddenId.value  = e.id;
+              prevName.textContent = '#' + (e.allocation_number || '—') + ' — ' + e.task_name;
+              prevAmt.textContent  = amt;
+              preview.classList.remove('d-none');
+              submit.disabled = false;
+              results.innerHTML = '';
+              input.value = '';
+            });
+            results.appendChild(item);
+          });
+        });
+    }, 300);
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

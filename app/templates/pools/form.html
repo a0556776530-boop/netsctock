@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}{% if pool %}עריכת פול{% else %}פול חדש{% endif %}{% endblock %}
+{% block page_title %}{% if pool %}עריכת פול — {{ pool.name }}{% else %}פול חדש{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST">
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.name.label(class='form-label fw-semibold') }}
+            {{ form.name(class='form-control' + (' is-invalid' if form.name.errors else ''), placeholder='שם הפול') }}
+            {% for e in form.name.errors %}
+            <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.emf_number.label(class='form-label fw-semibold') }}
+            {{ form.emf_number(class='form-control font-monospace' + (' is-invalid' if form.emf_number.errors else ''), placeholder='EMF-XXXXX') }}
+            {% for e in form.emf_number.errors %}
+            <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-8">
+              {{ form.total_amount.label(class='form-label fw-semibold') }}
+              {{ form.total_amount(class='form-control' + (' is-invalid' if form.total_amount.errors else ''), placeholder='0.00') }}
+              {% for e in form.total_amount.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-4">
+              {{ form.currency.label(class='form-label fw-semibold') }}
+              {{ form.currency(class='form-select') }}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            {{ form.notes.label(class='form-label fw-semibold') }}
+            {{ form.notes(class='form-control', rows=3, placeholder='הערות אופציונליות...') }}
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{{ url_for('pools.list_pools') }}" class="btn btn-secondary">ביטול</a>
+            {{ form.submit(class='btn btn-primary') }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
