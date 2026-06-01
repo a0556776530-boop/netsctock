@@ -159,8 +159,8 @@
 
   <!-- ── Actions ───────────────────────────────────────────────────────────── -->
   <div class="d-flex gap-2">
-    <button type="submit" class="btn btn-primary">
-      <i class="bi bi-floppy me-1"></i>{{ t.btn_save_estimate }}
+    <button type="submit" id="saveBtn" class="btn btn-primary">
+      <i class="bi bi-floppy me-1"></i><span id="saveBtnLabel">{{ t.btn_save_allocation }}</span>
     </button>
     <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
   </div>
@@ -386,6 +386,8 @@ function selectType(type) {
     btnA.style.background = '#f8fafc';
     btnA.style.color = '#64748b';
   }
+  var lbl = document.getElementById('saveBtnLabel');
+  if (lbl) lbl.textContent = type === 'allocation' ? '{{ t.btn_save_allocation }}' : '{{ t.btn_save_estimate }}';
 }
 </script>
 {% endblock %}

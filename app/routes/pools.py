@@ -115,7 +115,7 @@ def search_estimates():
         pass
 
     results = []
-    for e in Estimate.objects(qs, record_type__ne='estimate').limit(10):
+    for e in Estimate.objects(qs, record_type='estimate').limit(10):
         results.append({
             'id':                str(e.id),
             'task_name':         e.task_name,
