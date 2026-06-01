@@ -62,13 +62,16 @@ def create_app(config_class=Config):
         g.t = TRANSLATIONS[lang]
         g.dir_html = 'rtl' if lang == 'he' else 'ltr'
 
-        # Update last_seen at most once per minute to avoid a DB write on every request
+        # Update last_seen at most once per minute — use session timestamp to avoid
+        # relying on current_user.last_seen which is never refreshed in-memory
         if current_user.is_authenticated:
             from .models.user import User
             now = datetime.utcnow()
-            ls = current_user.last_seen
-            if ls is None or (now - ls).total_seconds() > 60:
+            now_ts = now.timestamp()
+            last_update = session.get('_ls_ts', 0)
+            if now_ts - last_update > 60:
                 User.objects(id=current_user.id).update_one(set__last_seen=now)
+                session['_ls_ts'] = now_ts
 
     @app.context_processor
     def inject_globals():
