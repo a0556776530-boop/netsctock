@@ -461,6 +461,25 @@ def delete(id):
 
 # ── CSV quantity import ───────────────────────────────────────────────────────
 
+def _csv_norm(s):
+    return re.sub(r'[\s.\-_#/]', '', (s or '').lower())
+
+def _csv_col(row, *names):
+    norm = {_csv_norm(n) for n in names}
+    for k, v in row.items():
+        if k and _csv_norm(k) in norm:
+            return (v or '').strip()
+    return ''
+
+_SERIAL_COLS = (
+    'מקט יצרן', 'מקט', 'מקט רכיב', 'שם רכיב',
+    'mfr part no', 'manufacturer part no', 'manufacturer part number',
+    'serial number', 'serial', 'part no', 'part number',
+    'partnumber', 'partno', 'component id', 'component', 'componentid',
+)
+_QTY_COLS = ('stock qty', 'stockqty', 'כמות', 'quantity', 'qty')
+
+
 @assets_bp.route('/import-qty/template')
 @login_required
 def import_qty_template():
@@ -469,75 +488,99 @@ def import_qty_template():
                     headers={'Content-Disposition': 'attachment; filename="qty_template.csv"'})
 
 
-@assets_bp.route('/import-qty', methods=['GET', 'POST'])
+@assets_bp.route('/import-qty', methods=['GET'])
 @login_required
 def import_qty():
     if not current_user.can_edit:
         abort(403)
+    return render_template('assets/import_qty.html')
 
-    if request.method == 'GET':
-        return render_template('assets/import_qty.html', results=None)
 
-    t = getattr(g, 't', {})
+@assets_bp.route('/import-qty/preview', methods=['POST'])
+@login_required
+def import_qty_preview():
+    if not current_user.can_edit:
+        abort(403)
+
     f = request.files.get('csv_file')
     if not f or not f.filename.lower().endswith('.csv'):
-        flash(t.get('flash_csv_type_error', 'Please upload a CSV file only.'), 'danger')
-        return redirect(url_for('assets.import_qty'))
+        return jsonify({'ok': False, 'error': 'CSV files only'}), 400
 
     try:
         stream = io.StringIO(f.stream.read().decode('utf-8-sig'))
     except UnicodeDecodeError:
-        flash(t.get('flash_csv_encoding_error', 'Encoding error — save the file as UTF-8 CSV and try again.'), 'danger')
-        return redirect(url_for('assets.import_qty'))
+        return jsonify({'ok': False, 'error': 'Encoding error — save as UTF-8 CSV'}), 400
 
-    reader = csv.DictReader(stream)
-
-    def _norm(s):
-        return re.sub(r'[\s.\-_#/]', '', (s or '').lower())
-
-    def _col(row, *names):
-        norm_names = {_norm(n) for n in names}
-        for k, v in row.items():
-            if k and _norm(k) in norm_names:
-                return (v or '').strip()
-        return ''
-
-    updated, not_found, invalid, skipped = [], [], [], []
-
-    for i, row in enumerate(reader, start=2):
-        serial = _col(row, 'מקט יצרן', 'מקט', 'מקט רכיב', 'שם רכיב',
-                      'mfr part no', 'manufacturer part no', 'manufacturer part number',
-                      'serial number', 'serial', 'part no', 'part number',
-                      'partnumber', 'partno', 'component id', 'component', 'componentid')
-        qty_raw = _col(row, 'stock qty', 'stockqty', 'כמות', 'quantity', 'qty')
-
+    rows = []
+    for row in csv.DictReader(stream):
+        serial = _csv_col(row, *_SERIAL_COLS)
         if not serial:
-            skipped.append(f'שורה {i}: אין מקט')
             continue
 
         try:
-            qty = int(qty_raw)
-            if qty < 0:
-                raise ValueError
+            add_qty = max(0, int(_csv_col(row, *_QTY_COLS)))
         except (ValueError, TypeError):
-            invalid.append({'id': serial, 'reason': f'כמות לא תקינה: "{qty_raw}"'})
+            add_qty = 0
+
+        entry = {
+            'serial': serial, 'asset_id': None, 'component_id': '',
+            'model': '', 'found': False, 'current_qty': 0, 'add_qty': add_qty,
+        }
+
+        asset = Asset.objects(component_id__iexact=serial).first() or \
+                Asset.objects(serial_number__iexact=serial).first()
+
+        if asset:
+            entry.update({
+                'asset_id':    str(asset.id),
+                'component_id': asset.component_id or asset.serial_number,
+                'model':        asset.model or '',
+                'found':        True,
+                'current_qty':  asset.quantity or 0,
+            })
+
+        rows.append(entry)
+
+    return jsonify({'ok': True, 'rows': rows})
+
+
+@assets_bp.route('/import-qty/commit', methods=['POST'])
+@login_required
+def import_qty_commit():
+    if not current_user.can_edit:
+        abort(403)
+
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, list):
+        return jsonify({'ok': False, 'error': 'Invalid payload'}), 400
+
+    updated, errors = [], []
+    for item in data:
+        asset_id = item.get('asset_id')
+        try:
+            add_qty = int(item.get('add_qty', 0))
+        except (ValueError, TypeError):
+            errors.append(item.get('serial', '?'))
             continue
 
-        # Search by component_id first, then fall back to serial_number
-        asset = Asset.objects(component_id__iexact=serial).first()
-        if not asset:
-            asset = Asset.objects(serial_number__iexact=serial).first()
-
-        if not asset:
-            not_found.append(serial)
+        if not asset_id or add_qty < 0:
             continue
 
-        asset.quantity = (asset.quantity or 0) + qty
+        asset = Asset.objects(id=asset_id).first()
+        if not asset:
+            errors.append(asset_id)
+            continue
+
+        asset.quantity = (asset.quantity or 0) + add_qty
         asset.save()
-        updated.append({'serial': asset.serial_number, 'model': asset.model or '', 'qty': asset.quantity})
+        updated.append({
+            'serial':       asset.serial_number,
+            'component_id': asset.component_id or '',
+            'model':        asset.model or '',
+            'new_qty':      asset.quantity,
+        })
 
-    results = {'updated': updated, 'not_found': not_found, 'invalid': invalid, 'skipped': skipped}
-    return render_template('assets/import_qty.html', results=results)
+    return jsonify({'ok': True, 'updated': updated, 'errors': errors})
 
 
 # ── Category (AssetType) management ──────────────────────────────────────────
