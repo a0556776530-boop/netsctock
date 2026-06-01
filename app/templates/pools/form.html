@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}{% if pool %}עריכת פול{% else %}פול חדש{% endif %}{% endblock %}
-{% block page_title %}{% if pool %}עריכת פול — {{ pool.name }}{% else %}פול חדש{% endif %}{% endblock %}
+{% block title %}{% if pool %}{{ t.pool_edit_title }}{% else %}{{ t.pool_new_title }}{% endif %}{% endblock %}
+{% block page_title %}{% if pool %}{{ t.pool_edit_title }} — {{ pool.name }}{% else %}{{ t.pool_new_title }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -12,7 +12,7 @@
 
           <div class="mb-3">
             {{ form.name.label(class='form-label fw-semibold') }}
-            {{ form.name(class='form-control' + (' is-invalid' if form.name.errors else ''), placeholder='שם הפול') }}
+            {{ form.name(class='form-control' + (' is-invalid' if form.name.errors else ''), placeholder=t.pool_ph_name) }}
             {% for e in form.name.errors %}
             <div class="invalid-feedback">{{ e }}</div>
             {% endfor %}
@@ -45,11 +45,11 @@
 
           <div class="mb-4">
             {{ form.notes.label(class='form-label fw-semibold') }}
-            {{ form.notes(class='form-control', rows=3, placeholder='הערות אופציונליות...') }}
+            {{ form.notes(class='form-control', rows=3, placeholder=t.pool_ph_notes) }}
           </div>
 
           <div class="d-flex gap-2 justify-content-end">
-            <a href="{{ url_for('pools.list_pools') }}" class="btn btn-secondary">ביטול</a>
+            <a href="{{ url_for('pools.list_pools') }}" class="btn btn-secondary">{{ t.cancel }}</a>
             {{ form.submit(class='btn btn-primary') }}
           </div>
         </form>
@@ -65,7 +65,6 @@
   var display = document.getElementById('amountDisplay');
   var hidden  = document.getElementById('amountHidden');
 
-  // Pre-fill on edit
   if (hidden.value) {
     var num = parseFloat(hidden.value);
     if (!isNaN(num)) display.value = parseInt(num).toLocaleString('en-US');
