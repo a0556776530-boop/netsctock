@@ -2,7 +2,7 @@ import csv
 import io
 import json
 import re
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g, Response
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g, Response, current_app, jsonify
 from markupsafe import Markup
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
@@ -436,7 +436,7 @@ def retire(id):
 def update_qty(id):
     if not current_user.can_edit:
         abort(403)
-    from flask import jsonify
+
     asset = get_or_404(Asset, id)
     data  = request.get_json(force=True) or {}
     delta = int(data.get('delta', 0))
@@ -507,50 +507,63 @@ def import_qty_preview():
         return jsonify({'ok': False, 'error': 'CSV files only'}), 400
 
     try:
-        stream = io.StringIO(f.stream.read().decode('utf-8-sig'))
+        raw = f.stream.read()
+        stream = io.StringIO(raw.decode('utf-8-sig'))
     except UnicodeDecodeError:
-        return jsonify({'ok': False, 'error': 'Encoding error — save as UTF-8 CSV'}), 400
-
-    # Single bulk fetch — avoids N×2 slow iexact regex queries per row
-    by_comp   = {}
-    by_serial = {}
-    for a in Asset.objects.only('id', 'component_id', 'serial_number', 'model', 'quantity'):
-        if a.component_id:
-            by_comp[a.component_id.lower()] = a
-        if a.serial_number:
-            by_serial[a.serial_number.lower()] = a
-
-    rows = []
-    for row in csv.DictReader(stream):
-        serial = _csv_col(row, *_SERIAL_COLS)
-        if not serial:
-            continue
-
         try:
-            add_qty = max(0, int(_csv_col(row, *_QTY_COLS)))
-        except (ValueError, TypeError):
-            add_qty = 0
+            stream = io.StringIO(raw.decode('windows-1255'))
+        except Exception:
+            return jsonify({'ok': False, 'error': 'Encoding error — save as UTF-8 CSV'}), 400
 
-        key   = serial.lower()
-        asset = by_comp.get(key) or by_serial.get(key)
+    try:
+        # Single bulk fetch — avoids N×2 slow iexact regex queries per row
+        by_comp   = {}
+        by_serial = {}
+        for a in Asset.objects.only('id', 'component_id', 'serial_number', 'model', 'quantity'):
+            try:
+                if a.component_id:
+                    by_comp[str(a.component_id).lower()] = a
+                if a.serial_number:
+                    by_serial[str(a.serial_number).lower()] = a
+            except Exception:
+                pass
 
-        entry = {
-            'serial': serial, 'asset_id': None, 'component_id': '',
-            'model': '', 'found': False, 'current_qty': 0, 'add_qty': add_qty,
-        }
+        rows = []
+        for row in csv.DictReader(stream):
+            serial = _csv_col(row, *_SERIAL_COLS)
+            if not serial:
+                continue
 
-        if asset:
-            entry.update({
-                'asset_id':     str(asset.id),
-                'component_id': asset.component_id or asset.serial_number,
-                'model':        asset.model or '',
-                'found':        True,
-                'current_qty':  asset.quantity or 0,
-            })
+            try:
+                add_qty = max(0, int(_csv_col(row, *_QTY_COLS)))
+            except (ValueError, TypeError):
+                add_qty = 0
 
-        rows.append(entry)
+            key   = serial.lower()
+            asset = by_comp.get(key) or by_serial.get(key)
 
-    return jsonify({'ok': True, 'rows': rows})
+            entry = {
+                'serial': serial, 'asset_id': None, 'component_id': '',
+                'model': '', 'found': False, 'current_qty': 0, 'add_qty': add_qty,
+            }
+
+            if asset:
+                entry.update({
+                    'asset_id':     str(asset.id),
+                    'component_id': str(asset.component_id or asset.serial_number or ''),
+                    'model':        str(asset.model or ''),
+                    'found':        True,
+                    'current_qty':  int(asset.quantity or 0),
+                })
+
+            rows.append(entry)
+
+        return jsonify({'ok': True, 'rows': rows})
+
+    except Exception as e:
+        import traceback as _tb
+        current_app.logger.error('import_qty_preview error:\n' + _tb.format_exc())
+        return jsonify({'ok': False, 'error': f'{type(e).__name__}: {e}'}), 200
 
 
 @assets_bp.route('/import-qty/commit', methods=['POST'])
