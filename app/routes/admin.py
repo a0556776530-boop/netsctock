@@ -114,9 +114,8 @@ def new_user():
         if form.role.data not in VALID_ROLES:
             abort(400)
         if _password_already_used(form.password.data):
-            flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
-            form.password.data = ''
-            return render_template('admin/new_user.html', form=form)
+            flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
+            return redirect(url_for('admin.new_user'), 303)
         u = User(
             name=form.name.data.strip(),
             password_hash=bcrypt.generate_password_hash(form.password.data).decode('utf-8'),
@@ -143,19 +142,16 @@ def edit_user(id):
         if form.validate_on_submit():
             if not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
                 flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
-                form.new_password.data = ''
             elif bcrypt.check_password_hash(user.password_hash, form.new_password.data):
                 flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
-                form.new_password.data = ''
             elif _password_already_used(form.new_password.data, exclude_id=user.id):
                 flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
-                form.new_password.data = ''
             else:
                 user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
                 user.save()
                 flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
-                return redirect(url_for('main.dashboard'))
-        return render_template('admin/change_password.html', form=form, user=user)
+                return redirect(url_for('main.dashboard'), 303)
+        return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
 
     # Super admin: full edit
     form = EditUserForm()
@@ -169,23 +165,20 @@ def edit_user(id):
         if form.new_password.data:
             if not form.current_password.data or not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
                 flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
-                form.new_password.data = ''
-                return render_template('admin/edit_user.html', form=form, user=user)
+                return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
             if bcrypt.check_password_hash(user.password_hash, form.new_password.data):
                 flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
-                form.new_password.data = ''
-                return render_template('admin/edit_user.html', form=form, user=user)
+                return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
             if _password_already_used(form.new_password.data, exclude_id=user.id):
                 flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
-                form.new_password.data = ''
-                return render_template('admin/edit_user.html', form=form, user=user)
+                return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
             user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
 
         # Prevent removing the last super_admin
         if user.role == 'super_admin' and form.role.data != 'super_admin':
             if User.objects(role='super_admin').count() <= 1:
                 flash(t.get('flash_last_super_admin', 'Cannot change — this is the last Super Admin.'), 'danger')
-                return render_template('admin/edit_user.html', form=form, user=user)
+                return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
 
         user.name = form.name.data.strip()
         user.role = form.role.data
