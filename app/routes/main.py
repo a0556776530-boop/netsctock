@@ -44,7 +44,7 @@ def user_activity_api():
     for u in User.objects.order_by('-last_seen'):
         if u.last_seen:
             diff = (now_utc - u.last_seen).total_seconds()
-            if diff < 45:
+            if diff < 90:
                 status = 'online'
             elif diff < 600:
                 status = 'away'

@@ -394,20 +394,26 @@ if (actEl) {
           var ds      = u.diff_sec;
 
           if (u.status === 'online') {
-            // Active within the last 5 minutes
+            // Active within the last 90 seconds
             dot.style.background = '#16a34a';
             txt.innerHTML = '<span class="text-success fw-semibold">• ' + (isHe ? 'מחובר' : 'Active') + '</span>';
 
           } else if (ds !== null && ds < 3600) {
             // Inactive but seen under 60 minutes ago → relative time
-            var mins = Math.max(1, Math.floor(ds / 60));
             dot.style.background = '#f59e0b';
+            var relTxt;
+            if (ds < 60) {
+              relTxt = isHe ? 'לפני פחות מדקה' : 'less than a minute ago';
+            } else {
+              var mins = Math.floor(ds / 60);
+              relTxt = isHe ? ('לפני ' + mins + ' דקות') : (mins + ' min ago');
+            }
             if (isHe) {
               txt.innerHTML = '<span class="text-warning fw-semibold">לא פעיל</span>'
-                + ' <span class="text-muted x-small">— נראה לאחרונה לפני ' + mins + ' דקות</span>';
+                + ' <span class="text-muted x-small">— נראה לאחרונה ' + relTxt + '</span>';
             } else {
               txt.innerHTML = '<span class="text-warning fw-semibold">Inactive</span>'
-                + ' <span class="text-muted x-small">— last seen ' + mins + ' min ago</span>';
+                + ' <span class="text-muted x-small">— last seen ' + relTxt + '</span>';
             }
 
           } else if (ds !== null) {
