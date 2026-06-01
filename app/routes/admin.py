@@ -129,11 +129,15 @@ def edit_user(id):
         if form.validate_on_submit():
             if not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
                 flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
-                return render_template('admin/change_password.html', form=form, user=user)
-            user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
-            user.save()
-            flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
-            return redirect(url_for('main.dashboard'))
+                form.new_password.data = ''
+            elif bcrypt.check_password_hash(user.password_hash, form.new_password.data):
+                flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
+                form.new_password.data = ''
+            else:
+                user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+                user.save()
+                flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
+                return redirect(url_for('main.dashboard'))
         return render_template('admin/change_password.html', form=form, user=user)
 
     # Super admin: full edit
@@ -148,6 +152,11 @@ def edit_user(id):
         if form.new_password.data:
             if not form.current_password.data or not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
                 flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
+                form.new_password.data = ''
+                return render_template('admin/edit_user.html', form=form, user=user)
+            if bcrypt.check_password_hash(user.password_hash, form.new_password.data):
+                flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
+                form.new_password.data = ''
                 return render_template('admin/edit_user.html', form=form, user=user)
             user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
 

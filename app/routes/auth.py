@@ -71,6 +71,10 @@ def change_password():
     if form.validate_on_submit():
         if not bcrypt.check_password_hash(current_user.password_hash, form.current_password.data):
             flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
+            form.new_password.data = ''
+        elif bcrypt.check_password_hash(current_user.password_hash, form.new_password.data):
+            flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
+            form.new_password.data = ''
         else:
             current_user.password_hash = bcrypt.generate_password_hash(
                 form.new_password.data
