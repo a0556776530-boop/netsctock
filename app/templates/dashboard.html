@@ -163,7 +163,16 @@
                 <span class="badge bg-secondary bg-opacity-15 text-secondary ms-1" style="font-size:.65rem;">{{ t.you_badge }}</span>
                 {% endif %}
               </div>
-              <div class="x-small status-text text-muted">—</div>
+              <div class="x-small text-muted">
+                <span class="opacity-75">
+                  {% if u.role == 'super_admin' %}{{ t.role_super_admin or 'Super Admin' }}
+                  {% elif u.role == 'admin' %}{{ t.role_admin }}
+                  {% elif u.role == 'warehouse' %}{{ t.role_warehouse }}
+                  {% elif u.role == 'technician' %}{{ t.role_technician }}
+                  {% else %}{{ t.role_viewer }}{% endif %}
+                </span>
+                <span class="status-text"> · —</span>
+              </div>
             </div>
             <div class="x-small text-muted text-nowrap flex-shrink-0 login-date">{{ u.last_login.strftime('%d %b') if u.last_login else '' }}</div>
           </li>
