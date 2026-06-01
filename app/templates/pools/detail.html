@@ -231,9 +231,9 @@
       return;
     }
     data.forEach(e => {
-      const amt  = currency === 'ILS'
-        ? '₪' + Math.round(e.total_nis).toLocaleString('en-US')
-        : '$' + e.total_usd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+      const nis  = e.total_nis  ? '₪' + Math.round(e.total_nis).toLocaleString('en-US') : '';
+      const usd  = e.total_usd  ? '$' + e.total_usd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
+      const amt  = [nis, usd].filter(Boolean).join(' | ');
       const item = document.createElement('button');
       item.type  = 'button';
       item.className = 'list-group-item list-group-item-action py-2';
