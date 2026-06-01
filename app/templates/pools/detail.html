@@ -194,49 +194,70 @@
   const submit   = document.getElementById('linkSubmit');
   const currency = '{{ pool.currency }}';
 
-  let debounce;
-  input.addEventListener('input', function() {
-    clearTimeout(debounce);
-    const q = this.value.trim();
-    if (q.length < 2) { results.innerHTML = ''; return; }
-    debounce = setTimeout(() => {
-      fetch('/pools/api/search-estimates?q=' + encodeURIComponent(q))
-        .then(r => r.json())
-        .then(data => {
-          results.innerHTML = '';
-          if (!data.length) {
-            results.innerHTML = '<div class="list-group-item text-muted small">לא נמצאו תוצאות</div>';
-            return;
-          }
-          data.forEach(e => {
-            const amt  = currency === 'ILS' ? '₪' + e.total_nis.toLocaleString('he-IL', {maximumFractionDigits:0})
-                                             : '$' + e.total_usd.toFixed(2);
-            const item = document.createElement('button');
-            item.type  = 'button';
-            item.className = 'list-group-item list-group-item-action py-2';
-            item.innerHTML = `
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <span class="badge bg-primary font-monospace me-1">#${e.allocation_number || '—'}</span>
-                  <strong>${e.task_name}</strong>
-                  ${e.project_name ? '<span class="text-muted small ms-1">· ' + e.project_name + '</span>' : ''}
-                </div>
-                <span class="fw-semibold text-success small">${amt}</span>
-              </div>`;
-            item.addEventListener('click', () => {
-              hiddenId.value  = e.id;
-              prevName.textContent = '#' + (e.allocation_number || '—') + ' — ' + e.task_name;
-              prevAmt.textContent  = amt;
-              preview.classList.remove('d-none');
-              submit.disabled = false;
-              results.innerHTML = '';
-              input.value = '';
-            });
-            results.appendChild(item);
-          });
-        });
-    }, 300);
+  let allEstimates = [];
+
+  // ── טעינה כשהמודאל נפתח ──────────────────────────────────────────────────
+  document.getElementById('linkModal').addEventListener('show.bs.modal', function() {
+    results.innerHTML = '<div class="list-group-item text-muted small text-center py-3">'
+      + '<span class="spinner-border spinner-border-sm me-2"></span>טוען...</div>';
+    fetch('/pools/api/search-estimates')
+      .then(r => r.json())
+      .then(data => {
+        allEstimates = data;
+        renderList(data);
+      })
+      .catch(() => {
+        results.innerHTML = '<div class="list-group-item text-danger small">שגיאה בטעינה</div>';
+      });
   });
+
+  // ── סינון client-side בזמן הקלדה ──────────────────────────────────────────
+  input.addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    if (!q) { renderList(allEstimates); return; }
+    const filtered = allEstimates.filter(e =>
+      (e.task_name  || '').toLowerCase().includes(q) ||
+      (e.project_name || '').toLowerCase().includes(q) ||
+      String(e.allocation_number || '').includes(q)
+    );
+    renderList(filtered);
+  });
+
+  // ── רינדור רשימה ─────────────────────────────────────────────────────────
+  function renderList(data) {
+    results.innerHTML = '';
+    if (!data.length) {
+      results.innerHTML = '<div class="list-group-item text-muted small text-center py-3">לא נמצאו אומדנים פתוחים</div>';
+      return;
+    }
+    data.forEach(e => {
+      const amt  = currency === 'ILS'
+        ? '₪' + Math.round(e.total_nis).toLocaleString('he-IL')
+        : '$' + e.total_usd.toFixed(2);
+      const item = document.createElement('button');
+      item.type  = 'button';
+      item.className = 'list-group-item list-group-item-action py-2';
+      item.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="badge bg-primary font-monospace me-1">#${e.allocation_number || '—'}</span>
+            <strong>${e.task_name}</strong>
+            ${e.project_name ? '<span class="text-muted small ms-1">· ' + e.project_name + '</span>' : ''}
+          </div>
+          <span class="fw-semibold text-success small">${amt}</span>
+        </div>`;
+      item.addEventListener('click', () => {
+        hiddenId.value       = e.id;
+        prevName.textContent = '#' + (e.allocation_number || '—') + ' — ' + e.task_name;
+        prevAmt.textContent  = amt;
+        preview.classList.remove('d-none');
+        submit.disabled = false;
+        results.innerHTML = '';
+        input.value = '';
+      });
+      results.appendChild(item);
+    });
+  }
 })();
 </script>
 {% endif %}

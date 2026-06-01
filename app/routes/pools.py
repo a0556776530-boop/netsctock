@@ -105,17 +105,19 @@ def delete_pool(id):
 @login_required
 def search_estimates():
     q = request.args.get('q', '').strip()
-    if len(q) < 2:
-        return jsonify([])
 
-    qs = Q(task_name__icontains=q) | Q(project_name__icontains=q)
-    try:
-        qs = qs | Q(allocation_number=int(q))
-    except ValueError:
-        pass
+    base = Q(status='pending') & Q(record_type__ne='estimate')
+
+    if len(q) >= 2:
+        search = Q(task_name__icontains=q) | Q(project_name__icontains=q)
+        try:
+            search = search | Q(allocation_number=int(q))
+        except ValueError:
+            pass
+        base = base & search
 
     results = []
-    for e in Estimate.objects(qs & Q(record_type__ne='estimate')).limit(10):
+    for e in Estimate.objects(base).order_by('-allocation_number').limit(100):
         results.append({
             'id':                str(e.id),
             'task_name':         e.task_name,
