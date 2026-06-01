@@ -532,9 +532,9 @@ def import_qty():
             not_found.append(serial)
             continue
 
-        asset.quantity = qty
+        asset.quantity = (asset.quantity or 0) + qty
         asset.save()
-        updated.append({'serial': asset.serial_number, 'model': asset.model or '', 'qty': qty})
+        updated.append({'serial': asset.serial_number, 'model': asset.model or '', 'qty': asset.quantity})
 
     results = {'updated': updated, 'not_found': not_found, 'invalid': invalid, 'skipped': skipped}
     return render_template('assets/import_qty.html', results=results)
