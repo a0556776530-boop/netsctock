@@ -13,6 +13,16 @@ from app.models.user import User
 from app.models.asset import Asset, AssetEvent
 from app.models.task import Task
 from app.utils.translations import localize_form
+
+
+def _password_already_used(plaintext, exclude_id=None):
+    """Return True if any user (other than exclude_id) already has this password."""
+    for u in User.objects():
+        if exclude_id and str(u.id) == str(exclude_id):
+            continue
+        if bcrypt.check_password_hash(u.password_hash, plaintext):
+            return True
+    return False
 from app.utils.mongo_helpers import get_or_404
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -103,6 +113,10 @@ def new_user():
     if form.validate_on_submit():
         if form.role.data not in VALID_ROLES:
             abort(400)
+        if _password_already_used(form.password.data):
+            flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
+            form.password.data = ''
+            return render_template('admin/new_user.html', form=form)
         u = User(
             name=form.name.data.strip(),
             password_hash=bcrypt.generate_password_hash(form.password.data).decode('utf-8'),
@@ -133,6 +147,9 @@ def edit_user(id):
             elif bcrypt.check_password_hash(user.password_hash, form.new_password.data):
                 flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
                 form.new_password.data = ''
+            elif _password_already_used(form.new_password.data, exclude_id=user.id):
+                flash(t.get('flash_password_taken', 'This password is already in use by another user.'), 'danger')
+                form.new_password.data = ''
             else:
                 user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
                 user.save()
@@ -156,6 +173,10 @@ def edit_user(id):
                 return render_template('admin/edit_user.html', form=form, user=user)
             if bcrypt.check_password_hash(user.password_hash, form.new_password.data):
                 flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
+                form.new_password.data = ''
+                return render_template('admin/edit_user.html', form=form, user=user)
+            if _password_already_used(form.new_password.data, exclude_id=user.id):
+                flash(t.get('flash_password_taken', 'This password is already in use by another user.'), 'danger')
                 form.new_password.data = ''
                 return render_template('admin/edit_user.html', form=form, user=user)
             user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')

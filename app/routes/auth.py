@@ -6,6 +6,7 @@ from wtforms import PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired
 
 from app import bcrypt
+from app.routes.admin import _password_already_used
 from app.models.user import User
 from app.utils.translations import localize_form
 
@@ -74,6 +75,9 @@ def change_password():
             form.new_password.data = ''
         elif bcrypt.check_password_hash(current_user.password_hash, form.new_password.data):
             flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
+            form.new_password.data = ''
+        elif _password_already_used(form.new_password.data, exclude_id=current_user.id):
+            flash(t.get('flash_password_taken', 'This password is already in use by another user.'), 'danger')
             form.new_password.data = ''
         else:
             current_user.password_hash = bcrypt.generate_password_hash(
