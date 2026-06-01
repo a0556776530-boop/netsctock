@@ -209,8 +209,8 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script>
-// Heartbeat — keeps last_seen alive even when user is reading a page without navigating
-setInterval(function() { fetch('/api/ping'); }, 60000);
+// Heartbeat — keeps last_seen alive every 20s so online status stays accurate
+setInterval(function() { fetch('/api/ping'); }, 20000);
 </script>
 <script>
 (function() {
