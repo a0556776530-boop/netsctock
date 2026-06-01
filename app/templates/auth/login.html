@@ -6,11 +6,12 @@
 
   <!-- Brand -->
   <div class="text-center mb-4">
-    <div class="brand-icon">
-      <i class="bi bi-hdd-network-fill"></i>
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NetStock"
+         style="width:200px; height:auto; max-width:100%; object-fit:contain; display:block; margin:0 auto;">
+    <div style="color:#00d4ff; font-size:.68rem; letter-spacing:.12em; font-weight:500; margin-top:3px;">
+      Track. Optimize. Scale.
     </div>
-    <p class="brand-name">NetStock</p>
-    <p class="brand-sub">{{ t.app_login_subtitle }}</p>
+    <p class="brand-sub mt-2">{{ t.app_login_subtitle }}</p>
   </div>
 
   <hr class="divider">
