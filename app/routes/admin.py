@@ -148,7 +148,7 @@ def edit_user(id):
                 flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
                 form.new_password.data = ''
             elif _password_already_used(form.new_password.data, exclude_id=user.id):
-                flash(t.get('flash_password_taken', 'This password is already in use by another user.'), 'danger')
+                flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
                 form.new_password.data = ''
             else:
                 user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
@@ -176,7 +176,7 @@ def edit_user(id):
                 form.new_password.data = ''
                 return render_template('admin/edit_user.html', form=form, user=user)
             if _password_already_used(form.new_password.data, exclude_id=user.id):
-                flash(t.get('flash_password_taken', 'This password is already in use by another user.'), 'danger')
+                flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
                 form.new_password.data = ''
                 return render_template('admin/edit_user.html', form=form, user=user)
             user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
