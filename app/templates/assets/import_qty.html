@@ -175,9 +175,18 @@
     fd.append('csrf_token', CSRF);
 
     try {
-      const res  = await fetch('{{ url_for("assets.import_qty_preview") }}', { method: 'POST', body: fd });
-      const data = await res.json();
+      const res = await fetch('{{ url_for("assets.import_qty_preview") }}',
+        { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF } });
 
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        alert(`שגיאת שרת (${res.status}) — ${txt.slice(0, 120) || 'נסה שוב'}`);
+        parseBtn.disabled = false;
+        parseBtn.innerHTML = '<i class="bi bi-eye me-2"></i>נתח וצג תצוגה מקדימה';
+        return;
+      }
+
+      const data = await res.json();
       if (!data.ok) {
         alert(data.error || 'שגיאה בניתוח הקובץ');
         parseBtn.disabled = false;
@@ -189,7 +198,7 @@
       renderStaging(f.name);
 
     } catch (err) {
-      alert('שגיאת רשת — נסה שוב');
+      alert('שגיאת חיבור: ' + (err.message || err));
       parseBtn.disabled = false;
       parseBtn.innerHTML = '<i class="bi bi-eye me-2"></i>נתח וצג תצוגה מקדימה';
     }

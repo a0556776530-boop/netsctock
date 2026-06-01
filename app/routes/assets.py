@@ -511,6 +511,15 @@ def import_qty_preview():
     except UnicodeDecodeError:
         return jsonify({'ok': False, 'error': 'Encoding error — save as UTF-8 CSV'}), 400
 
+    # Single bulk fetch — avoids N×2 slow iexact regex queries per row
+    by_comp   = {}
+    by_serial = {}
+    for a in Asset.objects.only('id', 'component_id', 'serial_number', 'model', 'quantity'):
+        if a.component_id:
+            by_comp[a.component_id.lower()] = a
+        if a.serial_number:
+            by_serial[a.serial_number.lower()] = a
+
     rows = []
     for row in csv.DictReader(stream):
         serial = _csv_col(row, *_SERIAL_COLS)
@@ -522,17 +531,17 @@ def import_qty_preview():
         except (ValueError, TypeError):
             add_qty = 0
 
+        key   = serial.lower()
+        asset = by_comp.get(key) or by_serial.get(key)
+
         entry = {
             'serial': serial, 'asset_id': None, 'component_id': '',
             'model': '', 'found': False, 'current_qty': 0, 'add_qty': add_qty,
         }
 
-        asset = Asset.objects(component_id__iexact=serial).first() or \
-                Asset.objects(serial_number__iexact=serial).first()
-
         if asset:
             entry.update({
-                'asset_id':    str(asset.id),
+                'asset_id':     str(asset.id),
                 'component_id': asset.component_id or asset.serial_number,
                 'model':        asset.model or '',
                 'found':        True,
