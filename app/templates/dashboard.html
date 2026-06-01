@@ -437,6 +437,8 @@ if (actEl) {
           }
 
           if (loginEl && u.last_login) loginEl.textContent = u.last_login;
+          // tooltip shows exact last_seen UTC time for debugging
+          if (u.last_seen_utc) row.title = 'Last seen: ' + u.last_seen_utc + ' UTC';
         });
 
         var updated = document.getElementById('activityUpdated');

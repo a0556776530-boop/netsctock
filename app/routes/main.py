@@ -64,6 +64,7 @@ def user_activity_api():
             'diff_sec':   diff_sec,
             'diff_min':   diff_min,
             'last_login': u.last_login.strftime('%d %b') if u.last_login else None,
+            'last_seen_utc': u.last_seen.strftime('%H:%M:%S') if u.last_seen else None,
         })
     return jsonify({'ok': True, 'users': result, 'now': now_utc.isoformat()})
 
