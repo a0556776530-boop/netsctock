@@ -27,6 +27,12 @@ def set_lang(code):
     return redirect(request.referrer or url_for('main.dashboard'))
 
 
+@main_bp.route('/api/ping')
+@login_required
+def ping():
+    return jsonify({'ok': True})
+
+
 @main_bp.route('/api/user-activity')
 @login_required
 def user_activity_api():
