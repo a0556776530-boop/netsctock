@@ -321,16 +321,23 @@ def export_csv(id):
     rate   = float(estimate.usd_rate)
     factor = float(estimate.maintenance_factor or 1.7)
     for item in estimate.items:
+        # Resolve asset safely — it may be a dangling reference if the asset was deleted
+        try:
+            asset  = item.asset          # triggers dereference; raises DoesNotExist if gone
+            sn     = (asset.serial_number or '') if asset else ''
+            model  = (asset.model         or '') if asset else ''
+            try:
+                atype = asset.asset_type.name if asset and asset.asset_type else ''
+            except Exception:
+                atype = ''
+        except Exception:
+            sn, model, atype = '[נמחק]', '', ''
+
         unit_usd = float(item.unit_price_usd) if item.unit_price_usd else 0.0
         unit_ils = round(unit_usd * rate * factor * 1.18, 2)
         line_ils = round(unit_ils * item.quantity, 2)
-        w.writerow([
-            item.asset.serial_number if item.asset else '',
-            item.asset.model if item.asset else '',
-            item.asset.asset_type.name if item.asset and item.asset.asset_type else '',
-            item.quantity,
-            f'{unit_usd:.2f}', f'{unit_ils:.2f}', f'{line_ils:.2f}',
-        ])
+        w.writerow([sn, model, atype, item.quantity,
+                    f'{unit_usd:.2f}', f'{unit_ils:.2f}', f'{line_ils:.2f}'])
     w.writerow([])
     w.writerow(['', '', '', '', '', 'TOTAL (ILS)', estimate.formatted_total.replace(' ₪', '')])
     filename = f"estimate_{estimate.task_name.replace(' ', '_')}_{estimate.created_date}.csv"
