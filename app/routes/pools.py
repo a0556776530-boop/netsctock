@@ -176,16 +176,6 @@ def link_estimate(id):
         )
         return redirect(url_for('pools.detail', id=id))
 
-    # Atomic update — prevents race conditions
-    matched = Pool.objects(
-        id=pool.id,
-        consumed_amount__lte=pool.total_amount - amount
-    ).update_one(inc__consumed_amount=amount)
-
-    if not matched:
-        flash('יתרה לא מספיקה (עדכון מקביל). נסה שוב.', 'danger')
-        return redirect(url_for('pools.detail', id=id))
-
     tx = PoolTransaction(
         estimate=estimate,
         amount_drawn=amount,
@@ -194,7 +184,17 @@ def link_estimate(id):
         created_by=current_user._get_current_object(),
         notes=notes,
     )
-    Pool.objects(id=pool.id).update_one(push__transactions=tx)
+
+    # Single atomic operation: increment consumed_amount AND push transaction
+    # If balance check fails → nothing changes. If it succeeds → both fields update together.
+    matched = Pool.objects(
+        id=pool.id,
+        consumed_amount__lte=pool.total_amount - amount
+    ).update_one(inc__consumed_amount=amount, push__transactions=tx)
+
+    if not matched:
+        flash('יתרה לא מספיקה (עדכון מקביל). נסה שוב.', 'danger')
+        return redirect(url_for('pools.detail', id=id))
 
     flash(f'הקצאה קושרה. חויב {pool.fmt(amount)} מהפול.', 'success')
     return redirect(url_for('pools.detail', id=id))
@@ -211,12 +211,23 @@ def unlink_estimate(id, tx_index):
     pool = get_or_404(Pool, id)
     try:
         tx     = pool.transactions[tx_index]
-        amount = tx.amount_drawn
-        pool.transactions.pop(tx_index)
-        pool.consumed_amount = max(0.0, round(pool.consumed_amount - amount, 2))
-        pool.save()
-        flash(f'קישור בוטל. {pool.fmt(amount)} הוחזרו לפול.', 'success')
-    except (IndexError, ValueError):
+        amount = round(float(tx.amount_drawn), 2)
+        est_id = tx.estimate.id
+
+        # Single atomic operation: decrement consumed_amount AND pull transaction
+        from bson import ObjectId
+        result = Pool._get_collection().update_one(
+            {'_id': pool.id},
+            {
+                '$inc':  {'consumed_amount': -amount},
+                '$pull': {'transactions': {'estimate': ObjectId(str(est_id))}},
+            }
+        )
+        if result.modified_count:
+            flash(f'קישור בוטל. {pool.fmt(amount)} הוחזרו לפול.', 'success')
+        else:
+            flash('לא הצלחנו לבטל את הקישור. נסה שוב.', 'danger')
+    except (IndexError, AttributeError):
         flash('טרנזקציה לא נמצאה.', 'danger')
 
     return redirect(url_for('pools.detail', id=id))
