@@ -51,7 +51,6 @@ def login():
                 user_id=str(matched.id), ip=get_ip(request),
                 ua=request.headers.get('User-Agent', ''), success=True,
             )
-            session['_login_recorded'] = True
             next_page = request.args.get('next', '')
             parsed = urlparse(next_page)
             if parsed.scheme or parsed.netloc:
@@ -71,7 +70,6 @@ def login():
 @login_required
 def logout():
     t = getattr(g, 't', {})
-    session.pop('_login_recorded', None)
     logout_user()
     flash(t.get('flash_logged_out', 'You have been logged out.'), 'info')
     return redirect(url_for('auth.login'))

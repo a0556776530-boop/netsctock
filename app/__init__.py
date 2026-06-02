@@ -32,6 +32,24 @@ def create_app(config_class=Config):
     login_manager.login_message = 'Please log in to access this page.'
     login_manager.login_message_category = 'warning'
 
+    from flask_login import user_loaded_from_cookie
+    from flask import request as _flask_req
+
+    @user_loaded_from_cookie.connect_via(app)
+    def _on_cookie_login(sender, user):
+        try:
+            from .utils.login_recorder import record_login, get_ip
+            record_login(
+                user_name=user.name,
+                user_role=user.role,
+                user_id=str(user.id),
+                ip=get_ip(_flask_req),
+                ua=_flask_req.headers.get('User-Agent', ''),
+                success=True,
+            )
+        except Exception:
+            pass
+
     from .routes.auth import auth_bp
     from .routes.main import main_bp
     from .routes.assets import assets_bp
@@ -69,22 +87,6 @@ def create_app(config_class=Config):
             from .models.user import User
             User.objects(id=current_user.id).update_one(set__last_seen=datetime.utcnow())
 
-            # Record login event once per browser session (catches cookie-based logins)
-            if not session.get('_login_recorded'):
-                session['_login_recorded'] = True
-                try:
-                    from flask import request as _req
-                    from .utils.login_recorder import record_login, get_ip
-                    record_login(
-                        user_name=current_user.name,
-                        user_role=current_user.role,
-                        user_id=str(current_user.id),
-                        ip=get_ip(_req),
-                        ua=_req.headers.get('User-Agent', ''),
-                        success=True,
-                    )
-                except Exception:
-                    pass
 
     from zoneinfo import ZoneInfo
     from datetime import timezone as _tz
