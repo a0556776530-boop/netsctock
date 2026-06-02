@@ -467,6 +467,34 @@ def delete(id):
     t = getattr(g, 't', {})
     asset = get_or_404(Asset, id)
     sn = asset.serial_number
+    asset_oid = asset.id
+
+    # Block deletion if asset is referenced in active purchases or estimates
+    from app.models.estimate import Estimate
+    from app.models.purchase import Purchase, ACTIVE_STATUSES as _PO_ACTIVE
+    active_po = Purchase._get_collection().find_one(
+        {'status': {'$in': _PO_ACTIVE}, 'items.asset': asset_oid},
+        {'_id': 1}
+    )
+    if active_po:
+        flash(
+            f'לא ניתן למחוק "{sn}" — הפריט מופיע בהזמנת רכש פעילה.',
+            'danger'
+        )
+        return redirect(url_for('assets.detail', id=str(asset_oid)))
+
+    active_est = Estimate._get_collection().find_one(
+        {'status': 'pending', 'record_type': {'$ne': 'estimate'},
+         'items.asset': asset_oid},
+        {'_id': 1}
+    )
+    if active_est:
+        flash(
+            f'לא ניתן למחוק "{sn}" — הפריט מופיע בהקצאה פעילה.',
+            'danger'
+        )
+        return redirect(url_for('assets.detail', id=str(asset_oid)))
+
     AssetEvent.objects(asset=asset).delete()
     asset.delete()
     flash(t.get('flash_retired', '{sn} deleted.').format(sn=sn), 'danger')
