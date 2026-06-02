@@ -12,6 +12,30 @@ from app.utils.mongo_helpers import get_or_404
 
 purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
 
+
+def _sync_inventory_on_receipt(purchase):
+    """Add received quantities to asset stock using atomic $inc. Returns count of updated items."""
+    col = Asset._get_collection()
+    updated = 0
+    for item in purchase.items:
+        if not item.asset:
+            continue
+        qty = item.quantity or 0
+        if qty <= 0:
+            continue
+        try:
+            asset_id = item.asset.id
+        except Exception:
+            continue
+        # Pipeline update handles null quantity gracefully
+        result = col.update_one(
+            {'_id': asset_id},
+            [{'$set': {'quantity': {'$add': [{'$ifNull': ['$quantity', 0]}, qty]}}}]
+        )
+        if result.modified_count:
+            updated += 1
+    return updated
+
 ALLOWED_EXTENSIONS = {'pdf', 'xlsx', 'xls', 'csv', 'doc', 'docx', 'png', 'jpg'}
 
 
@@ -201,6 +225,7 @@ def edit(id):
             if saved:
                 bom_filename = saved
 
+        old_status = purchase.status
         status = request.form.get('status', purchase.status)
         if status not in STATUSES:
             status = purchase.status
@@ -227,6 +252,18 @@ def edit(id):
             return render_template('purchases/form.html', purchase=purchase,
                                    assets=assets, grouped_assets=grouped_assets,
                                    statuses=STATUSES, currencies=CURRENCIES)
+
+        # ── Inventory sync when marked as received ────────────────────────────
+        _RECEIVED = 'Order Received in Warehouse'
+        if old_status != _RECEIVED and status == _RECEIVED:
+            updated = _sync_inventory_on_receipt(purchase)
+            if updated > 0:
+                flash(
+                    t.get('flash_purchase_received_sync',
+                          f'{updated} פריטים נוספו למלאי אוטומטית.'),
+                    'success'
+                )
+
         flash(t.get('flash_purchase_updated', 'Purchase updated successfully.'), 'success')
         return redirect(url_for('purchases.detail', id=purchase.id))
 
