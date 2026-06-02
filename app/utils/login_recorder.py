@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 _log = logging.getLogger(__name__)
 _COLLECTION = 'login_events'
@@ -17,14 +17,24 @@ def get_ip(request):
 
 def record_login(*, user_name, user_role, ip, ua, success, user_id=None):
     try:
-        _col().insert_one({
+        col = _col()
+        now = datetime.utcnow()
+
+        # Dedup: skip if this user already has a successful event in the last 30 min
+        if success and user_id:
+            cutoff = now - timedelta(minutes=30)
+            if col.find_one({'user_id': user_id, 'success': True,
+                             'timestamp': {'$gte': cutoff}}, {'_id': 1}):
+                return
+
+        col.insert_one({
             'user_name':  user_name or '—',
             'user_role':  user_role or '—',
             'user_id':    user_id,
             'ip_address': ip or '0.0.0.0',
             'user_agent': (ua or '')[:500],
             'success':    bool(success),
-            'timestamp':  datetime.utcnow(),
+            'timestamp':  now,
         })
     except Exception as e:
         _log.error('record_login failed: %s', e, exc_info=True)
