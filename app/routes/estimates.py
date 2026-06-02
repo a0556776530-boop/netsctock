@@ -139,6 +139,10 @@ def new_estimate():
             total_nis += line_nis
             estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
 
+        if not estimate.items:
+            flash('לא ניתן לשמור הצעה ללא פריטים. הוסף לפחות פריט אחד.', 'danger')
+            return redirect(url_for('estimates.new_estimate'))
+
         estimate.total_nis = round(total_nis, 2)
         estimate.save()
         flash(f'Estimate "{task_name}" saved successfully.', 'success')
@@ -186,6 +190,9 @@ def withdraw(id):
     if not current_user.can_edit:
         abort(403)
     estimate = get_or_404(Estimate, id)
+    if estimate.status != 'pending':
+        flash('לא ניתן לבצע פעולה זו — ההקצאה אינה במצב פעיל.', 'warning')
+        return redirect(url_for('estimates.detail', id=str(estimate.id)))
     estimate.status       = 'withdrawn'
     israel_tz = timezone(timedelta(hours=3))
     estimate.withdrawn_at = datetime.now(israel_tz).replace(tzinfo=None)
@@ -200,6 +207,9 @@ def restore(id):
     if not current_user.can_edit:
         abort(403)
     estimate = get_or_404(Estimate, id)
+    if estimate.status != 'withdrawn':
+        flash('לא ניתן לשחזר הקצאה שאינה בארכיון.', 'warning')
+        return redirect(url_for('estimates.detail', id=str(estimate.id)))
     estimate.status       = 'pending'
     estimate.withdrawn_at = None
     estimate.save()
@@ -261,6 +271,10 @@ def edit(id):
             line_nis  = round(unit_usd * usd_rate * maint_factor * 1.18 * qty, 2)
             total_nis += line_nis
             estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
+
+        if not estimate.items:
+            flash('לא ניתן לשמור הצעה ללא פריטים. הוסף לפחות פריט אחד.', 'danger')
+            return redirect(url_for('estimates.edit', id=str(estimate.id)))
 
         estimate.total_nis = round(total_nis, 2)
         estimate.save()
