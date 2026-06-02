@@ -1,6 +1,7 @@
 import csv
 from io import StringIO
 from datetime import datetime
+from flask import make_response
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, abort, g
 from flask_login import login_required, current_user
@@ -262,102 +263,44 @@ def update_role(id):
 
 # ── Login History ─────────────────────────────────────────────────────────────
 
-@admin_bp.route('/debug-login-events')
-@login_required
-def debug_login_events():
-    _admin_required()
-    from app.models.login_event import LoginEvent
-    from flask import jsonify
-    import traceback
-
-    # ── read test ──
-    read_ok, read_err, total, recent = True, None, 0, []
-    try:
-        total = LoginEvent.objects().count()
-        for ev in LoginEvent.objects().order_by('-timestamp').limit(5):
-            recent.append({
-                'user': ev.user_name,
-                'time': str(ev.timestamp),
-                'ip':   ev.ip_address,
-                'ok':   ev.success,
-            })
-    except Exception as e:
-        read_ok, read_err = False, traceback.format_exc()
-
-    # ── write test (with user reference, same as _record_login) ──
-    write_ok, write_err = True, None
-    try:
-        ev = LoginEvent(
-            user       = current_user._get_current_object(),
-            user_name  = current_user.name,
-            user_role  = current_user.role,
-            ip_address = request.remote_addr or '0.0.0.0',
-            user_agent = 'debug',
-            success    = True,
-        )
-        ev.save()
-        ev.delete()
-    except Exception as e:
-        write_ok, write_err = False, traceback.format_exc()
-
-    # ── direct _record_login test ──
-    record_ok, record_err = True, None
-    total_before = LoginEvent.objects().count()
-    try:
-        from app.routes.auth import _record_login
-        _record_login(current_user._get_current_object(), success=True)
-    except Exception as e:
-        record_ok, record_err = False, traceback.format_exc()
-    total_after = LoginEvent.objects().count()
-
-    return jsonify(
-        read_ok=read_ok, read_err=read_err,
-        write_ok=write_ok, write_err=write_err,
-        record_ok=record_ok, record_err=record_err,
-        total_before=total_before, total_after=total_after,
-        recent=recent,
-    )
-
-
 @admin_bp.route('/login-history')
 @login_required
 def login_history():
     _admin_required()
-    from app.models.login_event import LoginEvent
+    from mongoengine.connection import get_db
 
-    page      = max(1, request.args.get('page', 1, type=int))
-    per_page  = 50
+    col = get_db('default')['login_events']
+
+    page           = max(1, request.args.get('page', 1, type=int))
+    per_page       = 50
     user_filter    = request.args.get('user', '').strip()
     success_filter = request.args.get('success', '')
     date_from      = request.args.get('date_from', '')
     date_to        = request.args.get('date_to', '')
 
-    qs = LoginEvent.objects()
-
+    filt = {}
     if user_filter:
-        qs = qs.filter(user_name__icontains=user_filter)
+        filt['user_name'] = {'$regex': user_filter, '$options': 'i'}
     if success_filter == '1':
-        qs = qs.filter(success=True)
+        filt['success'] = True
     elif success_filter == '0':
-        qs = qs.filter(success=False)
+        filt['success'] = False
     if date_from:
         try:
-            from datetime import datetime
-            qs = qs.filter(timestamp__gte=datetime.strptime(date_from, '%Y-%m-%d'))
+            filt.setdefault('timestamp', {})['$gte'] = datetime.strptime(date_from, '%Y-%m-%d')
         except ValueError:
             pass
     if date_to:
         try:
-            from datetime import datetime
-            qs = qs.filter(timestamp__lte=datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+            filt.setdefault('timestamp', {})['$lte'] = datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S')
         except ValueError:
             pass
 
-    total   = qs.count()
-    events  = list(qs.order_by('-timestamp').skip((page - 1) * per_page).limit(per_page))
-    pages   = max(1, (total + per_page - 1) // per_page)
+    total  = col.count_documents(filt)
+    events = list(col.find(filt).sort([('_id', -1)]).skip((page - 1) * per_page).limit(per_page))
+    pages  = max(1, (total + per_page - 1) // per_page)
 
-    return render_template(
+    resp = make_response(render_template(
         'admin/login_history.html',
         events=events,
         total=total,
@@ -368,7 +311,10 @@ def login_history():
         success_filter=success_filter,
         date_from=date_from,
         date_to=date_to,
-    )
+    ))
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    return resp
 
 
 # ── Export ────────────────────────────────────────────────────────────────────

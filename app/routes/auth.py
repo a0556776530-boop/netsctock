@@ -9,33 +9,8 @@ from wtforms.validators import DataRequired
 from app import bcrypt
 from app.routes.admin import _password_already_used
 from app.models.user import User
-from app.models.login_event import LoginEvent
 from app.utils.translations import localize_form
-
-_log = logging.getLogger(__name__)
-
-
-def _get_real_ip():
-    forwarded = request.headers.get('X-Forwarded-For', '')
-    if forwarded:
-        return forwarded.split(',')[0].strip()
-    return request.remote_addr or '0.0.0.0'
-
-
-def _record_login(user, success: bool):
-    try:
-        ip = _get_real_ip()
-        ua = request.headers.get('User-Agent', '')[:500]
-        LoginEvent(
-            user      = user,
-            user_name = user.name if user else '—',
-            user_role = user.role if user else '—',
-            ip_address= ip,
-            user_agent= ua,
-            success   = success,
-        ).save()
-    except Exception as e:
-        _log.error('_record_login failed: %s', e, exc_info=True)
+from app.utils.login_recorder import record_login, get_ip
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -71,15 +46,23 @@ def login():
             matched.last_seen  = datetime.utcnow()
             matched.save()
             login_user(matched, remember=form.remember.data)
-            _record_login(matched, success=True)
-            session['_login_recorded'] = True  # prevent before_request duplicate
+            record_login(
+                user_name=matched.name, user_role=matched.role,
+                user_id=str(matched.id), ip=get_ip(request),
+                ua=request.headers.get('User-Agent', ''), success=True,
+            )
+            session['_login_recorded'] = True
             next_page = request.args.get('next', '')
             parsed = urlparse(next_page)
             if parsed.scheme or parsed.netloc:
                 next_page = ''
             flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=matched.name), 'success')
             return redirect(next_page or url_for('main.dashboard'))
-        _record_login(None, success=False)
+        record_login(
+            user_name='—', user_role='—',
+            ip=get_ip(request),
+            ua=request.headers.get('User-Agent', ''), success=False,
+        )
         flash(t.get('flash_login_failed', 'Incorrect password.'), 'danger')
     return render_template('auth/login.html', form=form)
 
