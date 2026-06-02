@@ -284,15 +284,16 @@ def debug_login_events():
     except Exception as e:
         read_ok, read_err = False, traceback.format_exc()
 
-    # ── write test ──
+    # ── write test (with user reference, same as _record_login) ──
     write_ok, write_err = True, None
     try:
         ev = LoginEvent(
-            user_name  = '__debug_test__',
-            user_role  = 'test',
-            ip_address = '0.0.0.0',
+            user       = current_user._get_current_object(),
+            user_name  = current_user.name,
+            user_role  = current_user.role,
+            ip_address = request.remote_addr or '0.0.0.0',
             user_agent = 'debug',
-            success    = False,
+            success    = True,
         )
         ev.save()
         ev.delete()
