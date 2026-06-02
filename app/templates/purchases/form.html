@@ -331,18 +331,28 @@
 
   syncNoMsg();
 
-  // Warn before saving with "בוטל" status
+  // Warn before saving with sensitive status changes
   {% if is_edit %}
-  var statusSel = document.getElementById('statusSelect');
-  var theForm   = statusSel ? statusSel.closest('form') : null;
-  if (theForm) {
+  var statusSel  = document.getElementById('statusSelect');
+  var theForm    = statusSel ? statusSel.closest('form') : null;
+  var origStatus = '{{ purchase.status if purchase else "" }}';
+  var activeStatuses = {{ ACTIVE_STATUSES | tojson if ACTIVE_STATUSES is defined else '[]' }};
+
+  if (theForm && statusSel) {
     theForm.addEventListener('submit', function(e) {
-      if (statusSel.value === 'בוטל') {
+      var newStatus = statusSel.value;
+
+      if (newStatus === 'בוטל') {
         var msg = '⚠️ האם לבטל את ההזמנה?\n\nפעולה זו תסיר את הכמויות מעמודת ברכש.';
         {% if purchase and purchase.status == 'Order Received in Warehouse' %}
         msg = '⚠️ ההזמנה כבר נקלטה במחסן!\n\nביטול יפחית את הכמויות מהמלאי. להמשיך?';
         {% endif %}
         if (!confirm(msg)) { e.preventDefault(); }
+
+      } else if (origStatus === 'Order Received in Warehouse' && newStatus !== 'Order Received in Warehouse' && newStatus !== 'בוטל') {
+        if (!confirm('⚠️ ההזמנה כבר נקלטה במחסן!\n\nשינוי הסטטוס יפחית את הכמויות מהמלאי (ביטול קליטה בטעות).\n\nלהמשיך?')) {
+          e.preventDefault();
+        }
       }
     });
   }

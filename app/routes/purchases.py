@@ -295,24 +295,28 @@ def edit(id):
                                    statuses=STATUSES, currencies=CURRENCIES)
 
         # ── Inventory sync on status transitions ─────────────────────────────
-        _RECEIVED   = 'Order Received in Warehouse'
-        _CANCELLED  = 'בוטל'
+        _RECEIVED  = 'Order Received in Warehouse'
+        _CANCELLED = 'בוטל'
 
         if old_status != _RECEIVED and status == _RECEIVED:
+            # Marked as received → add to stock
             updated = _sync_inventory_on_receipt(purchase)
             if updated > 0:
                 flash(f'{updated} פריטים נוספו למלאי אוטומטית.', 'success')
 
+        elif old_status == _RECEIVED and status in ACTIVE_STATUSES:
+            # Reversed from received → subtract back from stock
+            updated = _sync_inventory_on_cancel(purchase)
+            flash(
+                f'הסטטוס שונה בחזרה — {updated} פריטים הופחתו מהמלאי (ביטול קליטה בטעות).',
+                'warning'
+            )
+
         elif old_status != _CANCELLED and status == _CANCELLED:
             if old_status == _RECEIVED:
-                # Already received → subtract from stock
                 updated = _sync_inventory_on_cancel(purchase)
-                flash(
-                    f'ההזמנה בוטלה — {updated} פריטים הופחתו מהמלאי.',
-                    'warning'
-                )
+                flash(f'ההזמנה בוטלה — {updated} פריטים הופחתו מהמלאי.', 'warning')
             else:
-                # Not yet received → in_purchase updates automatically via aggregation
                 flash('ההזמנה בוטלה — הכמויות הוסרו מעמודת ברכש אוטומטית.', 'warning')
 
         flash(t.get('flash_purchase_updated', 'Purchase updated successfully.'), 'success')
@@ -320,7 +324,8 @@ def edit(id):
 
     return render_template('purchases/form.html', purchase=purchase,
                            assets=assets, grouped_assets=grouped_assets,
-                           statuses=STATUSES, currencies=CURRENCIES)
+                           statuses=STATUSES, currencies=CURRENCIES,
+                           ACTIVE_STATUSES=ACTIVE_STATUSES)
 
 
 @purchases_bp.route('/<id>/delete', methods=['POST'])
