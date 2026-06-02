@@ -32,6 +32,13 @@ class PurchaseItem(me.EmbeddedDocument):
     quantity   = me.IntField(required=True)
     unit_price = me.FloatField(default=0)
 
+    @property
+    def safe_asset(self):
+        try:
+            return self.asset
+        except Exception:
+            return None
+
 
 class Purchase(me.Document):
     meta = {'collection': 'purchases', 'ordering': ['-created_at'], 'strict': False}

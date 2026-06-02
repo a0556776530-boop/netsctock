@@ -393,14 +393,14 @@
 
             {% else %}
             <tr id="serverEmptyRow">
-              <td colspan="10" class="text-center text-muted py-5">
+              <td colspan="11" class="text-center text-muted py-5">
                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                 {{ t.no_assets_found }} <a href="{{ url_for('assets.new_asset') }}">{{ t.register_one_link }}</a>
               </td>
             </tr>
             {% endfor %}
             <tr id="noResultsRow" style="display:none">
-              <td colspan="10" class="text-center text-muted py-5">
+              <td colspan="11" class="text-center text-muted py-5">
                 <i class="bi bi-search fs-3 d-block mb-2 opacity-50"></i>
                 <span>{{ t.no_assets_found }}</span>
               </td>

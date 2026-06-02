@@ -113,17 +113,18 @@
           </thead>
           <tbody>
             {% for item in purchase.items %}
+            {% set a = item.safe_asset %}
             <tr>
               <td class="small">
-                {% if item.asset %}
-                <a href="{{ url_for('assets.detail', id=item.asset.id) }}" class="text-decoration-none fw-semibold">
-                  {{ item.asset.serial_number }}
+                {% if a %}
+                <a href="{{ url_for('assets.detail', id=a.id) }}" class="text-decoration-none fw-semibold">
+                  {{ a.serial_number }}
                 </a>
-                {% if item.asset.model %}
-                <div class="text-muted x-small">{{ item.asset.model }}</div>
+                {% if a.model %}
+                <div class="text-muted x-small">{{ a.model }}</div>
                 {% endif %}
                 {% else %}
-                <span class="text-muted">—</span>
+                <span class="text-muted fst-italic">[נמחק]</span>
                 {% endif %}
               </td>
               <td class="text-center small fw-semibold">{{ item.quantity }}</td>
