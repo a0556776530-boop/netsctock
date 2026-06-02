@@ -260,6 +260,60 @@ def update_role(id):
     return jsonify(ok=True)
 
 
+# ── Login History ─────────────────────────────────────────────────────────────
+
+@admin_bp.route('/login-history')
+@login_required
+def login_history():
+    _admin_required()
+    from app.models.login_event import LoginEvent
+
+    page      = max(1, request.args.get('page', 1, type=int))
+    per_page  = 50
+    user_filter    = request.args.get('user', '').strip()
+    success_filter = request.args.get('success', '')
+    date_from      = request.args.get('date_from', '')
+    date_to        = request.args.get('date_to', '')
+
+    qs = LoginEvent.objects()
+
+    if user_filter:
+        qs = qs.filter(user_name__icontains=user_filter)
+    if success_filter == '1':
+        qs = qs.filter(success=True)
+    elif success_filter == '0':
+        qs = qs.filter(success=False)
+    if date_from:
+        try:
+            from datetime import datetime
+            qs = qs.filter(timestamp__gte=datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            from datetime import datetime
+            qs = qs.filter(timestamp__lte=datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S'))
+        except ValueError:
+            pass
+
+    total   = qs.count()
+    events  = list(qs.order_by('-timestamp').skip((page - 1) * per_page).limit(per_page))
+    pages   = max(1, (total + per_page - 1) // per_page)
+
+    return render_template(
+        'admin/login_history.html',
+        events=events,
+        total=total,
+        page=page,
+        pages=pages,
+        per_page=per_page,
+        user_filter=user_filter,
+        success_filter=success_filter,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
 # ── Export ────────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/export')

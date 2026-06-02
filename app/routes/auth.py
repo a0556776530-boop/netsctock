@@ -8,7 +8,28 @@ from wtforms.validators import DataRequired
 from app import bcrypt
 from app.routes.admin import _password_already_used
 from app.models.user import User
+from app.models.login_event import LoginEvent
 from app.utils.translations import localize_form
+from app.utils.geoip import get_real_ip, lookup as geo_lookup
+
+
+def _record_login(user, success: bool):
+    try:
+        ip = get_real_ip(request)
+        city, country = geo_lookup(ip)
+        ua = request.headers.get('User-Agent', '')[:500]
+        LoginEvent(
+            user      = user,
+            user_name = user.name if user else '—',
+            user_role = user.role if user else '—',
+            ip_address= ip,
+            city      = city,
+            country   = country,
+            user_agent= ua,
+            success   = success,
+        ).save()
+    except Exception:
+        pass
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -44,12 +65,14 @@ def login():
             matched.last_seen  = datetime.utcnow()
             matched.save()
             login_user(matched, remember=form.remember.data)
+            _record_login(matched, success=True)
             next_page = request.args.get('next', '')
             parsed = urlparse(next_page)
             if parsed.scheme or parsed.netloc:
                 next_page = ''
             flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=matched.name), 'success')
             return redirect(next_page or url_for('main.dashboard'))
+        _record_login(None, success=False)
         flash(t.get('flash_login_failed', 'Incorrect password.'), 'danger')
     return render_template('auth/login.html', form=form)
 
