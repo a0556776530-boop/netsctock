@@ -1,9 +1,7 @@
-import csv
-from io import StringIO
 from datetime import datetime
 from flask import make_response
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, abort, g
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, PasswordField, SubmitField
@@ -318,78 +316,3 @@ def login_history():
     return resp
 
 
-# ── Export ────────────────────────────────────────────────────────────────────
-
-@admin_bp.route('/export')
-@login_required
-def export():
-    _admin_required()
-    asset_count = Asset.objects.count()
-    event_count = AssetEvent.objects.count()
-    task_count  = Task.objects.count()
-    return render_template('admin/export.html',
-                           asset_count=asset_count,
-                           event_count=event_count,
-                           task_count=task_count)
-
-
-@admin_bp.route('/export/assets.csv')
-@login_required
-def export_assets():
-    _admin_required()
-    headers = ['מקט רכיב', 'מקט יצרן', 'כמות במחסן']
-    rows = []
-    for a in Asset.objects.order_by('serial_number'):
-        rows.append([
-            a.component_id or '',
-            a.serial_number or '',
-            a.quantity if a.quantity is not None else '',
-        ])
-    return _csv_response(rows, headers, 'inventory_assets.csv')
-
-
-@admin_bp.route('/export/events.csv')
-@login_required
-def export_events():
-    _admin_required()
-    headers = ['Event Date','Serial Number','Event Type','Performed By','Notes']
-    rows = []
-    for e in AssetEvent.objects.order_by('-event_date').select_related():
-        rows.append([
-            e.event_date.strftime('%d/%m/%Y %H:%M'),
-            e.asset.serial_number if e.asset else '',
-            e.event_label,
-            e.performed_by_user.name if e.performed_by_user else '',
-            (e.notes or '').replace('\n', ' '),
-        ])
-    return _csv_response(rows, headers, 'inventory_events.csv')
-
-
-@admin_bp.route('/export/tasks.csv')
-@login_required
-def export_tasks():
-    _admin_required()
-    headers = ['Title', 'Status', 'Assigned To', 'Notes', 'Created At']
-    rows = []
-    for t in Task.objects.order_by('-created_at'):
-        rows.append([
-            t.title,
-            t.status_label,
-            t.assignee_name or '',
-            (t.notes or '').replace('\n', ' '),
-            t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '',
-        ])
-    return _csv_response(rows, headers, 'inventory_tasks.csv')
-
-
-def _csv_response(rows, headers, filename):
-    si = StringIO()
-    writer = csv.writer(si)
-    writer.writerow(headers)
-    writer.writerows(rows)
-    output = '﻿' + si.getvalue()
-    return Response(
-        output,
-        mimetype='text/csv; charset=utf-8-sig',
-        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
-    )
