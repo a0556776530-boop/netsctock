@@ -110,6 +110,8 @@ def delete_pool(id):
 @pools_bp.route('/api/search-estimates')
 @login_required
 def search_estimates():
+    if not current_user.can_edit:
+        abort(403)
     q = request.args.get('q', '').strip()
 
     base = Q(status='pending') & Q(record_type__ne='estimate')
