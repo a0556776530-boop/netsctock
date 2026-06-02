@@ -300,10 +300,22 @@ def debug_login_events():
     except Exception as e:
         write_ok, write_err = False, traceback.format_exc()
 
+    # ── direct _record_login test ──
+    record_ok, record_err = True, None
+    total_before = LoginEvent.objects().count()
+    try:
+        from app.routes.auth import _record_login
+        _record_login(current_user._get_current_object(), success=True)
+    except Exception as e:
+        record_ok, record_err = False, traceback.format_exc()
+    total_after = LoginEvent.objects().count()
+
     return jsonify(
         read_ok=read_ok, read_err=read_err,
         write_ok=write_ok, write_err=write_err,
-        total=total, recent=recent,
+        record_ok=record_ok, record_err=record_err,
+        total_before=total_before, total_after=total_after,
+        recent=recent,
     )
 
 
