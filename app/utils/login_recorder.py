@@ -18,22 +18,27 @@ def get_ip(request):
 def record_login(*, user_name, user_role, ip, ua, success, user_id=None):
     try:
         col = _col()
-        now = datetime.utcnow()
+        now    = datetime.utcnow()
+        cutoff = now - timedelta(minutes=2)
 
-        # Dedup for successful logins: skip if same user logged in within 30 min
         if success and user_id:
-            cutoff = now - timedelta(minutes=30)
-            if col.find_one({'user_id': user_id, 'success': True,
-                             'timestamp': {'$gte': cutoff}}, {'_id': 1}):
+            # Dedup: same user + same IP within 2 min = double-click / form resubmit
+            # Different IP = different location → always record (security relevant)
+            if col.find_one(
+                {'user_id': user_id, 'ip_address': ip, 'success': True,
+                 'timestamp': {'$gte': cutoff}}, {'_id': 1}
+            ):
                 return
-
-        # Dedup for failed logins: skip if same IP already has a failure in last 5 min
-        # (prevents log spam from double-clicks or rapid retries, but still captures all IPs)
-        if not success and ip and ip not in ('0.0.0.0', '127.0.0.1', '::1'):
-            cutoff = now - timedelta(minutes=5)
-            if col.find_one({'ip_address': ip, 'success': False,
-                             'timestamp': {'$gte': cutoff}}, {'_id': 1}):
-                return
+        elif not success:
+            # Dedup: same IP + same browser within 2 min = rapid retry / double-click
+            # Different IP or different browser = separate attempt → always record
+            _ip = ip or '0.0.0.0'
+            if _ip not in ('0.0.0.0', '127.0.0.1', '::1'):
+                if col.find_one(
+                    {'ip_address': _ip, 'user_agent': (ua or '')[:500],
+                     'success': False, 'timestamp': {'$gte': cutoff}}, {'_id': 1}
+                ):
+                    return
 
         col.insert_one({
             'user_name':  user_name or '—',
