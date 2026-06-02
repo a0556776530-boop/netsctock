@@ -453,7 +453,10 @@ def update_qty(id):
 
     asset = get_or_404(Asset, id)
     data  = request.get_json(force=True) or {}
-    delta = int(data.get('delta', 0))
+    try:
+        delta = int(data.get('delta', 0))
+    except (ValueError, TypeError):
+        return jsonify({'ok': False, 'error': 'Invalid delta value'}), 400
     asset.quantity = max(0, (asset.quantity or 0) + delta)
     asset.save()
     return jsonify(qty=asset.quantity)
