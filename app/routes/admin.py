@@ -262,6 +262,27 @@ def update_role(id):
 
 # ── Login History ─────────────────────────────────────────────────────────────
 
+@admin_bp.route('/debug-login-events')
+@login_required
+def debug_login_events():
+    _admin_required()
+    from app.models.login_event import LoginEvent
+    from flask import jsonify
+    try:
+        total = LoginEvent.objects().count()
+        recent = []
+        for ev in LoginEvent.objects().order_by('-timestamp').limit(5):
+            recent.append({
+                'user': ev.user_name,
+                'time': str(ev.timestamp),
+                'ip':   ev.ip_address,
+                'ok':   ev.success,
+            })
+        return jsonify(total=total, recent=recent, ok=True)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e))
+
+
 @admin_bp.route('/login-history')
 @login_required
 def login_history():
