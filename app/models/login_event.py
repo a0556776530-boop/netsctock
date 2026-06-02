@@ -14,8 +14,6 @@ class LoginEvent(me.Document):
     user_role   = me.StringField(max_length=20)
     timestamp   = me.DateTimeField(default=datetime.utcnow)
     ip_address  = me.StringField(max_length=45)
-    city        = me.StringField(max_length=100)
-    country     = me.StringField(max_length=100)
     user_agent  = me.StringField(max_length=500)
     success     = me.BooleanField(default=True)
 

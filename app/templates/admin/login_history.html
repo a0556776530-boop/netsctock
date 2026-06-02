@@ -62,7 +62,6 @@
           <th>{{ t.login_history_col_user }}</th>
           <th>{{ t.login_history_col_role }}</th>
           <th>{{ t.login_history_col_ip }}</th>
-          <th>{{ t.login_history_col_location }}</th>
           <th>{{ t.login_history_col_device }}</th>
           <th class="text-center">{{ t.login_history_col_status }}</th>
         </tr>
@@ -92,16 +91,6 @@
             {% endif %}
           </td>
           <td class="font-monospace text-muted">{{ ev.ip_address or '—' }}</td>
-          <td>
-            {% if ev.city and ev.city != '—' %}
-              <i class="bi bi-geo-alt-fill text-danger me-1" style="font-size:.8rem;"></i>
-              {{ ev.city }}{% if ev.country and ev.country != '—' %}, {{ ev.country }}{% endif %}
-            {% elif ev.city == 'רשת פנימית' %}
-              <span class="text-muted"><i class="bi bi-building me-1"></i>{{ t.login_history_local_network }}</span>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
           <td class="text-muted" style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
               title="{{ ev.user_agent or '' }}">
             {% set ua = ev.user_agent or '' %}
@@ -126,7 +115,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="8" class="text-center text-muted py-5">
+          <td colspan="7" class="text-center text-muted py-5">
             <i class="bi bi-journal-x fs-2 d-block mb-2 opacity-25"></i>
             {{ t.login_history_empty }}
           </td>
