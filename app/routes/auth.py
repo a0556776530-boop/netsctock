@@ -1,3 +1,4 @@
+import logging
 from flask import Blueprint, render_template, redirect, url_for, flash, request, g
 from urllib.parse import urlparse
 from flask_login import login_user, logout_user, login_required, current_user
@@ -11,6 +12,8 @@ from app.models.user import User
 from app.models.login_event import LoginEvent
 from app.utils.translations import localize_form
 from app.utils.geoip import get_real_ip, lookup as geo_lookup
+
+_log = logging.getLogger(__name__)
 
 
 def _record_login(user, success: bool):
@@ -28,8 +31,8 @@ def _record_login(user, success: bool):
             user_agent= ua,
             success   = success,
         ).save()
-    except Exception:
-        pass
+    except Exception as e:
+        _log.error('_record_login failed: %s', e, exc_info=True)
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
