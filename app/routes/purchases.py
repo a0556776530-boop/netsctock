@@ -312,6 +312,10 @@ def edit(id):
                 'warning'
             )
 
+        elif old_status == _CANCELLED and status in ACTIVE_STATUSES:
+            # Reactivated from cancelled → aggregation restores in_purchase automatically
+            flash('ההזמנה הופעלה מחדש — הכמויות חזרו לעמודת ברכש אוטומטית.', 'info')
+
         elif old_status != _CANCELLED and status == _CANCELLED:
             if old_status == _RECEIVED:
                 updated = _sync_inventory_on_cancel(purchase)
