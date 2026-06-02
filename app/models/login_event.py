@@ -7,6 +7,7 @@ class LoginEvent(me.Document):
         'collection': 'login_events',
         'ordering': ['-timestamp'],
         'indexes': ['-timestamp', 'user_name', 'ip_address'],
+        'strict': False,
     }
 
     user        = me.ReferenceField('User', db_field='user_id', required=False)
