@@ -72,6 +72,7 @@ def login():
             matched.save()
             login_user(matched, remember=form.remember.data)
             _record_login(matched, success=True)
+            session['_login_recorded'] = True  # prevent before_request duplicate
             next_page = request.args.get('next', '')
             parsed = urlparse(next_page)
             if parsed.scheme or parsed.netloc:
@@ -87,6 +88,7 @@ def login():
 @login_required
 def logout():
     t = getattr(g, 't', {})
+    session.pop('_login_recorded', None)
     logout_user()
     flash(t.get('flash_logged_out', 'You have been logged out.'), 'info')
     return redirect(url_for('auth.login'))
