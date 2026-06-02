@@ -94,6 +94,12 @@ def delete_pool(id):
     if not current_user.can_edit:
         abort(403)
     pool = get_or_404(Pool, id)
+    if pool.transactions:
+        flash(
+            f'לא ניתן למחוק את הפול — יש לו {len(pool.transactions)} עסקאות מקושרות. בטל אותן תחילה.',
+            'danger'
+        )
+        return redirect(url_for('pools.detail', id=id))
     pool.delete()
     flash('פול נמחק.', 'success')
     return redirect(url_for('pools.list_pools'))
