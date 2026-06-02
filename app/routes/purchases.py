@@ -299,13 +299,24 @@ def edit(id):
         _CANCELLED = 'בוטל'
 
         if old_status != _RECEIVED and status == _RECEIVED:
-            # Marked as received → add to stock
-            updated = _sync_inventory_on_receipt(purchase)
-            if updated > 0:
-                flash(f'{updated} פריטים נוספו למלאי אוטומטית.', 'success')
+            # Atomic guard: only the first request to set received_at runs the sync
+            guard = Purchase._get_collection().find_one_and_update(
+                {'_id': purchase.id, 'received_at': None},
+                {'$set': {'received_at': datetime.utcnow()}},
+            )
+            if guard is not None:
+                # We claimed the slot — run sync
+                updated = _sync_inventory_on_receipt(purchase)
+                if updated > 0:
+                    flash(f'{updated} פריטים נוספו למלאי אוטומטית.', 'success')
+            # else: another concurrent save already ran the sync — skip silently
 
         elif old_status == _RECEIVED and status in ACTIVE_STATUSES:
-            # Reversed from received → subtract back from stock
+            # Reversed from received → subtract back, clear the guard
+            Purchase._get_collection().update_one(
+                {'_id': purchase.id},
+                {'$unset': {'received_at': ''}}
+            )
             updated = _sync_inventory_on_cancel(purchase)
             flash(
                 f'הסטטוס שונה בחזרה — {updated} פריטים הופחתו מהמלאי (ביטול קליטה בטעות).',
@@ -318,6 +329,10 @@ def edit(id):
 
         elif old_status != _CANCELLED and status == _CANCELLED:
             if old_status == _RECEIVED:
+                Purchase._get_collection().update_one(
+                    {'_id': purchase.id},
+                    {'$unset': {'received_at': ''}}
+                )
                 updated = _sync_inventory_on_cancel(purchase)
                 flash(f'ההזמנה בוטלה — {updated} פריטים הופחתו מהמלאי.', 'warning')
             else:

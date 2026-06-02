@@ -48,6 +48,7 @@ class Purchase(me.Document):
     bom_file        = me.StringField()
     items           = me.EmbeddedDocumentListField(PurchaseItem)
     created_at      = me.DateTimeField(default=datetime.utcnow)
+    received_at     = me.DateTimeField()   # set atomically on first receipt sync
 
     @property
     def status_color(self):
