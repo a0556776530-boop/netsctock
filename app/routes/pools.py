@@ -75,8 +75,14 @@ def edit_pool(id):
     pool = get_or_404(Pool, id)
     form = PoolForm(obj=pool)
     if form.validate_on_submit():
+        new_emf = form.emf_number.data.strip()
+        conflict = Pool.objects(emf_number=new_emf).exclude(id=pool.id).first()
+        if conflict:
+            flash(f'מספר EMF "{new_emf}" כבר קיים בפול אחר.', 'danger')
+            return render_template('pools/form.html', form=form, pool=pool)
+
         pool.name         = form.name.data.strip()
-        pool.emf_number   = form.emf_number.data.strip()
+        pool.emf_number   = new_emf
         pool.total_amount = float(form.total_amount.data)
         pool.currency     = form.currency.data
         pool.notes        = form.notes.data.strip() if form.notes.data else ''
