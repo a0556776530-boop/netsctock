@@ -154,3 +154,24 @@
 {% endif %}
 
 {% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var sec = 15;
+  var badge = document.createElement('span');
+  badge.className = 'badge bg-secondary ms-2';
+  badge.style.fontSize = '.7rem';
+  var heading = document.querySelector('.page-title, h2, h3, h4');
+  if (heading) heading.appendChild(badge);
+
+  function tick() {
+    badge.textContent = '↻ ' + sec + 's';
+    if (sec <= 0) { location.reload(); return; }
+    sec--;
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+</script>
+{% endblock %}
