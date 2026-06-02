@@ -5,13 +5,13 @@ from datetime import datetime
 class Task(me.Document):
     meta = {'collection': 'tasks', 'strict': False}
 
-    STATUSES = ['in_progress', 'done']
+    STATUSES = ['pending', 'in_progress', 'done']  # 'pending' kept for legacy docs
     STATUS_LABELS = {'pending': 'In Progress', 'in_progress': 'In Progress', 'done': 'Done'}
     STATUS_COLORS = {'pending': 'primary', 'in_progress': 'primary', 'done': 'success'}
 
     title         = me.StringField(max_length=255, required=True)
     assignee_name = me.StringField(max_length=200)
-    status        = me.StringField(default='in_progress')
+    status        = me.StringField(default='in_progress', choices=STATUSES)
     notes         = me.StringField()
     created_at    = me.DateTimeField(default=datetime.utcnow)
 
