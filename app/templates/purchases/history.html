@@ -1,23 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}{{ t.nav_purchases }}{% endblock %}
-{% block page_title %}{{ t.nav_purchases }}{% endblock %}
+{% block title %}{{ t.purchase_history_title }}{% endblock %}
+{% block page_title %}{{ t.purchase_history_title }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <span class="text-muted small">{{ purchases | length }} {{ t.purchases_count_suffix }}</span>
-  <div class="d-flex gap-2">
-    <a href="{{ url_for('purchases.purchase_history') }}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-clock-history me-1"></i>{{ t.purchase_history_btn }}
-    </a>
-    {% if current_user.can_edit %}
-    <a href="{{ url_for('purchases.new_purchase') }}" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-lg me-1"></i>{{ t.new_purchase_btn }}
-    </a>
-    {% endif %}
-  </div>
+  <span class="text-muted small">{{ purchases | length }} {{ t.purchase_history_count }}</span>
+  <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>{{ t.back_to_purchases }}
+  </a>
 </div>
-
-{% set filtered = purchases %}
 
 <div class="card border-0 shadow-sm">
   <div class="table-responsive">
@@ -37,12 +28,14 @@
         </tr>
       </thead>
       <tbody>
-        {% for p in filtered %}
-        <tr>
+        {% for p in purchases %}
+        <tr {% if p.status == 'בוטל' %}style="opacity:.7;"{% endif %}>
           <td class="fw-semibold" style="padding:10px 16px;">
             <a href="{{ url_for('purchases.detail', id=p.id) }}" class="text-decoration-none">{{ p.name }}</a>
           </td>
-          <td class="small text-muted" style="padding:10px 16px;">{{ p.bom_date.strftime('%d %b %Y') if p.bom_date else '—' }}</td>
+          <td class="small text-muted" style="padding:10px 16px;">
+            {{ p.bom_date.strftime('%d %b %Y') if p.bom_date else '—' }}
+          </td>
           <td class="small" style="padding:10px 16px;">{{ p.estimate_number or '—' }}</td>
           <td class="small font-monospace" style="padding:10px 24px; text-align:end;">
             {% if p.amount %}{{ '{:,.2f}'.format(p.amount) }}{% else %}—{% endif %}
@@ -51,24 +44,18 @@
           <td class="small" style="padding:10px 16px;">{{ p.emf or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.requirement or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.order or '—' }}</td>
-          <td>
-            <span class="badge bg-{{ p.status_color }}-subtle text-{{ p.status_color }} border border-{{ p.status_color }}-subtle small">
+          <td style="padding:10px 16px;">
+            {% set sc = p.status_color %}
+            <span class="badge bg-{{ sc }}-subtle text-{{ sc }} border border-{{ sc }}-subtle small">
               {{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}
             </span>
           </td>
-          <td class="text-end text-nowrap">
+          <td class="text-end text-nowrap" style="padding:10px 16px;">
             <a href="{{ url_for('purchases.detail', id=p.id) }}"
                class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
                style="width:30px;height:30px;background:#dbeafe;color:#1d4ed8;border:none;">
               <i class="bi bi-eye" style="font-size:.8rem;"></i>
             </a>
-            {% if current_user.can_edit %}
-            <a href="{{ url_for('purchases.edit', id=p.id) }}"
-               class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
-               style="width:30px;height:30px;background:#fef9c3;color:#854d0e;border:none;">
-              <i class="bi bi-pencil" style="font-size:.8rem;"></i>
-            </a>
-            {% endif %}
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('purchases.delete', id=p.id) }}" class="d-inline"
                   onsubmit="return confirm('{{ t.confirm_delete_purchase }}')">
@@ -85,8 +72,8 @@
         {% else %}
         <tr>
           <td colspan="10" class="text-center text-muted py-5">
-            <i class="bi bi-bag-x fs-3 d-block mb-2 opacity-50"></i>
-            {{ t.no_purchases_found }}
+            <i class="bi bi-clock-history fs-3 d-block mb-2 opacity-50"></i>
+            {{ t.purchase_history_empty }}
           </td>
         </tr>
         {% endfor %}

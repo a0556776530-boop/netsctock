@@ -131,17 +131,34 @@ def _grouped_assets():
     return assets, sorted(groups.items())
 
 
+_HISTORY_STATUSES = ['Order Received in Warehouse', 'בוטל']
+
+
 @purchases_bp.route('/')
 @login_required
 def list_purchases():
     try:
-        purchases = list(Purchase.objects.order_by('-created_at'))
+        purchases = list(Purchase.objects(status__in=ACTIVE_STATUSES).order_by('-created_at'))
     except Exception:
         err = traceback.format_exc()
         current_app.logger.error('list_purchases error:\n' + err)
         flash('שגיאה בטעינת רכשים: ' + err.splitlines()[-1], 'danger')
         purchases = []
-    return render_template('purchases/list.html', purchases=purchases, statuses=STATUSES)
+    return render_template('purchases/list.html', purchases=purchases,
+                           statuses=ACTIVE_STATUSES)
+
+
+@purchases_bp.route('/history')
+@login_required
+def purchase_history():
+    try:
+        purchases = list(Purchase.objects(status__in=_HISTORY_STATUSES).order_by('-created_at'))
+    except Exception:
+        err = traceback.format_exc()
+        current_app.logger.error('purchase_history error:\n' + err)
+        flash('שגיאה בטעינת היסטוריה: ' + err.splitlines()[-1], 'danger')
+        purchases = []
+    return render_template('purchases/history.html', purchases=purchases)
 
 
 @purchases_bp.route('/new', methods=['GET', 'POST'])
