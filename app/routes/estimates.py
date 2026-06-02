@@ -5,6 +5,7 @@ from datetime import date, timedelta, datetime, timezone
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, Response, jsonify, g
 from mongoengine import Q
+from mongoengine.errors import NotUniqueError
 from flask_login import login_required, current_user
 
 from app.models.estimate import Estimate, EstimateItem
@@ -144,7 +145,12 @@ def new_estimate():
             return redirect(url_for('estimates.new_estimate'))
 
         estimate.total_nis = round(total_nis, 2)
-        estimate.save()
+        try:
+            estimate.save()
+        except NotUniqueError:
+            # Concurrent request claimed this allocation number — retry with a fresh one
+            estimate.allocation_number = _next_allocation_number()
+            estimate.save()
         flash(f'Estimate "{task_name}" saved successfully.', 'success')
         if record_type == 'estimate':
             return redirect(url_for('estimates.list_budget_estimates'))
