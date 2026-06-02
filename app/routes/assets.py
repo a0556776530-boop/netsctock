@@ -166,25 +166,27 @@ def list_assets():
     from app.models.settings import AppSetting
     global_settings = json.dumps(AppSetting.all_as_dict())
 
-    # Commitments: sum of quantities in PENDING allocations only (not budget estimates)
+    # Commitments — single aggregation, no Python loops
     from app.models.estimate import Estimate
-    from mongoengine import Q as MQ
-    commitments = {}
-    for est in Estimate.objects(MQ(status='pending') & MQ(record_type__ne='estimate')).select_related():
-        for item in est.items:
-            if item.asset:
-                aid = str(item.asset.id)
-                commitments[aid] = commitments.get(aid, 0) + item.quantity
-
-    # In Purchase: sum of quantities in active (non-received) purchase orders
     from app.models.purchase import Purchase
-    _active_statuses = ['BOM Transferred', 'Requirement Created', 'Order Signed']
-    in_purchase = {}
-    for po in Purchase.objects(status__in=_active_statuses).select_related():
-        for item in po.items:
-            if item.asset:
-                aid = str(item.asset.id)
-                in_purchase[aid] = in_purchase.get(aid, 0) + (item.quantity or 0)
+    _commit_pipeline = [
+        {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
+        {'$unwind': '$items'},
+        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
+    ]
+    commitments = {str(r['_id']): r['total']
+                   for r in Estimate._get_collection().aggregate(_commit_pipeline)}
+
+    # In Purchase — single aggregation
+    _purchase_pipeline = [
+        {'$match': {'status': {'$in': ['BOM Transferred', 'Requirement Created', 'Order Signed']}}},
+        {'$unwind': '$items'},
+        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
+    ]
+    in_purchase = {str(r['_id']): r['total']
+                   for r in Purchase._get_collection().aggregate(_purchase_pipeline)}
 
     return render_template(
         'assets/list.html',
