@@ -20,10 +20,18 @@ def record_login(*, user_name, user_role, ip, ua, success, user_id=None):
         col = _col()
         now = datetime.utcnow()
 
-        # Dedup: skip if this user already has a successful event in the last 30 min
+        # Dedup for successful logins: skip if same user logged in within 30 min
         if success and user_id:
             cutoff = now - timedelta(minutes=30)
             if col.find_one({'user_id': user_id, 'success': True,
+                             'timestamp': {'$gte': cutoff}}, {'_id': 1}):
+                return
+
+        # Dedup for failed logins: skip if same IP already has a failure in last 5 min
+        # (prevents log spam from double-clicks or rapid retries, but still captures all IPs)
+        if not success and ip and ip not in ('0.0.0.0', '127.0.0.1', '::1'):
+            cutoff = now - timedelta(minutes=5)
+            if col.find_one({'ip_address': ip, 'success': False,
                              'timestamp': {'$gte': cutoff}}, {'_id': 1}):
                 return
 
