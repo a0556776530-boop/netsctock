@@ -122,7 +122,8 @@ class InventoryScanner {
 
     if (this.lookupUrl) {
       try {
-        const res  = await fetch(this.lookupUrl + '?q=' + encodeURIComponent(value));
+        const res = await fetch(this.lookupUrl + '?q=' + encodeURIComponent(value));
+        if (!res.ok) throw new Error('Server error ' + res.status);
         const data = await res.json();
         this._showResult(data, value);
         this.onResult(data);
@@ -136,18 +137,27 @@ class InventoryScanner {
     }
   }
 
+  _esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   _showResult(data, value) {
-    const el = this.resultEl;
+    const el  = this.resultEl;
+    const val = this._esc(value);
     el.classList.remove('d-none', 'alert-success', 'alert-warning', 'alert-info');
     if (!data) {
       el.classList.add('alert-info');
       el.textContent = 'Scanned: ' + value;
     } else if (data.found) {
       el.classList.add('alert-success');
-      el.innerHTML = '<i class="bi bi-check-circle me-1"></i><strong>' + value + '</strong> found — ' + data.asset.status_label;
+      el.innerHTML = '<i class="bi bi-check-circle me-1"></i><strong>' + val + '</strong> found — ' + this._esc(data.asset.status_label);
     } else {
       el.classList.add('alert-warning');
-      el.innerHTML = '<i class="bi bi-question-circle me-1"></i><strong>' + value + '</strong> not yet registered.';
+      el.innerHTML = '<i class="bi bi-question-circle me-1"></i><strong>' + val + '</strong> not yet registered.';
     }
   }
 }

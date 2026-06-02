@@ -20,7 +20,9 @@ class Config:
     # Session cookie security
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE   = True
     REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SECURE   = True
     REMEMBER_COOKIE_DURATION = 60 * 60 * 24 * 14  # 14 days
 
     WTF_CSRF_TIME_LIMIT = 3600  # 1 hour

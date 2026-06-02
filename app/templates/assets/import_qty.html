@@ -289,7 +289,9 @@
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error('Server error ' + res.status);
       const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'שגיאה בעדכון');
 
       renderResults(data);
       stepReview.classList.add('d-none');

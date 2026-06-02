@@ -283,7 +283,11 @@ def edit(id):
             return redirect(url_for('estimates.edit', id=str(estimate.id)))
 
         estimate.total_nis = round(total_nis, 2)
-        estimate.save()
+        try:
+            estimate.save()
+        except NotUniqueError:
+            estimate.allocation_number = _next_allocation_number()
+            estimate.save()
         flash('Estimate updated successfully.', 'success')
         return redirect(url_for('estimates.detail', id=str(estimate.id)))
 
@@ -346,7 +350,9 @@ def export_csv(id):
                     f'{unit_usd:.2f}', f'{unit_ils:.2f}', f'{line_ils:.2f}'])
     w.writerow([])
     w.writerow(['', '', '', '', '', 'TOTAL (ILS)', estimate.formatted_total.replace(' ₪', '')])
-    filename = f"estimate_{estimate.task_name.replace(' ', '_')}_{estimate.created_date}.csv"
+    from werkzeug.utils import secure_filename
+    safe_name = secure_filename(estimate.task_name.replace(' ', '_') or 'estimate')
+    filename  = f"estimate_{safe_name}_{estimate.created_date}.csv"
     return Response(buf.getvalue(), mimetype='text/csv',
                     headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 

@@ -35,7 +35,7 @@ class Asset(me.Document):
     asset_type     = me.ReferenceField('AssetType', db_field='asset_type_id')
     model          = me.StringField(max_length=150)
     manufacturer   = me.StringField(max_length=150)
-    status         = me.StringField(default='in_storage')
+    status         = me.StringField(default='in_storage', choices=STATUSES)
     current_site   = me.ReferenceField('Site', db_field='current_site_id')
     assignee       = me.ReferenceField('User', db_field='assigned_to_id')
     notes          = me.StringField()

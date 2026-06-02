@@ -165,15 +165,6 @@ def link_estimate(id):
         flash('הקצאה לא נמצאה.', 'danger')
         return redirect(url_for('pools.detail', id=id))
 
-    # Guard: already linked
-    for tx in pool.transactions:
-        try:
-            if str(tx.estimate.id) == estimate_id:
-                flash('הקצאה זו כבר מקושרת לפול זה.', 'warning')
-                return redirect(url_for('pools.detail', id=id))
-        except Exception:
-            pass
-
     from app.utils.exchange import get_usd_to_nis
     usd_rate = get_usd_to_nis()
 
@@ -199,15 +190,25 @@ def link_estimate(id):
         notes=notes,
     )
 
-    # Single atomic operation: increment consumed_amount AND push transaction
-    # If balance check fails → nothing changes. If it succeeds → both fields update together.
+    # Single atomic operation (balance + duplicate guard + push):
+    # transactions__estimate__ne prevents the same estimate from being linked twice,
+    # even under concurrent requests — no separate pre-check needed.
     matched = Pool.objects(
         id=pool.id,
-        consumed_amount__lte=pool.total_amount - amount
+        consumed_amount__lte=pool.total_amount - amount,
+        transactions__estimate__ne=estimate,
     ).update_one(inc__consumed_amount=amount, push__transactions=tx)
 
     if not matched:
-        flash('יתרה לא מספיקה (עדכון מקביל). נסה שוב.', 'danger')
+        fresh = Pool.objects(id=pool.id).first()
+        already = fresh and any(
+            str(getattr(t.estimate, 'id', None)) == estimate_id
+            for t in (fresh.transactions or [])
+        )
+        if already:
+            flash('הקצאה זו כבר מקושרת לפול זה.', 'warning')
+        else:
+            flash('יתרה לא מספיקה (עדכון מקביל). נסה שוב.', 'danger')
         return redirect(url_for('pools.detail', id=id))
 
     flash(f'הקצאה קושרה. חויב {pool.fmt(amount)} מהפול.', 'success')

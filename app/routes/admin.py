@@ -280,7 +280,8 @@ def login_history():
 
     filt = {}
     if user_filter:
-        filt['user_name'] = {'$regex': user_filter, '$options': 'i'}
+        import re as _re
+        filt['user_name'] = {'$regex': _re.escape(user_filter), '$options': 'i'}
     if success_filter == '1':
         filt['success'] = True
     elif success_filter == '0':

@@ -120,12 +120,14 @@ def create_app(config_class=Config):
         tb = _tb.format_exc()
         app.logger.error('500 error:\n' + tb)
         from flask import render_template_string
+        # Show traceback only in debug mode; in production show a generic message
+        detail = tb if app.debug else 'An unexpected error occurred. Please try again or contact your administrator.'
         return render_template_string(
             '<html><body style="font-family:monospace;padding:20px;direction:ltr">'
             '<h2 style="color:#dc2626">Server Error</h2>'
-            '<pre style="background:#fee2e2;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:.85rem">{{ tb }}</pre>'
+            '<pre style="background:#fee2e2;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:.85rem">{{ detail }}</pre>'
             '<a href="/">Back to Home</a></body></html>',
-            tb=tb
+            detail=detail
         ), 500
 
     return app

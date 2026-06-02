@@ -174,11 +174,19 @@ def dashboard():
         {'$sort': {'committed': -1}},
         {'$limit': 6},
     ]
-    top_committed = []
-    for row in Estimate._get_collection().aggregate(_commit_pipeline):
-        asset = Asset.objects(id=row['_id']).only('serial_number', 'model', 'quantity', 'component_id').first()
-        if asset:
-            top_committed.append({'asset': asset, 'committed': row['committed']})
+    # Batch fetch all assets in one query instead of N individual queries
+    _rows       = list(Estimate._get_collection().aggregate(_commit_pipeline))
+    _asset_ids  = [r['_id'] for r in _rows if r.get('_id')]
+    _assets_map = {
+        a.id: a for a in Asset.objects(id__in=_asset_ids).only(
+            'serial_number', 'model', 'quantity', 'component_id'
+        )
+    }
+    top_committed = [
+        {'asset': _assets_map[r['_id']], 'committed': r['committed']}
+        for r in _rows
+        if r.get('_id') and r['_id'] in _assets_map
+    ]
 
     # ── Users activity ───────────────────────────────────────────────────────
     now_utc = datetime.utcnow()

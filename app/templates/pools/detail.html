@@ -107,7 +107,7 @@
           {% if current_user.can_edit %}
           <td class="text-end">
             <form method="POST" action="{{ url_for('pools.unlink_estimate', id=pool.id, tx_index=loop.index0) }}"
-                  onsubmit="return confirm('{{ t.pool_confirm_unlink.replace('{amt}', pool.fmt(tx.amount_drawn)) }}')">
+                  onsubmit="return confirm('{{ t.pool_confirm_unlink.replace('{amt}', pool.fmt(tx.amount_drawn)) | replace("'", "\\'") }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ t.pool_btn_unlink }}">
                 <i class="bi bi-x-lg"></i>
