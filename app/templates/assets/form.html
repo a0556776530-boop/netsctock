@@ -192,8 +192,20 @@
     if (initUsd) usdInput.value = initUsd.toLocaleString('en-US');
 
     usdInput.addEventListener('input', function () {
-      const raw = this.value.replace(/[^\d]/g, '');
-      this.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : '';
+      // Allow digits and one decimal point
+      let raw = this.value.replace(/[^\d.]/g, '');
+      const parts = raw.split('.');
+      if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+
+      const dotIdx = raw.indexOf('.');
+      if (dotIdx === -1) {
+        this.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : '';
+      } else {
+        const intPart = raw.slice(0, dotIdx);
+        const decPart = raw.slice(dotIdx); // includes the dot
+        const formattedInt = intPart ? parseInt(intPart, 10).toLocaleString('en-US') : '0';
+        this.value = formattedInt + decPart;
+      }
       recalcNis();
     });
   }
