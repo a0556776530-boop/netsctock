@@ -70,10 +70,10 @@
         {% for ev in events %}
         <tr class="{{ 'table-danger table-danger-subtle' if not ev.success else '' }}">
           <td class="font-monospace text-nowrap">
-            {{ ev.timestamp.strftime('%d/%m/%Y') }}
+            {{ (ev.timestamp | localtime).strftime('%d/%m/%Y') }}
           </td>
           <td class="font-monospace text-muted text-nowrap">
-            {{ ev.timestamp.strftime('%H:%M:%S') }}
+            {{ (ev.timestamp | localtime).strftime('%H:%M:%S') }}
           </td>
           <td class="fw-semibold">{{ ev.user_name or '—' }}</td>
           <td>

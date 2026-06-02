@@ -89,6 +89,18 @@ def create_app(config_class=Config):
                 except Exception:
                     pass
 
+    from zoneinfo import ZoneInfo
+    from datetime import timezone as _tz
+    _IL = ZoneInfo('Asia/Jerusalem')
+
+    @app.template_filter('localtime')
+    def localtime_filter(dt):
+        if dt is None:
+            return dt
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=_tz.utc)
+        return dt.astimezone(_IL)
+
     @app.context_processor
     def inject_globals():
         from flask import g
