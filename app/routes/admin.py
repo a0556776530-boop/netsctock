@@ -268,9 +268,12 @@ def debug_login_events():
     _admin_required()
     from app.models.login_event import LoginEvent
     from flask import jsonify
+    import traceback
+
+    # ── read test ──
+    read_ok, read_err, total, recent = True, None, 0, []
     try:
         total = LoginEvent.objects().count()
-        recent = []
         for ev in LoginEvent.objects().order_by('-timestamp').limit(5):
             recent.append({
                 'user': ev.user_name,
@@ -278,9 +281,29 @@ def debug_login_events():
                 'ip':   ev.ip_address,
                 'ok':   ev.success,
             })
-        return jsonify(total=total, recent=recent, ok=True)
     except Exception as e:
-        return jsonify(ok=False, error=str(e))
+        read_ok, read_err = False, traceback.format_exc()
+
+    # ── write test ──
+    write_ok, write_err = True, None
+    try:
+        ev = LoginEvent(
+            user_name  = '__debug_test__',
+            user_role  = 'test',
+            ip_address = '0.0.0.0',
+            user_agent = 'debug',
+            success    = False,
+        )
+        ev.save()
+        ev.delete()
+    except Exception as e:
+        write_ok, write_err = False, traceback.format_exc()
+
+    return jsonify(
+        read_ok=read_ok, read_err=read_err,
+        write_ok=write_ok, write_err=write_err,
+        total=total, recent=recent,
+    )
 
 
 @admin_bp.route('/login-history')
