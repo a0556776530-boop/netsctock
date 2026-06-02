@@ -600,6 +600,8 @@ def import_qty_preview():
 
             rows.append(entry)
 
+        if not rows:
+            return jsonify({'ok': False, 'error': 'הקובץ ריק או שאין עמודת מזהה מוכרת (מקט רכיב / serial number).'}), 400
         return jsonify({'ok': True, 'rows': rows})
 
     except Exception as e:
@@ -617,6 +619,8 @@ def import_qty_commit():
     data = request.get_json(silent=True)
     if not data or not isinstance(data, list):
         return jsonify({'ok': False, 'error': 'Invalid payload'}), 400
+    if len(data) == 0:
+        return jsonify({'ok': False, 'error': 'אין פריטים לעדכון.'}), 400
 
     updated, errors = [], []
     for item in data:
