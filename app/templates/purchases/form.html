@@ -77,10 +77,12 @@
 
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_status }}</label>
-          <select name="status" class="form-select">
+          <select name="status" id="statusSelect" class="form-select">
             {% for s in statuses %}
             {% set key = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
-            <option value="{{ s }}" {{ 'selected' if is_edit and purchase.status == s else '' }}>
+            <option value="{{ s }}"
+                    {{ 'selected' if is_edit and purchase.status == s else '' }}
+                    {% if s == 'בוטל' %}style="color:#dc2626;font-weight:600;"{% endif %}>
               {{ t[key] if key in t else s }}
             </option>
             {% endfor %}
@@ -328,6 +330,24 @@
   }
 
   syncNoMsg();
+
+  // Warn before saving with "בוטל" status
+  {% if is_edit %}
+  var statusSel = document.getElementById('statusSelect');
+  var theForm   = statusSel ? statusSel.closest('form') : null;
+  if (theForm) {
+    theForm.addEventListener('submit', function(e) {
+      if (statusSel.value === 'בוטל') {
+        var msg = '⚠️ האם לבטל את ההזמנה?\n\nפעולה זו תסיר את הכמויות מעמודת ברכש.';
+        {% if purchase and purchase.status == 'Order Received in Warehouse' %}
+        msg = '⚠️ ההזמנה כבר נקלטה במחסן!\n\nביטול יפחית את הכמויות מהמלאי. להמשיך?';
+        {% endif %}
+        if (!confirm(msg)) { e.preventDefault(); }
+      }
+    });
+  }
+  {% endif %}
+
 })();
 </script>
 {% endblock %}

@@ -214,7 +214,8 @@ def new_purchase():
 
     return render_template('purchases/form.html', purchase=None,
                            assets=assets, grouped_assets=grouped_assets,
-                           statuses=STATUSES, currencies=CURRENCIES)
+                           statuses=[s for s in STATUSES if s != 'בוטל'],
+                           currencies=CURRENCIES)
 
 
 @purchases_bp.route('/<id>')
