@@ -176,6 +176,16 @@ def list_assets():
                 aid = str(item.asset.id)
                 commitments[aid] = commitments.get(aid, 0) + item.quantity
 
+    # In Purchase: sum of quantities in active (non-received) purchase orders
+    from app.models.purchase import Purchase
+    _active_statuses = ['BOM Transferred', 'Requirement Created', 'Order Signed']
+    in_purchase = {}
+    for po in Purchase.objects(status__in=_active_statuses).select_related():
+        for item in po.items:
+            if item.asset:
+                aid = str(item.asset.id)
+                in_purchase[aid] = in_purchase.get(aid, 0) + (item.quantity or 0)
+
     return render_template(
         'assets/list.html',
         assets=assets,
@@ -188,6 +198,7 @@ def list_assets():
         order=order,
         global_settings=global_settings,
         commitments=commitments,
+        in_purchase=in_purchase,
     )
 
 

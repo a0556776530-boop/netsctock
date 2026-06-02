@@ -211,6 +211,9 @@
               <!-- 6. After Commitments -->
               <th class="text-center">{{ t.col_after_commitments }}</th>
 
+              <!-- 6b. In Purchase -->
+              <th class="text-center" title="{{ t.col_in_purchase_tip }}">{{ t.col_in_purchase }}</th>
+
               <!-- 7. Red Line Alert -->
               <th class="text-center">{{ t.col_alert }}</th>
 
@@ -248,17 +251,18 @@
           <tbody>
             {% for group_label, group_assets in grouped_assets %}
             <tr class="table-light" data-group-row="{{ group_label }}">
-              <td colspan="10" class="py-2 px-3 border-top border-2">
+              <td colspan="11" class="py-2 px-3 border-top border-2">
                 <span class="fw-semibold small">{{ group_label }}</span>
                 <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2" data-group-count="{{ group_label }}">{{ group_assets | length }}</span>
               </td>
             </tr>
 
             {% for asset in group_assets %}
-            {% set committed = commitments.get(asset.id|string, 0) %}
-            {% set stock = asset.quantity if asset.quantity is not none else 0 %}
-            {% set after = stock - committed %}
-            {% set is_low = asset.quantity is not none and ((asset.min_threshold is not none and asset.min_threshold > 0 and after <= asset.min_threshold) or after < 0) %}
+            {% set committed   = commitments.get(asset.id|string, 0) %}
+            {% set purchased   = in_purchase.get(asset.id|string, 0) %}
+            {% set stock       = asset.quantity if asset.quantity is not none else 0 %}
+            {% set after       = stock + purchased - committed %}
+            {% set is_low      = asset.quantity is not none and ((asset.min_threshold is not none and asset.min_threshold > 0 and after <= asset.min_threshold) or after < 0) %}
             {% if asset.min_threshold is not none and asset.min_threshold > 0 and after < asset.min_threshold %}
               {% set short_qty = asset.min_threshold - after %}
             {% elif after < 0 %}
@@ -306,6 +310,15 @@
                   {{ after }}
                   {% endif %}
                 {% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+
+              <!-- 6b. In Purchase -->
+              <td class="text-center small">
+                {% if purchased > 0 %}
+                <span class="fw-semibold" style="color:#0369a1;">{{ purchased }}</span>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
               </td>
 
               <!-- 7. Red Line Alert -->
