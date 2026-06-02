@@ -58,7 +58,7 @@
             </a>
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('purchases.delete', id=p.id) }}" class="d-inline"
-                  onsubmit="return confirm('{{ t.confirm_delete_purchase }}')">
+                  onsubmit="return confirm('{% if p.status == 'Order Received in Warehouse' %}⚠️ הרכש נקלט במחסן!\n\nמחיקה תפחית את הכמויות מהמלאי אוטומטית.\n\nלמחוק?{% else %}{{ t.confirm_delete_purchase }}{% endif %}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit"
                       class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"

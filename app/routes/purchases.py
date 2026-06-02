@@ -333,8 +333,24 @@ def edit(id):
 def delete(id):
     if not current_user.is_admin:
         abort(403)
-    purchase = get_or_404(Purchase, id)
-    purchase.delete()
     t = getattr(g, 't', {})
-    flash(t.get('flash_purchase_deleted', 'Purchase deleted.'), 'warning')
+    purchase = get_or_404(Purchase, id)
+    was_received = purchase.status == 'Order Received in Warehouse'
+    was_history  = purchase.status in _HISTORY_STATUSES
+
+    if was_received:
+        # Quantities were added to inventory when received — subtract them back
+        updated = _sync_inventory_on_cancel(purchase)
+        purchase.delete()
+        flash(
+            f'הרכש נמחק — {updated} פריטים הופחתו מהמלאי אוטומטית.',
+            'warning'
+        )
+    else:
+        purchase.delete()
+        flash(t.get('flash_purchase_deleted', 'Purchase deleted.'), 'warning')
+
+    # Route back to history if the purchase was in the history list
+    if was_history:
+        return redirect(url_for('purchases.purchase_history'))
     return redirect(url_for('purchases.list_purchases'))
