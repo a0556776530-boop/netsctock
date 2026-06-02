@@ -6,11 +6,34 @@ from flask import (Blueprint, render_template, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
-from app.models.purchase import Purchase, PurchaseItem, STATUSES, CURRENCIES
+from app.models.purchase import Purchase, PurchaseItem, STATUSES, ACTIVE_STATUSES, CURRENCIES
 from app.models.asset import Asset
 from app.utils.mongo_helpers import get_or_404
 
 purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
+
+
+def _sync_inventory_on_cancel(purchase):
+    """Subtract received quantities from asset stock when cancelling a received order."""
+    col = Asset._get_collection()
+    updated = 0
+    for item in purchase.items:
+        if not item.asset:
+            continue
+        qty = item.quantity or 0
+        if qty <= 0:
+            continue
+        try:
+            asset_id = item.asset.id
+        except Exception:
+            continue
+        result = col.update_one(
+            {'_id': asset_id},
+            [{'$set': {'quantity': {'$max': [0, {'$subtract': [{'$ifNull': ['$quantity', 0]}, qty]}]}}}]
+        )
+        if result.modified_count:
+            updated += 1
+    return updated
 
 
 def _sync_inventory_on_receipt(purchase):
@@ -253,16 +276,26 @@ def edit(id):
                                    assets=assets, grouped_assets=grouped_assets,
                                    statuses=STATUSES, currencies=CURRENCIES)
 
-        # ── Inventory sync when marked as received ────────────────────────────
-        _RECEIVED = 'Order Received in Warehouse'
+        # ── Inventory sync on status transitions ─────────────────────────────
+        _RECEIVED   = 'Order Received in Warehouse'
+        _CANCELLED  = 'בוטל'
+
         if old_status != _RECEIVED and status == _RECEIVED:
             updated = _sync_inventory_on_receipt(purchase)
             if updated > 0:
+                flash(f'{updated} פריטים נוספו למלאי אוטומטית.', 'success')
+
+        elif old_status != _CANCELLED and status == _CANCELLED:
+            if old_status == _RECEIVED:
+                # Already received → subtract from stock
+                updated = _sync_inventory_on_cancel(purchase)
                 flash(
-                    t.get('flash_purchase_received_sync',
-                          f'{updated} פריטים נוספו למלאי אוטומטית.'),
-                    'success'
+                    f'ההזמנה בוטלה — {updated} פריטים הופחתו מהמלאי.',
+                    'warning'
                 )
+            else:
+                # Not yet received → in_purchase updates automatically via aggregation
+                flash('ההזמנה בוטלה — הכמויות הוסרו מעמודת ברכש אוטומטית.', 'warning')
 
         flash(t.get('flash_purchase_updated', 'Purchase updated successfully.'), 'success')
         return redirect(url_for('purchases.detail', id=purchase.id))

@@ -178,9 +178,10 @@ def list_assets():
     commitments = {str(r['_id']): r['total']
                    for r in Estimate._get_collection().aggregate(_commit_pipeline)}
 
-    # In Purchase — single aggregation
+    # In Purchase — single aggregation (active orders only)
+    from app.models.purchase import ACTIVE_STATUSES
     _purchase_pipeline = [
-        {'$match': {'status': {'$in': ['BOM Transferred', 'Requirement Created', 'Order Signed']}}},
+        {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
         {'$unwind': '$items'},
         {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
         {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},

@@ -7,6 +7,13 @@ STATUSES = [
     'Requirement Created',
     'Order Signed',
     'Order Received in Warehouse',
+    'בוטל',
+]
+
+ACTIVE_STATUSES = [
+    'BOM Transferred',
+    'Requirement Created',
+    'Order Signed',
 ]
 
 CURRENCIES = ['ILS', 'USD Aid', 'USD Cash']
@@ -16,6 +23,7 @@ STATUS_COLORS = {
     'Requirement Created':         'info',
     'Order Signed':                'primary',
     'Order Received in Warehouse': 'success',
+    'בוטל':                        'danger',
 }
 
 
