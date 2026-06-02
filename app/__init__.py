@@ -69,6 +69,26 @@ def create_app(config_class=Config):
             from .models.user import User
             User.objects(id=current_user.id).update_one(set__last_seen=datetime.utcnow())
 
+            # Record login event once per browser session (catches cookie-based logins)
+            if not session.get('_login_recorded'):
+                session['_login_recorded'] = True
+                try:
+                    from flask import request as _req
+                    from .models.login_event import LoginEvent
+                    _fwd = _req.headers.get('X-Forwarded-For', '')
+                    _ip  = _fwd.split(',')[0].strip() if _fwd else (_req.remote_addr or '0.0.0.0')
+                    _ua  = _req.headers.get('User-Agent', '')[:500]
+                    LoginEvent(
+                        user       = current_user._get_current_object(),
+                        user_name  = current_user.name,
+                        user_role  = current_user.role,
+                        ip_address = _ip,
+                        user_agent = _ua,
+                        success    = True,
+                    ).save()
+                except Exception:
+                    pass
+
     @app.context_processor
     def inject_globals():
         from flask import g
