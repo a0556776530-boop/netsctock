@@ -90,6 +90,17 @@
 <div class="row g-0">
 <div class="col-12">
 
+    <!-- ── Sticky top section: action buttons + filters ──────────────────── -->
+    <div id="assetsStickyTop" style="
+      position: sticky;
+      top: 56px;
+      z-index: 40;
+      background: #f8f9fa;
+      padding-bottom: 0;
+      margin: -4px -4px 0 -4px;
+      padding: 4px 4px 0 4px;
+    ">
+
     <!-- Title / action buttons -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
@@ -164,10 +175,21 @@
       </div>
     </div>
 
-    <!-- Table -->
+    </div><!-- /assetsStickyTop -->
+
+    <!-- ── Table ──────────────────────────────────────────────────────────── -->
+    <style>
+      #assetsTable { border-collapse: separate; border-spacing: 0; }
+      #assetsTable thead th {
+        position: sticky;
+        z-index: 30;
+        background: #212529;
+        box-shadow: 0 2px 4px rgba(0,0,0,.3);
+      }
+    </style>
     <div class="card border-0 shadow-sm">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table id="assetsTable" class="table table-hover align-middle mb-0">
           <thead class="table-dark">
             <tr>
               <!-- 1. Asset ID -->
@@ -442,6 +464,25 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// ── Sticky thead: set top = app-topbar + sticky-filters height ────────────
+(function () {
+  var APP_TOPBAR = 56;
+  var stickyTop  = document.getElementById('assetsStickyTop');
+  var ths        = document.querySelectorAll('#assetsTable thead th');
+
+  function updateTheadTop() {
+    if (!stickyTop || !ths.length) return;
+    var top = APP_TOPBAR + stickyTop.offsetHeight;
+    ths.forEach(function (th) { th.style.top = top + 'px'; });
+  }
+
+  updateTheadTop();
+  window.addEventListener('resize', updateTheadTop);
+  // Re-run after fonts/images settle
+  window.addEventListener('load', updateTheadTop);
+})();
+</script>
 <script>
 (function () {
   // ── Translation strings ───────────────────────────────────────────────────
