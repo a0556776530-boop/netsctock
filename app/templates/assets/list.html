@@ -95,10 +95,8 @@
       position: sticky;
       top: 56px;
       z-index: 40;
-      background: #f8f9fa;
-      padding-bottom: 0;
-      margin: -4px -4px 0 -4px;
-      padding: 4px 4px 0 4px;
+      background: #f3f4f6;
+      padding-bottom: 8px;
     ">
 
     <!-- Title / action buttons -->
@@ -184,7 +182,8 @@
         position: sticky;
         z-index: 30;
         background: #212529;
-        box-shadow: 0 2px 4px rgba(0,0,0,.3);
+        box-shadow: 0 2px 6px rgba(0,0,0,.35);
+        /* top is set by JS after layout */
       }
     </style>
     <div class="card border-0 shadow-sm">
@@ -465,22 +464,24 @@
 
 {% block scripts %}
 <script>
-// ── Sticky thead: set top = app-topbar + sticky-filters height ────────────
+// ── Sticky thead: top = app-topbar (56px) + sticky-filters measured height ──
 (function () {
-  var APP_TOPBAR = 56;
-  var stickyTop  = document.getElementById('assetsStickyTop');
-  var ths        = document.querySelectorAll('#assetsTable thead th');
+  var APP_BAR   = 56;
+  var stickyTop = document.getElementById('assetsStickyTop');
+  var ths       = document.querySelectorAll('#assetsTable thead th');
 
-  function updateTheadTop() {
+  function pin() {
     if (!stickyTop || !ths.length) return;
-    var top = APP_TOPBAR + stickyTop.offsetHeight;
-    ths.forEach(function (th) { th.style.top = top + 'px'; });
+    var h = stickyTop.getBoundingClientRect().height;
+    ths.forEach(function (th) { th.style.top = (APP_BAR + h) + 'px'; });
   }
 
-  updateTheadTop();
-  window.addEventListener('resize', updateTheadTop);
-  // Re-run after fonts/images settle
-  window.addEventListener('load', updateTheadTop);
+  // Two rAF passes guarantee post-layout measurement
+  requestAnimationFrame(function () {
+    requestAnimationFrame(pin);
+  });
+  window.addEventListener('resize', pin);
+  window.addEventListener('load',   pin);
 })();
 </script>
 <script>
