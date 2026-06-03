@@ -4,10 +4,55 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <span class="text-muted small">{{ purchases | length }} {{ t.purchase_history_count }}</span>
-  <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>{{ t.back_to_purchases }}
+  <span class="text-muted small" id="histCount">{{ purchases | length }} {{ t.purchase_history_count }}</span>
+</div>
+
+{# ── Unified status filter bar ────────────────────────────────────────────── #}
+{% set active_statuses = [
+  ('BOM Transferred',             t.get('purchase_status_bom_transferred',             'הועבר BOM'),    'secondary'),
+  ('Requirement Created',         t.get('purchase_status_requirement_created',         'הוקמה דרישה'),  'info'),
+  ('Order Signed',                t.get('purchase_status_order_signed',                'נחתמה ההזמנה'), 'primary'),
+] %}
+{% set history_statuses = [
+  ('Order Received in Warehouse', t.get('purchase_status_order_received_in_warehouse', 'נקלטה במחסן'), 'success'),
+  ('בוטל',                        t.get('purchase_status_בוטל',                        'בוטל'),         'danger'),
+] %}
+
+<div class="d-flex gap-2 flex-wrap mb-3 align-items-center">
+  {# "הכל" — client-side, history page #}
+  <button class="hist-filter-btn active" data-filter="all"
+          style="border:2px solid #6b7280; background:#6b7280; color:#fff;
+                 border-radius:20px; padding:5px 14px; font-size:.82rem;
+                 font-weight:600; cursor:pointer; transition:all .18s;">
+    {{ t.get('filter_all','הכל') }}
+    <span class="ms-1" style="background:rgba(255,255,255,.25); border-radius:10px; padding:1px 7px; font-size:.78rem;">
+      {{ purchases | length }}
+    </span>
+  </button>
+
+  {# Active statuses — navigate back to list page #}
+  {% for key, label, color in active_statuses %}
+  <a href="{{ url_for('purchases.list_purchases') }}?status={{ key | urlencode }}"
+     style="border:2px solid var(--bs-{{ color }}); background:transparent; color:var(--bs-{{ color }});
+            border-radius:20px; padding:5px 14px; font-size:.82rem;
+            font-weight:600; cursor:pointer; transition:all .18s; text-decoration:none;
+            display:inline-flex; align-items:center; gap:4px;">
+    <i class="bi bi-arrow-right" style="font-size:.75rem;"></i>
+    {{ label }}
   </a>
+  {% endfor %}
+
+  {# History statuses — client-side filter #}
+  {% for key, label, color in history_statuses %}
+  {% set cnt = purchases | selectattr('status','equalto',key) | list | length %}
+  <button class="hist-filter-btn" data-filter="{{ key }}"
+          style="border:2px solid var(--bs-{{ color }}); background:transparent; color:var(--bs-{{ color }});
+                 border-radius:20px; padding:5px 14px; font-size:.82rem;
+                 font-weight:600; cursor:pointer; transition:all .18s;">
+    {{ label }}
+    <span class="ms-1" style="background:var(--bs-{{ color }}); color:#fff; border-radius:10px; padding:1px 7px; font-size:.78rem;">{{ cnt }}</span>
+  </button>
+  {% endfor %}
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -29,7 +74,7 @@
       </thead>
       <tbody>
         {% for p in purchases %}
-        <tr {% if p.status == 'בוטל' %}style="opacity:.7;"{% endif %}>
+        <tr class="hist-row" data-status="{{ p.status }}" {% if p.status == 'בוטל' %}style="opacity:.7;"{% endif %}>
           <td class="fw-semibold" style="padding:10px 16px;">
             <a href="{{ url_for('purchases.detail', id=p.id) }}" class="text-decoration-none">{{ p.name }}</a>
           </td>
@@ -81,4 +126,34 @@
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var buttons = document.querySelectorAll('.hist-filter-btn');
+  var rows    = document.querySelectorAll('.hist-row');
+
+  function applyFilter(filter) {
+    buttons.forEach(function (b) {
+      var isAll  = b.dataset.filter === 'all';
+      var active = b.dataset.filter === filter;
+      b.style.background = active ? (isAll ? '#6b7280' : b._color) : 'transparent';
+      b.style.color      = active ? '#fff' : (isAll ? '#6b7280' : b._color);
+    });
+    rows.forEach(function (r) {
+      r.style.display = (filter === 'all' || r.dataset.status === filter) ? '' : 'none';
+    });
+  }
+
+  buttons.forEach(function (b) {
+    b._color = b.style.borderColor;
+    b.addEventListener('click', function () { applyFilter(this.dataset.filter); });
+  });
+
+  // Auto-apply filter from URL ?status=
+  var s = new URLSearchParams(window.location.search).get('status');
+  if (s) applyFilter(s);
+})();
+</script>
 {% endblock %}

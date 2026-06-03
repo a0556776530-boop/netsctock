@@ -17,39 +17,52 @@
   </div>
 </div>
 
-{# ── Status filter bar ───────────────────────────────────────────────────── #}
-{% set status_meta = [
-  ('BOM Transferred',             t.get('purchase_status_bom_transferred',             'הועבר BOM'),             'secondary'),
-  ('Requirement Created',         t.get('purchase_status_requirement_created',         'הוקמה דרישה'),           'info'),
-  ('Order Signed',                t.get('purchase_status_order_signed',                'נחתמה ההזמנה'),          'primary'),
-  ('Order Received in Warehouse', t.get('purchase_status_order_received_in_warehouse', 'נקלטה במחסן'),           'success'),
+{# ── Unified status filter bar ────────────────────────────────────────────── #}
+{% set active_statuses = [
+  ('BOM Transferred',             t.get('purchase_status_bom_transferred',             'הועבר BOM'),    'secondary'),
+  ('Requirement Created',         t.get('purchase_status_requirement_created',         'הוקמה דרישה'),  'info'),
+  ('Order Signed',                t.get('purchase_status_order_signed',                'נחתמה ההזמנה'), 'primary'),
+] %}
+{% set history_statuses = [
+  ('Order Received in Warehouse', t.get('purchase_status_order_received_in_warehouse', 'נקלטה במחסן'), 'success'),
+  ('בוטל',                        t.get('purchase_status_בוטל',                        'בוטל'),         'danger'),
 ] %}
 
-<div class="d-flex gap-2 flex-wrap mb-3 align-items-center" id="statusFilters">
-  <button class="status-filter-btn active"
-          data-filter="all"
+<div class="d-flex gap-2 flex-wrap mb-3 align-items-center">
+  {{- '' -}}
+  {# "הכל" — client-side, active page only #}
+  <button class="status-filter-btn active" data-filter="all"
           style="border:2px solid #6b7280; background:#6b7280; color:#fff;
                  border-radius:20px; padding:5px 14px; font-size:.82rem;
                  font-weight:600; cursor:pointer; transition:all .18s;">
-    {{ t.get('filter_all', 'הכל') }}
-    <span class="ms-1" style="background:rgba(255,255,255,.25);
-                               border-radius:10px; padding:1px 7px; font-size:.78rem;">
+    {{ t.get('filter_all','הכל') }}
+    <span class="ms-1" style="background:rgba(255,255,255,.25); border-radius:10px; padding:1px 7px; font-size:.78rem;">
       {{ purchases | length }}
     </span>
   </button>
-  {% for status_key, label, color in status_meta %}
-  {% set cnt = purchases | selectattr('status', 'equalto', status_key) | list | length %}
-  <button class="status-filter-btn"
-          data-filter="{{ status_key }}"
+
+  {# Active statuses — client-side filter #}
+  {% for key, label, color in active_statuses %}
+  {% set cnt = purchases | selectattr('status','equalto',key) | list | length %}
+  <button class="status-filter-btn" data-filter="{{ key }}"
           style="border:2px solid var(--bs-{{ color }}); background:transparent; color:var(--bs-{{ color }});
                  border-radius:20px; padding:5px 14px; font-size:.82rem;
                  font-weight:600; cursor:pointer; transition:all .18s;">
     {{ label }}
-    <span class="ms-1" style="background:var(--bs-{{ color }}); color:#fff;
-                               border-radius:10px; padding:1px 7px; font-size:.78rem;">
-      {{ cnt }}
-    </span>
+    <span class="ms-1" style="background:var(--bs-{{ color }}); color:#fff; border-radius:10px; padding:1px 7px; font-size:.78rem;">{{ cnt }}</span>
   </button>
+  {% endfor %}
+
+  {# History statuses — navigate to history page #}
+  {% for key, label, color in history_statuses %}
+  <a href="{{ url_for('purchases.purchase_history') }}?status={{ key | urlencode }}"
+     style="border:2px solid var(--bs-{{ color }}); background:transparent; color:var(--bs-{{ color }});
+            border-radius:20px; padding:5px 14px; font-size:.82rem;
+            font-weight:600; cursor:pointer; transition:all .18s; text-decoration:none;
+            display:inline-flex; align-items:center; gap:4px;">
+    {{ label }}
+    <i class="bi bi-arrow-left" style="font-size:.75rem;"></i>
+  </a>
   {% endfor %}
 </div>
 
@@ -172,10 +185,16 @@
     });
   });
 
-  // Store original colors on load
+  // Store original colors on load + auto-apply URL filter
   buttons.forEach(function (b) {
     b._origColor = b.style.borderColor || b.style.color;
   });
+
+  var s = new URLSearchParams(window.location.search).get('status');
+  if (s) {
+    var target = document.querySelector('.status-filter-btn[data-filter="' + s + '"]');
+    if (target) target.click();
+  }
 })();
 </script>
 {% endblock %}
