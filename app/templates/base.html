@@ -235,19 +235,16 @@ setInterval(function() { fetch('/api/ping'); }, 5000);
   display:none; position:fixed; inset:0; z-index:99999;
   background:#000; align-items:center; justify-content:center;
   flex-direction:column; gap:16px; cursor:pointer;">
-  <!-- Glow layer sits behind the image as a radial gradient -->
-  <div style="position:relative; width:520px; max-width:85vw; display:flex; align-items:center; justify-content:center;">
-    <div style="position:absolute; inset:-40px; border-radius:50%;
-                background: radial-gradient(circle,
-                  rgba(255,215,0,.7)  0%,
-                  rgba(255,165,0,.45) 30%,
-                  rgba(255,140,0,.2)  55%,
-                  transparent         75%);
-                animation: beitar-pulse 2.5s ease-in-out infinite;
-                pointer-events:none;"></div>
-    <img src="{{ url_for('static', filename='img/ביתר.jpg') }}"
+  <div style="position:relative; width:480px; max-width:80vw;">
+    <img src="{{ url_for('static', filename='img/beitar.png') }}"
          alt="ביתר ירושלים"
-         style="position:relative; width:100%; height:auto; object-fit:contain;">
+         style="width:100%; height:auto; object-fit:contain;
+                filter:
+                  drop-shadow(0 0 20px #FFD700)
+                  drop-shadow(0 0 50px #FFD700)
+                  drop-shadow(0 0 90px #FFA500)
+                  drop-shadow(0 0 140px rgba(255,180,0,.6));
+                animation: beitar-pulse 2.5s ease-in-out infinite;">
   </div>
   <div style="color:rgba(255,215,0,.35); font-size:.75rem; margin-top:32px; letter-spacing:.1em;">
     Ctrl+B / ESC
