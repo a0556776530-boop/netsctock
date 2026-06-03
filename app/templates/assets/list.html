@@ -98,11 +98,6 @@
         </span>
       </div>
       <div class="d-flex gap-2">
-        {% if current_user.is_admin %}
-        <a href="{{ url_for('admin.export_assets') }}" class="btn btn-outline-secondary btn-sm" title="{{ t.export_csv_tooltip }}">
-          <i class="bi bi-download me-1"></i>CSV
-        </a>
-        {% endif %}
         {% if current_user.can_edit %}
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#newCategoryModal">
           <i class="bi bi-tag me-1"></i>{{ t.new_category_btn }}
