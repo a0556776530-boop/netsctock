@@ -237,10 +237,34 @@ setInterval(function() { fetch('/api/ping'); }, 5000);
   flex-direction:column; gap:16px; cursor:pointer;">
   <img src="{{ url_for('static', filename='img/ביתר.jpg') }}"
        alt="ביתר ירושלים"
-       style="width:320px; height:auto; object-fit:contain;">
-  <div style="color:rgba(255,215,0,.35); font-size:.75rem; margin-top:24px; letter-spacing:.1em;">
+       style="width:520px; max-width:85vw; height:auto; object-fit:contain;
+              filter:
+                drop-shadow(0 0 18px #FFD700)
+                drop-shadow(0 0 40px #FFD700)
+                drop-shadow(0 0 80px #FFA500)
+                drop-shadow(0 0 120px rgba(255,180,0,.5));
+              animation: beitar-pulse 2.5s ease-in-out infinite;">
+  <div style="color:rgba(255,215,0,.35); font-size:.75rem; margin-top:32px; letter-spacing:.1em;">
     Ctrl+B / ESC
   </div>
+  <style>
+    @keyframes beitar-pulse {
+      0%,100% {
+        filter:
+          drop-shadow(0 0 18px #FFD700)
+          drop-shadow(0 0 40px #FFD700)
+          drop-shadow(0 0 80px #FFA500)
+          drop-shadow(0 0 120px rgba(255,180,0,.5));
+      }
+      50% {
+        filter:
+          drop-shadow(0 0 30px #FFD700)
+          drop-shadow(0 0 70px #FFD700)
+          drop-shadow(0 0 130px #FFA500)
+          drop-shadow(0 0 200px rgba(255,180,0,.7));
+      }
+    }
+  </style>
 </div>
 <script>
 (function () {
