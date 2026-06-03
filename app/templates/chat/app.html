@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Chat{% endblock %}
+{% block page_title %}Chat{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+{% endblock %}
+
+{% block content %}
+
+{# Pass data to JS #}
+<script>
+  window.CHAT_ME_ID    = {{ me_id | tojson }};
+  window.CHAT_ME_NAME  = {{ current_user.name | tojson }};
+  window.CHAT_ME_ROLE  = {{ (current_user.role or '') | tojson }};
+  window.CHAT_REACTIONS= {{ reactions | tojson }};
+</script>
+
+<div id="chatApp">
+
+  {# ── Left sidebar ── #}
+  <div id="chatSidebar">
+
+    <div class="chat-sidebar-header">
+      <h6>Chat</h6>
+      <div class="d-flex gap-1">
+        <button class="btn btn-sm p-1" id="chatThemeBtn" title="Toggle theme" style="background:none;border:none;color:var(--chat-text-muted);font-size:1rem;">
+          <i class="bi bi-moon"></i>
+        </button>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('chat.groups') }}" class="btn btn-sm p-1" title="Manage groups" style="background:none;border:none;color:var(--chat-text-muted);font-size:1rem;">
+          <i class="bi bi-gear"></i>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="chat-search-wrap">
+      <i class="bi bi-search chat-search-icon"></i>
+      <input type="text" id="chatSearchInput" class="chat-search-input" placeholder="חפש שיחה...">
+    </div>
+
+    <div class="chat-conv-list" id="chatConvList">
+      <div class="text-center p-4 text-muted" style="font-size:.85rem;">
+        <div class="spinner-border spinner-border-sm" role="status"></div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Main chat window ── #}
+  <div id="chatMain">
+
+    {# Empty state #}
+    <div class="chat-empty-state" id="chatEmptyState">
+      <i class="bi bi-chat-dots"></i>
+      <p>בחר שיחה כדי להתחיל</p>
+    </div>
+
+    {# Chat window (hidden until room selected) #}
+    <div class="chat-window-header chat-hidden-until-room" style="display:none;">
+      <button class="btn btn-sm d-md-none me-1" id="chatMobileBack" style="background:none;border:none;color:var(--chat-text-muted);">
+        <i class="bi bi-arrow-right"></i>
+      </button>
+      <div id="chatHeaderAvatar"></div>
+      <div class="chat-header-info">
+        <div class="chat-header-name" id="chatHeaderName"></div>
+        <div class="chat-header-sub" id="chatHeaderSub"></div>
+      </div>
+      <div class="chat-header-actions d-flex gap-1">
+        <button class="btn" id="chatFavBtn" title="מועדפים"><i class="bi bi-star"></i></button>
+        <button class="btn" id="chatPinBtn" title="הצמד"><i class="bi bi-pin-angle"></i></button>
+      </div>
+    </div>
+
+    {# Upload progress #}
+    <div class="chat-upload-progress chat-hidden-until-room" id="chatUploadProgress" style="display:none;">
+      <div class="spinner-border spinner-border-sm text-primary"></div>
+      <span>מעלה קובץ...</span>
+    </div>
+
+    {# Messages #}
+    <div class="chat-messages-area chat-hidden-until-room" id="chatMessagesArea" style="display:none;"></div>
+
+    {# Typing indicator #}
+    <div class="chat-typing-bar chat-hidden-until-room" id="chatTypingBar" style="display:none;"></div>
+
+    {# Reply preview bar #}
+    <div class="chat-reply-bar chat-hidden-until-room" id="chatReplyBar" style="display:none;">
+      <i class="bi bi-reply text-primary"></i>
+      <div class="reply-content">
+        <div class="reply-user"></div>
+        <div class="reply-text"></div>
+      </div>
+      <span class="chat-reply-cancel" id="chatReplyCancel"><i class="bi bi-x-lg"></i></span>
+    </div>
+
+    {# Input bar #}
+    <div class="chat-input-bar chat-hidden-until-room" style="display:none;">
+      <button class="chat-input-btn chat-attach-btn" id="chatAttachBtn" title="Upload file">
+        <i class="bi bi-paperclip"></i>
+      </button>
+      <input type="file" id="chatFileInput" style="display:none;"
+             accept="image/*,.pdf,.xls,.xlsx,.doc,.docx,.csv">
+      <textarea class="chat-input-field" id="chatInputField"
+                placeholder="כתוב הודעה..." rows="1"></textarea>
+      <button class="chat-input-btn chat-send-btn" id="chatSendBtn" title="Send">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+{# Context menu #}
+<div id="chatContextMenu" class="chat-context-menu"></div>
+
+{# Toast container #}
+<div id="chatToastContainer" class="chat-toast-container"></div>
+
+{# Image lightbox #}
+<div id="chatLightbox" class="chat-lightbox">
+  <span class="chat-lightbox-close">&times;</span>
+  <img id="chatLightboxImg" src="" alt="">
+</div>
+
+{# Override main padding for chat page #}
+<style>
+  main.flex-grow-1 { padding: 0 !important; overflow: hidden; }
+  footer { display: none !important; }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %}

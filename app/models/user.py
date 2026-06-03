@@ -7,12 +7,14 @@ from datetime import datetime
 class User(UserMixin, me.Document):
     meta = {'collection': 'users', 'strict': False, 'indexes': ['-last_seen']}
 
-    name          = me.StringField(max_length=100, required=True)
-    password_hash = me.StringField(max_length=255, required=True)
-    role          = me.StringField(max_length=20, default='viewer')
-    created_at    = me.DateTimeField(default=datetime.utcnow)
-    last_seen      = me.DateTimeField()
-    last_login     = me.DateTimeField()
+    name           = me.StringField(max_length=100, required=True)
+    password_hash  = me.StringField(max_length=255, required=True)
+    role           = me.StringField(max_length=20, default='viewer')
+    created_at     = me.DateTimeField(default=datetime.utcnow)
+    last_seen       = me.DateTimeField()
+    last_login      = me.DateTimeField()
+    pinned_rooms   = me.ListField(me.StringField())
+    favorite_rooms = me.ListField(me.StringField())
 
     def get_id(self):
         return str(self.id)
