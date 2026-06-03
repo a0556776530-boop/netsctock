@@ -109,13 +109,24 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_globals():
         from flask import g
+        from flask_login import current_user
         from .utils.exchange import get_usd_to_nis
+        unread_total = 0
+        try:
+            if current_user.is_authenticated:
+                from .models.chat_message import ChatMessage
+                unread_total = ChatMessage.objects(
+                    receiver_id=str(current_user.id), read=False
+                ).count()
+        except Exception:
+            pass
         return {
             'now': datetime.utcnow(),
             'usd_nis_rate': get_usd_to_nis(),
             'lang': getattr(g, 'lang', 'en'),
             'dir_html': getattr(g, 'dir_html', 'ltr'),
             't': getattr(g, 't', TRANSLATIONS['en']),
+            'unread_total': unread_total,
         }
 
     from .seed import register_commands

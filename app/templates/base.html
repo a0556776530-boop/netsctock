@@ -103,8 +103,11 @@
       {% endif %}
       <li class="nav-item">
         <a href="{{ url_for('chat.room') }}"
-           class="nav-link text-white {% if request.blueprint == 'chat' %}active{% endif %}">
-          <i class="bi bi-chat-dots me-2"></i>{{ t.nav_chat }}
+           class="nav-link text-white {% if request.blueprint == 'chat' %}active{% endif %} d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-chat-dots me-2"></i>{{ t.nav_chat }}</span>
+          {% if unread_total > 0 %}
+          <span class="badge bg-danger rounded-pill" style="font-size:.65rem;">{{ unread_total }}</span>
+          {% endif %}
         </a>
       </li>
       {% if current_user.is_admin %}
