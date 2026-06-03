@@ -7,11 +7,16 @@
 {# ── כותרת + כפתורי פעולה ────────────────────────────────────────────────── #}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <span class="text-muted small" id="purchaseCount">{{ purchases | length }} {{ t.purchases_count_suffix }}</span>
-  {% if current_user.can_edit %}
-  <a href="{{ url_for('purchases.new_purchase') }}" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus-lg me-1"></i>{{ t.new_purchase_btn }}
-  </a>
-  {% endif %}
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('purchases.purchase_history') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-clock-history me-1"></i>{{ t.purchase_history_btn }}
+    </a>
+    {% if current_user.can_edit %}
+    <a href="{{ url_for('purchases.new_purchase') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>{{ t.new_purchase_btn }}
+    </a>
+    {% endif %}
+  </div>
 </div>
 
 {# ── בר סינון סטטוסים ───────────────────────────────────────────────────── #}
