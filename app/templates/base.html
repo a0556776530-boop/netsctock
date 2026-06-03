@@ -245,11 +245,9 @@ setInterval(function() { fetch('/api/ping'); }, 5000);
                   transparent         75%);
                 animation: beitar-pulse 2.5s ease-in-out infinite;
                 pointer-events:none;"></div>
-    <!-- Image: mix-blend-mode:screen dissolves its black background into the overlay -->
     <img src="{{ url_for('static', filename='img/ביתר.jpg') }}"
          alt="ביתר ירושלים"
-         style="position:relative; width:100%; height:auto; object-fit:contain;
-                mix-blend-mode:screen;">
+         style="position:relative; width:100%; height:auto; object-fit:contain;">
   </div>
   <div style="color:rgba(255,215,0,.35); font-size:.75rem; margin-top:32px; letter-spacing:.1em;">
     Ctrl+B / ESC
