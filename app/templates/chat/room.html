@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.chat_title }}{% endblock %}
+{% block page_title %}{{ t.chat_title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column" style="height: calc(100vh - 140px);">
+
+  {# ── Messages area ── #}
+  <div id="chatMessages" class="flex-grow-1 overflow-auto mb-3 px-1">
+    <div class="d-flex flex-column gap-2" id="messagesList">
+
+      {% for msg in messages %}
+      {% set is_me = msg.user_id == current_user.id|string %}
+      <div class="d-flex {% if is_me %}justify-content-end{% endif %} align-items-end gap-2 message-row"
+           data-id="{{ msg.id }}">
+        {% if not is_me %}
+        <div class="flex-shrink-0">
+          {% if msg.user_role == 'super_admin' %}
+            <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
+          {% elif msg.user_role == 'admin' %}
+            <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
+          {% elif msg.user_role == 'warehouse' %}
+            <div class="role-avatar-sm role-tech"><i class="bi bi-box-seam-fill"></i></div>
+          {% else %}
+            <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div style="max-width:70%;">
+          {% if not is_me %}
+          <div class="small text-muted mb-1 px-1">{{ msg.user_name }}</div>
+          {% endif %}
+          <div class="rounded-3 px-3 py-2 {% if is_me %}text-white{% else %}bg-light{% endif %}"
+               style="{% if is_me %}background:#0d6efd;{% endif %} word-break:break-word; font-size:.92rem;">
+            {{ msg.text }}
+          </div>
+          <div class="x-small text-muted mt-1 {% if is_me %}text-end{% endif %} px-1">
+            {{ (msg.timestamp | localtime).strftime('%H:%M') }}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-5" id="emptyState">
+        <i class="bi bi-chat-dots fs-2 d-block mb-2 opacity-25"></i>
+        {{ t.chat_empty }}
+      </div>
+      {% endfor %}
+
+    </div>
+  </div>
+
+  {# ── Input bar ── #}
+  <div class="card border-0 shadow-sm flex-shrink-0">
+    <div class="card-body py-2 px-3">
+      <form id="chatForm" class="d-flex gap-2 align-items-center">
+        <input type="text" id="chatInput"
+               class="form-control border-0 bg-light"
+               placeholder="{{ t.chat_placeholder }}"
+               autocomplete="off" maxlength="2000">
+        <button type="submit" class="btn btn-primary px-3" id="sendBtn">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<script>
+(function () {
+  var ME_ID   = '{{ current_user.id }}';
+  var ME_NAME = {{ current_user.name | tojson }};
+  var ME_ROLE = {{ (current_user.role or '') | tojson }};
+
+  var socket = io('/chat', { transports: ['websocket', 'polling'] });
+
+  var list    = document.getElementById('messagesList');
+  var box     = document.getElementById('chatMessages');
+  var form    = document.getElementById('chatForm');
+  var input   = document.getElementById('chatInput');
+  var empty   = document.getElementById('emptyState');
+
+  function scrollBottom() {
+    box.scrollTop = box.scrollHeight;
+  }
+  scrollBottom();
+
+  function roleAvatar(role) {
+    var cls = 'role-viewer', icon = 'bi-eye-fill';
+    if (role === 'super_admin') { cls = 'role-super'; icon = 'bi-shield-fill-check'; }
+    else if (role === 'admin')  { cls = 'role-admin'; icon = 'bi-crown-fill'; }
+    else if (role === 'warehouse') { cls = 'role-tech'; icon = 'bi-box-seam-fill'; }
+    return '<div class="role-avatar-sm ' + cls + '"><i class="bi ' + icon + '"></i></div>';
+  }
+
+  function buildBubble(msg) {
+    var isMe = (msg.user_id === ME_ID);
+    var row  = document.createElement('div');
+    row.className = 'd-flex ' + (isMe ? 'justify-content-end' : '') + ' align-items-end gap-2 message-row';
+    row.dataset.id = msg.id || '';
+
+    var nameHtml = isMe ? '' :
+      '<div class="small text-muted mb-1 px-1">' + _esc(msg.user_name) + '</div>';
+
+    var bubbleStyle = isMe ? 'background:#0d6efd;' : '';
+    var bubbleCls   = 'rounded-3 px-3 py-2 ' + (isMe ? 'text-white' : 'bg-light');
+
+    var timeAlign = isMe ? 'text-end' : '';
+
+    row.innerHTML =
+      (isMe ? '' : '<div class="flex-shrink-0">' + roleAvatar(msg.user_role) + '</div>') +
+      '<div style="max-width:70%;">' +
+        nameHtml +
+        '<div class="' + bubbleCls + '" style="' + bubbleStyle + 'word-break:break-word;font-size:.92rem;">' +
+          _esc(msg.text) +
+        '</div>' +
+        '<div class="x-small text-muted mt-1 ' + timeAlign + ' px-1">' + _esc(msg.timestamp) + '</div>' +
+      '</div>';
+    return row;
+  }
+
+  function _esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  socket.on('new_message', function (msg) {
+    if (empty) { empty.remove(); empty = null; }
+    var bubble = buildBubble(msg);
+    list.appendChild(bubble);
+    scrollBottom();
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) return;
+    socket.emit('send_message', { text: text });
+    input.value = '';
+    input.focus();
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      form.dispatchEvent(new Event('submit'));
+    }
+  });
+
+  socket.on('connect_error', function () {
+    console.warn('Chat socket error — will retry');
+  });
+})();
+</script>
+{% endblock %}

@@ -13,6 +13,10 @@ TRANSLATIONS = {
         'nav_users': 'Users',
         'nav_export': 'Export',
         'nav_login_history': 'Login History',
+        'nav_chat': 'Chat',
+        'chat_title': 'Team Chat',
+        'chat_empty': 'No messages yet. Say hello!',
+        'chat_placeholder': 'Type a message…',
         'nav_change_password': 'Change Password',
         # Login history page
         'login_history_title':         'Login History',
@@ -599,6 +603,10 @@ TRANSLATIONS = {
         'nav_users': 'משתמשים',
         'nav_export': 'ייצוא',
         'nav_login_history': 'היסטוריית כניסות',
+        'nav_chat': 'צ\'אט',
+        'chat_title': 'צ\'אט צוות',
+        'chat_empty': 'אין הודעות עדיין. תגיד שלום!',
+        'chat_placeholder': 'כתוב הודעה…',
         'nav_change_password': 'שינוי סיסמא',
         # Login history page
         'login_history_title':         'היסטוריית כניסות',
