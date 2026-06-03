@@ -5,26 +5,69 @@
 {% block content %}
 
 {# ── Tab bar ── #}
-<div class="d-flex gap-2 mb-3">
+<div class="d-flex gap-2 mb-3 flex-wrap">
   <a href="{{ url_for('chat.room') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-people me-1"></i>{{ t.chat_group }}
+    <i class="bi bi-people me-1"></i>{{ t.chat_group_everyone }}
   </a>
   <button class="btn btn-primary btn-sm" disabled>
     <i class="bi bi-envelope me-1"></i>{{ t.chat_inbox_title }}
   </button>
+  {% if current_user.is_admin %}
+  <a href="{{ url_for('chat.groups') }}" class="btn btn-outline-secondary btn-sm ms-auto">
+    <i class="bi bi-plus-circle me-1"></i>{{ t.chat_manage_groups }}
+  </a>
+  {% endif %}
 </div>
 
-<div class="card border-0 shadow-sm">
+{# ── Groups ── #}
+{% if group_convs %}
+<div class="small text-muted text-uppercase fw-semibold mb-2 px-1" style="letter-spacing:.06em;">
+  <i class="bi bi-people-fill me-1"></i>{{ t.chat_groups }}
+</div>
+<div class="card border-0 shadow-sm mb-3">
   <div class="list-group list-group-flush">
+    {% for gc in group_convs %}
+    {% set grp = gc.group %}
+    {% set last = gc.last_msg %}
+    <a href="{{ url_for('chat.group_room', group_id=grp.id) }}"
+       class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-2">
+      <div class="flex-shrink-0">
+        <div class="role-avatar-sm role-admin"><i class="bi bi-people-fill"></i></div>
+      </div>
+      <div class="flex-grow-1 overflow-hidden">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">{{ grp.name }}</span>
+          {% if last %}
+          <span class="x-small text-muted">{{ (last.timestamp | localtime).strftime('%H:%M') }}</span>
+          {% endif %}
+        </div>
+        <div class="small text-muted text-truncate">
+          {% if last %}{{ last.text }}{% else %}<span class="fst-italic">{{ t.chat_no_messages }}</span>{% endif %}
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Direct messages ── #}
+<div class="small text-muted text-uppercase fw-semibold mb-2 px-1" style="letter-spacing:.06em;">
+  <i class="bi bi-chat-dots me-1"></i>{{ t.chat_direct_messages }}
+</div>
+<div class="card border-0 shadow-sm">
+  <div class="list-group list-group-flush" id="inboxList">
     {% for conv in conversations %}
     {% set u = conv.user %}
     {% set last = conv.last_msg %}
     {% set unread = conv.unread %}
+    {% set online = conv.online %}
     <a href="{{ url_for('chat.private', user_id=u.id) }}"
-       class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3">
+       class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3"
+       data-uid="{{ u.id }}">
 
-      {# Avatar #}
-      <div class="flex-shrink-0">
+      {# Avatar + online dot #}
+      <div class="flex-shrink-0 position-relative">
         {% if u.role == 'super_admin' %}
           <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
         {% elif u.role == 'admin' %}
@@ -34,21 +77,32 @@
         {% else %}
           <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
         {% endif %}
+        <span class="online-dot position-absolute bottom-0 end-0 rounded-circle border border-white"
+              style="width:10px;height:10px;background:{{ '#22c55e' if online else '#9ca3af' }};"
+              data-online="{{ 'true' if online else 'false' }}"></span>
       </div>
 
-      {# Name + preview #}
+      {# Name + role + preview #}
       <div class="flex-grow-1 overflow-hidden">
         <div class="d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">{{ u.name }}</span>
+          <div class="d-flex align-items-center gap-2">
+            <span class="fw-semibold">{{ u.name }}</span>
+            <span class="badge rounded-pill small"
+                  style="font-size:.65rem;
+                  {% if u.role == 'super_admin' %}background:#dc2626;
+                  {% elif u.role == 'admin' %}background:#b45309;
+                  {% elif u.role == 'warehouse' %}background:#0369a1;
+                  {% else %}background:#7e22ce;{% endif %}">
+              {{ t['role_' ~ u.role] if ('role_' ~ u.role) in t else u.role }}
+            </span>
+          </div>
           {% if last %}
           <span class="x-small text-muted">{{ (last.timestamp | localtime).strftime('%H:%M') }}</span>
           {% endif %}
         </div>
         <div class="small text-muted text-truncate">
           {% if last %}
-            {% if last.user_id == current_user.id|string %}
-              <span class="text-muted">{{ t.chat_you }}: </span>
-            {% endif %}
+            {% if last.user_id == current_user.id|string %}<span class="text-muted">{{ t.chat_you }}: </span>{% endif %}
             {{ last.text }}
           {% else %}
             <span class="fst-italic">{{ t.chat_no_messages }}</span>
@@ -57,9 +111,8 @@
       </div>
 
       {# Unread badge #}
-      {% if unread > 0 %}
-      <span class="badge bg-danger rounded-pill flex-shrink-0">{{ unread }}</span>
-      {% endif %}
+      <span class="badge bg-danger rounded-pill flex-shrink-0 {% if unread == 0 %}d-none{% endif %}"
+            data-unread-badge>{{ unread if unread > 0 else '' }}</span>
     </a>
     {% else %}
     <div class="list-group-item text-center text-muted py-5">
@@ -69,4 +122,55 @@
     {% endfor %}
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  function poll() {
+    fetch('/chat/api/inbox-status')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.users) return;
+
+      // Update each conversation row
+      document.querySelectorAll('#inboxList [data-uid]').forEach(function(row) {
+        var uid  = row.dataset.uid;
+        var info = d.users[uid];
+        if (!info) return;
+
+        // Online dot
+        var dot = row.querySelector('.online-dot');
+        if (dot) dot.style.background = info.online ? '#22c55e' : '#9ca3af';
+
+        // Unread badge
+        var badge = row.querySelector('[data-unread-badge]');
+        if (badge) {
+          if (info.unread > 0) {
+            badge.textContent = info.unread;
+            badge.classList.remove('d-none');
+          } else {
+            badge.classList.add('d-none');
+          }
+        }
+      });
+
+      // Nav badge
+      var navBadge = document.getElementById('chatUnreadBadge');
+      if (navBadge) {
+        if (d.total_unread > 0) {
+          navBadge.textContent = d.total_unread;
+          navBadge.classList.remove('d-none');
+        } else {
+          navBadge.classList.add('d-none');
+        }
+      }
+    })
+    .catch(function(){});
+  }
+
+  poll();
+  setInterval(poll, 5000);
+})();
+</script>
 {% endblock %}

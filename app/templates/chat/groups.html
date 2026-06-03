@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}{{ t.chat_manage_groups }}{% endblock %}
+{% block page_title %}{{ t.chat_manage_groups }}{% endblock %}
+
+{% block content %}
+
+<div class="row g-4">
+
+  {# ── Create new group ── #}
+  <div class="col-md-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent fw-semibold">
+        <i class="bi bi-plus-circle me-2 text-primary"></i>{{ t.chat_new_group }}
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('chat.new_group') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">{{ t.chat_group_name }}</label>
+            <input type="text" name="name" class="form-control" required maxlength="100"
+                   placeholder="{{ t.chat_group_name_ph }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">{{ t.chat_group_desc }}</label>
+            <input type="text" name="description" class="form-control" maxlength="300"
+                   placeholder="{{ t.chat_group_desc_ph }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">{{ t.chat_group_members }}</label>
+            <div class="border rounded p-2" style="max-height:200px;overflow-y:auto;">
+              {% for u in all_users %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="members"
+                       value="{{ u.id }}" id="m_{{ u.id }}">
+                <label class="form-check-label small" for="m_{{ u.id }}">
+                  {{ u.name }}
+                  <span class="text-muted">({{ t['role_' ~ u.role] if ('role_' ~ u.role) in t else u.role }})</span>
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-plus-lg me-1"></i>{{ t.chat_create_group }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ── Existing groups ── #}
+  <div class="col-md-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent fw-semibold">
+        <i class="bi bi-people-fill me-2 text-primary"></i>{{ t.chat_groups }}
+        <span class="badge bg-secondary ms-1">{{ groups | length }}</span>
+      </div>
+      {% if groups %}
+      <div class="list-group list-group-flush">
+        {% for grp in groups %}
+        <div class="list-group-item d-flex align-items-center gap-3 py-3">
+          <div class="flex-shrink-0">
+            <div class="role-avatar-sm role-admin"><i class="bi bi-people-fill"></i></div>
+          </div>
+          <div class="flex-grow-1">
+            <div class="fw-semibold">{{ grp.name }}</div>
+            {% if grp.description %}
+            <div class="small text-muted">{{ grp.description }}</div>
+            {% endif %}
+            <div class="x-small text-muted mt-1">
+              <i class="bi bi-people me-1"></i>{{ grp.member_ids | length }} {{ t.chat_members }}
+            </div>
+          </div>
+          <div class="d-flex gap-2 flex-shrink-0">
+            <a href="{{ url_for('chat.group_room', group_id=grp.id) }}"
+               class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-chat-dots"></i>
+            </a>
+            <form method="POST" action="{{ url_for('chat.delete_group', group_id=grp.id) }}" class="d-inline"
+                  onsubmit="return confirm('{{ t.chat_confirm_delete_group }}')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-people fs-2 d-block mb-2 opacity-25"></i>
+        {{ t.chat_no_groups }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
