@@ -169,9 +169,20 @@
     </div><!-- /assetsStickyTop -->
 
     <!-- Table -->
+    <style>
+      #assetsTable { border-collapse: separate; border-spacing: 0; }
+      #assetsTable thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #212529;
+        box-shadow: 0 2px 4px rgba(0,0,0,.3);
+      }
+    </style>
     <div class="card border-0 shadow-sm">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="table-responsive"
+           style="overflow-y: auto; max-height: calc(100vh - 250px);">
+        <table id="assetsTable" class="table table-hover align-middle mb-0">
           <thead class="table-dark">
             <tr>
               <!-- 1. Asset ID -->
