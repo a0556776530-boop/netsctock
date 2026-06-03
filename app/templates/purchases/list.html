@@ -20,44 +20,62 @@
 </div>
 
 {# ── בר סינון סטטוסים ───────────────────────────────────────────────────── #}
-{% set all_statuses = [
-  ('BOM Transferred',             t.get('purchase_status_bom_transferred',             'הועבר BOM'),             'secondary'),
-  ('Requirement Created',         t.get('purchase_status_requirement_created',         'הוקמה דרישה'),           'info'),
-  ('Order Signed',                t.get('purchase_status_order_signed',                'נחתמה ההזמנה'),          'primary'),
-  ('Order Received in Warehouse', t.get('purchase_status_order_received_in_warehouse', 'נקלטה במחסן'),           'success'),
-  ('בוטל',                        t.get('purchase_status_בוטל',                        'בוטל'),                  'danger'),
+<style>
+  .pf-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 2px solid; border-radius: 22px;
+    padding: 6px 16px; font-size: .82rem; font-weight: 600;
+    cursor: pointer; transition: background .15s, color .15s, box-shadow .15s;
+    white-space: nowrap; line-height: 1.4;
+  }
+  .pf-btn .pf-badge {
+    border-radius: 10px; padding: 1px 8px; font-size: .74rem;
+    font-weight: 700; transition: background .15s, color .15s;
+  }
+  /* ── כל סטטוס — צבע קבוע ── */
+  .pf-active  { --c: #475569; }
+  .pf-bom     { --c: #64748b; }
+  .pf-req     { --c: #0284c7; }
+  .pf-signed  { --c: #2563eb; }
+  .pf-rcvd    { --c: #16a34a; }
+  .pf-cancel  { --c: #dc2626; }
+
+  /* מצב ברירת מחדל — outline */
+  .pf-btn { border-color: var(--c); color: var(--c); background: transparent; }
+  .pf-btn .pf-badge { background: var(--c); color: #fff; }
+
+  /* hover — רקע קל + צל */
+  .pf-btn:hover {
+    background: color-mix(in srgb, var(--c) 12%, transparent);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--c) 25%, transparent);
+  }
+
+  /* active/selected — מלא */
+  .pf-btn.active {
+    background: var(--c); color: #fff;
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--c) 40%, transparent);
+  }
+  .pf-btn.active .pf-badge { background: rgba(255,255,255,.25); color: #fff; }
+  .pf-btn.active:hover { filter: brightness(1.1); }
+</style>
+
+{% set active_count = purchases | selectattr('status','in',['BOM Transferred','Requirement Created','Order Signed']) | list | length %}
+{% set status_defs = [
+  ('active',                        'pf-active',  t.get('filter_active','פעיל'),                                              active_count),
+  ('BOM Transferred',               'pf-bom',     t.get('purchase_status_bom_transferred','הועבר BOM'),                       purchases | selectattr('status','equalto','BOM Transferred')             | list | length),
+  ('Requirement Created',           'pf-req',     t.get('purchase_status_requirement_created','הוקמה דרישה'),                 purchases | selectattr('status','equalto','Requirement Created')         | list | length),
+  ('Order Signed',                  'pf-signed',  t.get('purchase_status_order_signed','נחתמה ההזמנה'),                       purchases | selectattr('status','equalto','Order Signed')                | list | length),
+  ('Order Received in Warehouse',   'pf-rcvd',    t.get('purchase_status_order_received_in_warehouse','נקלטה במחסן'),         purchases | selectattr('status','equalto','Order Received in Warehouse') | list | length),
+  ('בוטל',                          'pf-cancel',  t.get('purchase_status_בוטל','בוטל'),                                       purchases | selectattr('status','equalto','בוטל')                        | list | length),
 ] %}
 
 <div class="d-flex gap-2 flex-wrap mb-3 align-items-center">
-
-  {# כפתור "הכל" #}
-  <button class="pf-btn active" data-filter="active"
-          style="border:2px solid #6b7280; background:#6b7280; color:#fff;
-                 border-radius:20px; padding:5px 16px; font-size:.82rem;
-                 font-weight:600; cursor:pointer; transition:all .18s; white-space:nowrap;">
-    {{ t.get('filter_active','פעיל') }}
-    <span class="ms-1 pf-badge"
-          style="background:rgba(255,255,255,.28); border-radius:10px; padding:1px 8px; font-size:.76rem;">
-      {% set active_count = purchases | selectattr('status','in',['BOM Transferred','Requirement Created','Order Signed']) | list | length %}
-      {{ active_count }}
-    </span>
-  </button>
-
-  {# כפתור לכל סטטוס #}
-  {% for key, label, color in all_statuses %}
-  {% set cnt = purchases | selectattr('status','equalto',key) | list | length %}
-  <button class="pf-btn" data-filter="{{ key }}"
-          style="border:2px solid var(--bs-{{ color }}); background:transparent; color:var(--bs-{{ color }});
-                 border-radius:20px; padding:5px 16px; font-size:.82rem;
-                 font-weight:600; cursor:pointer; transition:all .18s; white-space:nowrap;">
+  {% for filter_key, css_class, label, cnt in status_defs %}
+  <button class="pf-btn {{ css_class }}{% if loop.first %} active{% endif %}" data-filter="{{ filter_key }}">
     {{ label }}
-    <span class="ms-1 pf-badge"
-          style="background:var(--bs-{{ color }}); color:#fff; border-radius:10px; padding:1px 8px; font-size:.76rem;">
-      {{ cnt }}
-    </span>
+    <span class="pf-badge">{{ cnt }}</span>
   </button>
   {% endfor %}
-
 </div>
 
 {# ── טבלה ─────────────────────────────────────────────────────────────────── #}
@@ -152,18 +170,9 @@
   var suffix  = countEl ? countEl.textContent.split(' ').slice(1).join(' ') : '';
 
   function applyFilter(filter) {
-    // Update button styles
+    // Toggle active class — CSS handles all visual states
     buttons.forEach(function (b) {
-      var isActive = b.dataset.filter === filter;
-      if (b.dataset.filter === 'active') {
-        b.style.background = isActive ? '#6b7280' : 'transparent';
-        b.style.color      = isActive ? '#fff'    : '#6b7280';
-        b.style.borderColor = '#6b7280';
-      } else {
-        b.style.background  = isActive ? b._color : 'transparent';
-        b.style.color       = isActive ? '#fff'   : b._color;
-        b.style.borderColor = b._color;
-      }
+      b.classList.toggle('active', b.dataset.filter === filter);
     });
 
     // Filter rows
@@ -179,18 +188,24 @@
     if (countEl) countEl.textContent = visible + ' ' + suffix;
   }
 
-  // Store colors + bind clicks
+  // Bind clicks
   buttons.forEach(function (b) {
-    b._color = b.style.borderColor;
     b.addEventListener('click', function () { applyFilter(this.dataset.filter); });
   });
 
-  // Default: show active only
+  // Default: active only (already set via class in HTML)
   applyFilter('active');
 
   // Override if URL has ?status=
   var s = new URLSearchParams(window.location.search).get('status');
   if (s) applyFilter(s);
+
+  // Remove inline styles left from old code
+  buttons.forEach(function(b) {
+    b.style.background = '';
+    b.style.color = '';
+    b.style.borderColor = '';
+  });
 })();
 </script>
 {% endblock %}
