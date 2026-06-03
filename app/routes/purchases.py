@@ -274,7 +274,10 @@ def edit(id):
         if currency not in CURRENCIES:
             currency = purchase.currency
 
-        name = request.form.get('name', '').strip() or purchase.name
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash(t.get('flash_name_required', 'Task name is required.'), 'danger')
+            return redirect(url_for('purchases.edit', id=purchase.id))
         purchase.name            = name
         purchase.bom_date        = _parse_date(request.form.get('bom_date'))
         purchase.estimate_number = request.form.get('estimate_number', '').strip() or None
