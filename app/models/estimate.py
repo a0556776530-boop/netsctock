@@ -23,7 +23,16 @@ class EstimateItem(me.EmbeddedDocument):
 class Estimate(me.Document):
     meta = {
         'collection': 'estimates',
-        'indexes': ['status', 'record_type', 'warehouse_status', 'valid_until', 'allocation_number'],
+        'index_background': True,
+        'indexes': [
+            'status',
+            'record_type',
+            'warehouse_status',
+            'allocation_number',
+            '-created_at',
+            ('status', 'record_type'),               # most common combined filter
+            ('status', 'record_type', 'valid_until'), # expiring allocations query
+        ],
     }
 
     allocation_number  = me.IntField(unique=True, sparse=True)

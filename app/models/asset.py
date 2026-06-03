@@ -16,7 +16,16 @@ class Asset(me.Document):
     meta = {
         'collection': 'assets',
         'strict': False,
-        'indexes': ['status', 'quantity', 'serial_number', 'component_id'],
+        'index_background': True,
+        'indexes': [
+            'status',
+            'quantity',
+            'component_id',
+            'assignee',          # admin users page: Asset.objects(assignee=u).count()
+            'asset_type',        # filter assets by type
+            '-created_at',       # default sort
+            {'fields': ['price_usd'], 'sparse': True},  # estimates form filter
+        ],
     }
 
     STATUSES = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
@@ -82,7 +91,11 @@ class AssetEvent(me.Document):
     meta = {
         'collection': 'asset_events',
         'ordering': ['-event_date'],
-        'indexes': ['-event_date'],
+        'index_background': True,
+        'indexes': [
+            '-event_date',
+            ('asset', '-event_date'),  # asset detail page: events for a specific asset
+        ],
     }
 
     EVENT_TYPES = ['dismantled', 'moved', 'assigned', 'returned', 'repaired',

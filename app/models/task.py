@@ -3,7 +3,16 @@ from datetime import datetime
 
 
 class Task(me.Document):
-    meta = {'collection': 'tasks', 'strict': False}
+    meta = {
+        'collection': 'tasks',
+        'strict': False,
+        'index_background': True,
+        'indexes': [
+            'status',
+            '-created_at',
+            ('assignee_name', 'status'),  # admin users page N+1: tasks per user by status
+        ],
+    }
 
     STATUSES = ['pending', 'in_progress', 'done']  # 'pending' kept for legacy docs
     STATUS_LABELS = {'pending': 'In Progress', 'in_progress': 'In Progress', 'done': 'Done'}

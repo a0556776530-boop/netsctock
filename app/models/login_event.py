@@ -6,8 +6,16 @@ class LoginEvent(me.Document):
     meta = {
         'collection': 'login_events',
         'ordering': ['-timestamp'],
-        'indexes': ['-timestamp', 'user_name', 'ip_address'],
         'strict': False,
+        'index_background': True,
+        'indexes': [
+            '-timestamp',
+            'user_name',
+            'ip_address',
+            # Compound indexes for dedup queries in login_recorder.py
+            ('user', 'ip_address', 'success', '-timestamp'),
+            ('ip_address', 'user_agent', 'success', '-timestamp'),
+        ],
     }
 
     user        = me.ReferenceField('User', db_field='user_id', required=False)
