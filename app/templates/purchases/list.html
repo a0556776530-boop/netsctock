@@ -17,7 +17,41 @@
   </div>
 </div>
 
-{% set filtered = purchases %}
+{# ── Status filter bar ───────────────────────────────────────────────────── #}
+{% set status_meta = [
+  ('BOM Transferred',             t.get('purchase_status_bom_transferred',             'הועבר BOM'),             'secondary'),
+  ('Requirement Created',         t.get('purchase_status_requirement_created',         'הוקמה דרישה'),           'info'),
+  ('Order Signed',                t.get('purchase_status_order_signed',                'נחתמה ההזמנה'),          'primary'),
+  ('Order Received in Warehouse', t.get('purchase_status_order_received_in_warehouse', 'נקלטה במחסן'),           'success'),
+] %}
+
+<div class="d-flex gap-2 flex-wrap mb-3 align-items-center" id="statusFilters">
+  <button class="status-filter-btn active"
+          data-filter="all"
+          style="border:2px solid #6b7280; background:#6b7280; color:#fff;
+                 border-radius:20px; padding:5px 14px; font-size:.82rem;
+                 font-weight:600; cursor:pointer; transition:all .18s;">
+    {{ t.get('filter_all', 'הכל') }}
+    <span class="ms-1" style="background:rgba(255,255,255,.25);
+                               border-radius:10px; padding:1px 7px; font-size:.78rem;">
+      {{ purchases | length }}
+    </span>
+  </button>
+  {% for status_key, label, color in status_meta %}
+  {% set cnt = purchases | selectattr('status', 'equalto', status_key) | list | length %}
+  <button class="status-filter-btn"
+          data-filter="{{ status_key }}"
+          style="border:2px solid var(--bs-{{ color }}); background:transparent; color:var(--bs-{{ color }});
+                 border-radius:20px; padding:5px 14px; font-size:.82rem;
+                 font-weight:600; cursor:pointer; transition:all .18s;">
+    {{ label }}
+    <span class="ms-1" style="background:var(--bs-{{ color }}); color:#fff;
+                               border-radius:10px; padding:1px 7px; font-size:.78rem;">
+      {{ cnt }}
+    </span>
+  </button>
+  {% endfor %}
+</div>
 
 <div class="card border-0 shadow-sm">
   <div class="table-responsive">
@@ -37,8 +71,8 @@
         </tr>
       </thead>
       <tbody>
-        {% for p in filtered %}
-        <tr>
+        {% for p in purchases %}
+        <tr data-status="{{ p.status }}" class="purchase-row">
           <td class="fw-semibold" style="padding:10px 16px;">
             <a href="{{ url_for('purchases.detail', id=p.id) }}" class="text-decoration-none">{{ p.name }}</a>
           </td>
@@ -83,7 +117,7 @@
           </td>
         </tr>
         {% else %}
-        <tr>
+        <tr id="emptyRow">
           <td colspan="10" class="text-center text-muted py-5">
             <i class="bi bi-bag-x fs-3 d-block mb-2 opacity-50"></i>
             {{ t.no_purchases_found }}
@@ -94,4 +128,54 @@
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var buttons = document.querySelectorAll('.status-filter-btn');
+  var rows    = document.querySelectorAll('.purchase-row');
+
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var filter = this.dataset.filter;
+
+      // Reset all buttons
+      buttons.forEach(function (b) {
+        if (b.dataset.filter === 'all') {
+          b.style.background = 'transparent';
+          b.style.color      = '#6b7280';
+          b.style.border     = '2px solid #6b7280';
+        } else {
+          b.style.background = 'transparent';
+          b.style.color      = b._origColor;
+          b.style.borderColor = b._origColor;
+        }
+      });
+
+      // Activate clicked button
+      if (filter === 'all') {
+        this.style.background = '#6b7280';
+        this.style.color      = '#fff';
+      } else {
+        this.style.background = this._origColor;
+        this.style.color      = '#fff';
+      }
+
+      // Filter rows
+      var visible = 0;
+      rows.forEach(function (row) {
+        var match = filter === 'all' || row.dataset.status === filter;
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+    });
+  });
+
+  // Store original colors on load
+  buttons.forEach(function (b) {
+    b._origColor = b.style.borderColor || b.style.color;
+  });
+})();
+</script>
 {% endblock %}
