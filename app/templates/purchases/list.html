@@ -3,69 +3,59 @@
 {% block page_title %}{{ t.nav_purchases }}{% endblock %}
 
 {% block content %}
+
+{# ── כותרת + כפתורי פעולה ────────────────────────────────────────────────── #}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <span class="text-muted small">{{ purchases | length }} {{ t.purchases_count_suffix }}</span>
-  <div class="d-flex gap-2">
-    <a href="{{ url_for('purchases.purchase_history') }}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-clock-history me-1"></i>{{ t.purchase_history_btn }}
-    </a>
-    {% if current_user.can_edit %}
-    <a href="{{ url_for('purchases.new_purchase') }}" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-lg me-1"></i>{{ t.new_purchase_btn }}
-    </a>
-    {% endif %}
-  </div>
+  <span class="text-muted small" id="purchaseCount">{{ purchases | length }} {{ t.purchases_count_suffix }}</span>
+  {% if current_user.can_edit %}
+  <a href="{{ url_for('purchases.new_purchase') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>{{ t.new_purchase_btn }}
+  </a>
+  {% endif %}
 </div>
 
-{# ── Unified status filter bar ────────────────────────────────────────────── #}
-{% set active_statuses = [
-  ('BOM Transferred',             t.get('purchase_status_bom_transferred',             'הועבר BOM'),    'secondary'),
-  ('Requirement Created',         t.get('purchase_status_requirement_created',         'הוקמה דרישה'),  'info'),
-  ('Order Signed',                t.get('purchase_status_order_signed',                'נחתמה ההזמנה'), 'primary'),
-] %}
-{% set history_statuses = [
-  ('Order Received in Warehouse', t.get('purchase_status_order_received_in_warehouse', 'נקלטה במחסן'), 'success'),
-  ('בוטל',                        t.get('purchase_status_בוטל',                        'בוטל'),         'danger'),
+{# ── בר סינון סטטוסים ───────────────────────────────────────────────────── #}
+{% set all_statuses = [
+  ('BOM Transferred',             t.get('purchase_status_bom_transferred',             'הועבר BOM'),             'secondary'),
+  ('Requirement Created',         t.get('purchase_status_requirement_created',         'הוקמה דרישה'),           'info'),
+  ('Order Signed',                t.get('purchase_status_order_signed',                'נחתמה ההזמנה'),          'primary'),
+  ('Order Received in Warehouse', t.get('purchase_status_order_received_in_warehouse', 'נקלטה במחסן'),           'success'),
+  ('בוטל',                        t.get('purchase_status_בוטל',                        'בוטל'),                  'danger'),
 ] %}
 
 <div class="d-flex gap-2 flex-wrap mb-3 align-items-center">
-  {{- '' -}}
-  {# "הכל" — client-side, active page only #}
-  <button class="status-filter-btn active" data-filter="all"
+
+  {# כפתור "הכל" #}
+  <button class="pf-btn active" data-filter="active"
           style="border:2px solid #6b7280; background:#6b7280; color:#fff;
-                 border-radius:20px; padding:5px 14px; font-size:.82rem;
-                 font-weight:600; cursor:pointer; transition:all .18s;">
-    {{ t.get('filter_all','הכל') }}
-    <span class="ms-1" style="background:rgba(255,255,255,.25); border-radius:10px; padding:1px 7px; font-size:.78rem;">
-      {{ purchases | length }}
+                 border-radius:20px; padding:5px 16px; font-size:.82rem;
+                 font-weight:600; cursor:pointer; transition:all .18s; white-space:nowrap;">
+    {{ t.get('filter_active','פעיל') }}
+    <span class="ms-1 pf-badge"
+          style="background:rgba(255,255,255,.28); border-radius:10px; padding:1px 8px; font-size:.76rem;">
+      {% set active_count = purchases | selectattr('status','in',['BOM Transferred','Requirement Created','Order Signed']) | list | length %}
+      {{ active_count }}
     </span>
   </button>
 
-  {# Active statuses — client-side filter #}
-  {% for key, label, color in active_statuses %}
+  {# כפתור לכל סטטוס #}
+  {% for key, label, color in all_statuses %}
   {% set cnt = purchases | selectattr('status','equalto',key) | list | length %}
-  <button class="status-filter-btn" data-filter="{{ key }}"
+  <button class="pf-btn" data-filter="{{ key }}"
           style="border:2px solid var(--bs-{{ color }}); background:transparent; color:var(--bs-{{ color }});
-                 border-radius:20px; padding:5px 14px; font-size:.82rem;
-                 font-weight:600; cursor:pointer; transition:all .18s;">
+                 border-radius:20px; padding:5px 16px; font-size:.82rem;
+                 font-weight:600; cursor:pointer; transition:all .18s; white-space:nowrap;">
     {{ label }}
-    <span class="ms-1" style="background:var(--bs-{{ color }}); color:#fff; border-radius:10px; padding:1px 7px; font-size:.78rem;">{{ cnt }}</span>
+    <span class="ms-1 pf-badge"
+          style="background:var(--bs-{{ color }}); color:#fff; border-radius:10px; padding:1px 8px; font-size:.76rem;">
+      {{ cnt }}
+    </span>
   </button>
   {% endfor %}
 
-  {# History statuses — navigate to history page #}
-  {% for key, label, color in history_statuses %}
-  <a href="{{ url_for('purchases.purchase_history') }}?status={{ key | urlencode }}"
-     style="border:2px solid var(--bs-{{ color }}); background:transparent; color:var(--bs-{{ color }});
-            border-radius:20px; padding:5px 14px; font-size:.82rem;
-            font-weight:600; cursor:pointer; transition:all .18s; text-decoration:none;
-            display:inline-flex; align-items:center; gap:4px;">
-    {{ label }}
-    <i class="bi bi-arrow-left" style="font-size:.75rem;"></i>
-  </a>
-  {% endfor %}
 </div>
 
+{# ── טבלה ─────────────────────────────────────────────────────────────────── #}
 <div class="card border-0 shadow-sm">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0" style="border-collapse:separate; border-spacing:0;">
@@ -85,11 +75,14 @@
       </thead>
       <tbody>
         {% for p in purchases %}
-        <tr data-status="{{ p.status }}" class="purchase-row">
+        <tr class="purchase-row" data-status="{{ p.status }}"
+            {% if p.status in ['Order Received in Warehouse','בוטל'] %}style="opacity:.75;"{% endif %}>
           <td class="fw-semibold" style="padding:10px 16px;">
             <a href="{{ url_for('purchases.detail', id=p.id) }}" class="text-decoration-none">{{ p.name }}</a>
           </td>
-          <td class="small text-muted" style="padding:10px 16px;">{{ p.bom_date.strftime('%d %b %Y') if p.bom_date else '—' }}</td>
+          <td class="small text-muted" style="padding:10px 16px;">
+            {{ p.bom_date.strftime('%d %b %Y') if p.bom_date else '—' }}
+          </td>
           <td class="small" style="padding:10px 16px;">{{ p.estimate_number or '—' }}</td>
           <td class="small font-monospace" style="padding:10px 24px; text-align:end;">
             {% if p.amount %}{{ '{:,.2f}'.format(p.amount) }}{% else %}—{% endif %}
@@ -98,12 +91,12 @@
           <td class="small" style="padding:10px 16px;">{{ p.emf or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.requirement or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.order or '—' }}</td>
-          <td>
+          <td style="padding:10px 16px;">
             <span class="badge bg-{{ p.status_color }}-subtle text-{{ p.status_color }} border border-{{ p.status_color }}-subtle small">
               {{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}
             </span>
           </td>
-          <td class="text-end text-nowrap">
+          <td class="text-end text-nowrap" style="padding:10px 16px;">
             <a href="{{ url_for('purchases.detail', id=p.id) }}"
                class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
                style="width:30px;height:30px;background:#dbeafe;color:#1d4ed8;border:none;">
@@ -118,7 +111,7 @@
             {% endif %}
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('purchases.delete', id=p.id) }}" class="d-inline"
-                  onsubmit="return confirm('{{ t.confirm_delete_purchase }}')">
+                  onsubmit="return confirm('{% if p.status == 'Order Received in Warehouse' %}⚠️ הרכש נקלט במחסן!\n\nמחיקה תפחית את הכמויות מהמלאי אוטומטית.\n\nלמחוק?{% else %}{{ t.confirm_delete_purchase }}{% endif %}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit"
                       class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
@@ -141,60 +134,58 @@
     </table>
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
-  var buttons = document.querySelectorAll('.status-filter-btn');
+  var ACTIVE = ['BOM Transferred', 'Requirement Created', 'Order Signed'];
+  var buttons = document.querySelectorAll('.pf-btn');
   var rows    = document.querySelectorAll('.purchase-row');
+  var countEl = document.getElementById('purchaseCount');
+  var suffix  = countEl ? countEl.textContent.split(' ').slice(1).join(' ') : '';
 
-  buttons.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var filter = this.dataset.filter;
-
-      // Reset all buttons
-      buttons.forEach(function (b) {
-        if (b.dataset.filter === 'all') {
-          b.style.background = 'transparent';
-          b.style.color      = '#6b7280';
-          b.style.border     = '2px solid #6b7280';
-        } else {
-          b.style.background = 'transparent';
-          b.style.color      = b._origColor;
-          b.style.borderColor = b._origColor;
-        }
-      });
-
-      // Activate clicked button
-      if (filter === 'all') {
-        this.style.background = '#6b7280';
-        this.style.color      = '#fff';
+  function applyFilter(filter) {
+    // Update button styles
+    buttons.forEach(function (b) {
+      var isActive = b.dataset.filter === filter;
+      if (b.dataset.filter === 'active') {
+        b.style.background = isActive ? '#6b7280' : 'transparent';
+        b.style.color      = isActive ? '#fff'    : '#6b7280';
+        b.style.borderColor = '#6b7280';
       } else {
-        this.style.background = this._origColor;
-        this.style.color      = '#fff';
+        b.style.background  = isActive ? b._color : 'transparent';
+        b.style.color       = isActive ? '#fff'   : b._color;
+        b.style.borderColor = b._color;
       }
-
-      // Filter rows
-      var visible = 0;
-      rows.forEach(function (row) {
-        var match = filter === 'all' || row.dataset.status === filter;
-        row.style.display = match ? '' : 'none';
-        if (match) visible++;
-      });
     });
-  });
 
-  // Store original colors on load + auto-apply URL filter
-  buttons.forEach(function (b) {
-    b._origColor = b.style.borderColor || b.style.color;
-  });
+    // Filter rows
+    var visible = 0;
+    rows.forEach(function (r) {
+      var show = filter === 'active'
+        ? ACTIVE.indexOf(r.dataset.status) !== -1
+        : r.dataset.status === filter;
+      r.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
 
-  var s = new URLSearchParams(window.location.search).get('status');
-  if (s) {
-    var target = document.querySelector('.status-filter-btn[data-filter="' + s + '"]');
-    if (target) target.click();
+    if (countEl) countEl.textContent = visible + ' ' + suffix;
   }
+
+  // Store colors + bind clicks
+  buttons.forEach(function (b) {
+    b._color = b.style.borderColor;
+    b.addEventListener('click', function () { applyFilter(this.dataset.filter); });
+  });
+
+  // Default: show active only
+  applyFilter('active');
+
+  // Override if URL has ?status=
+  var s = new URLSearchParams(window.location.search).get('status');
+  if (s) applyFilter(s);
 })();
 </script>
 {% endblock %}

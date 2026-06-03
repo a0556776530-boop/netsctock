@@ -138,14 +138,13 @@ _HISTORY_STATUSES = ['Order Received in Warehouse', 'בוטל']
 @login_required
 def list_purchases():
     try:
-        purchases = list(Purchase.objects(status__in=ACTIVE_STATUSES).order_by('-created_at'))
+        purchases = list(Purchase.objects.order_by('-created_at'))
     except Exception:
         err = traceback.format_exc()
         current_app.logger.error('list_purchases error:\n' + err)
         flash('שגיאה בטעינת רכשים: ' + err.splitlines()[-1], 'danger')
         purchases = []
-    return render_template('purchases/list.html', purchases=purchases,
-                           statuses=ACTIVE_STATUSES)
+    return render_template('purchases/list.html', purchases=purchases)
 
 
 @purchases_bp.route('/history')
