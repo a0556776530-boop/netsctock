@@ -68,9 +68,21 @@
         <div class="chat-header-sub" id="chatHeaderSub"></div>
       </div>
       <div class="chat-header-actions d-flex gap-1">
+        <button class="btn" id="chatSearchInConvBtn" title="חפש בשיחה"><i class="bi bi-search"></i></button>
+        <button class="btn" id="chatSoundBtn" title="השתק"><i class="bi bi-volume-up"></i></button>
+        <button class="btn" id="chatNotifBtn" title="הפעל התראות דפדפן"><i class="bi bi-bell"></i></button>
         <button class="btn" id="chatFavBtn" title="מועדפים"><i class="bi bi-star"></i></button>
         <button class="btn" id="chatPinBtn" title="הצמד"><i class="bi bi-pin-angle"></i></button>
       </div>
+    </div>
+
+    {# Search in conversation bar #}
+    <div class="chat-search-in-conv chat-hidden-until-room" id="chatSearchInConv" style="display:none;">
+      <input type="text" id="chatConvSearchInput" placeholder="חפש בשיחה...">
+      <span class="search-count" id="chatSearchCount"></span>
+      <button id="chatSearchPrev" title="קודם"><i class="bi bi-chevron-up"></i></button>
+      <button id="chatSearchNext" title="הבא"><i class="bi bi-chevron-down"></i></button>
+      <button id="chatSearchClose" title="סגור"><i class="bi bi-x-lg"></i></button>
     </div>
 
     {# Upload progress #}
@@ -115,6 +127,17 @@
 
 {# Context menu #}
 <div id="chatContextMenu" class="chat-context-menu"></div>
+
+{# Forward modal #}
+<div id="chatForwardOverlay" class="chat-modal-overlay" style="display:none;">
+  <div class="chat-modal-box">
+    <div class="chat-modal-header">
+      <span><i class="bi bi-forward me-2"></i>העבר הודעה</span>
+      <span class="chat-modal-close" id="chatForwardClose">&times;</span>
+    </div>
+    <div class="chat-modal-list" id="chatForwardList"></div>
+  </div>
+</div>
 
 {# Toast container #}
 <div id="chatToastContainer" class="chat-toast-container"></div>

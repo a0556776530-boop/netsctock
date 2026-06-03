@@ -4,23 +4,27 @@
 
   /* ── State ──────────────────────────────────────────────────────────────── */
   var S = {
-    me:           window.CHAT_ME_ID   || '',
-    meName:       window.CHAT_ME_NAME || '',
-    meRole:       window.CHAT_ME_ROLE || '',
-    csrf:         document.querySelector('meta[name=csrf-token]') ? document.querySelector('meta[name=csrf-token]').content : '',
-    room:         null,
-    roomName:     '',
-    roomType:     '',
-    receiverId:   '',
-    replyTo:      null,       // {id, text, user}
-    lastTs:       null,
-    typingTimer:  null,
-    conversations:[],
-    pinned:       [],
-    favorites:    [],
-    theme:        localStorage.getItem('chat-theme') || 'light',
-    reactions:    window.CHAT_REACTIONS || ['👍','❤️','🔥','✅','😂','😮'],
-    searchQ:      '',
+    me:             window.CHAT_ME_ID   || '',
+    meName:         window.CHAT_ME_NAME || '',
+    meRole:         window.CHAT_ME_ROLE || '',
+    csrf:           document.querySelector('meta[name=csrf-token]') ? document.querySelector('meta[name=csrf-token]').content : '',
+    room:           null,
+    roomName:       '',
+    roomType:       '',
+    receiverId:     '',
+    replyTo:        null,
+    lastTs:         null,
+    typingTimer:    null,
+    conversations:  [],
+    pinned:         [],
+    favorites:      [],
+    theme:          localStorage.getItem('chat-theme') || 'light',
+    reactions:      window.CHAT_REACTIONS || ['👍','❤️','🔥','✅','😂','😮'],
+    searchQ:        '',
+    soundMuted:     localStorage.getItem('chat-sound-muted') === '1',
+    searchResults:  [],
+    searchIdx:      -1,
+    forwardMsgId:   null,
   };
 
   /* ── DOM refs ───────────────────────────────────────────────────────────── */
@@ -50,13 +54,27 @@
     EL.lightboxImg  = $('#chatLightboxImg');
     EL.contextMenu  = $('#chatContextMenu');
     EL.uploadProg   = $('#chatUploadProgress');
-    EL.themeBtn     = $('#chatThemeBtn');
-    EL.pinBtn       = $('#chatPinBtn');
-    EL.favBtn       = $('#chatFavBtn');
-    EL.searchGroups = $('#chatSearchGroups');
-    EL.mobilBack    = $('#chatMobileBack');
+    EL.themeBtn           = $('#chatThemeBtn');
+    EL.pinBtn             = $('#chatPinBtn');
+    EL.favBtn             = $('#chatFavBtn');
+    EL.searchGroups       = $('#chatSearchGroups');
+    EL.mobilBack          = $('#chatMobileBack');
+    EL.searchInConvBtn    = $('#chatSearchInConvBtn');
+    EL.searchInConv       = $('#chatSearchInConv');
+    EL.convSearchInput    = $('#chatConvSearchInput');
+    EL.searchCount        = $('#chatSearchCount');
+    EL.searchPrev         = $('#chatSearchPrev');
+    EL.searchNext         = $('#chatSearchNext');
+    EL.searchClose        = $('#chatSearchClose');
+    EL.soundBtn           = $('#chatSoundBtn');
+    EL.notifBtn           = $('#chatNotifBtn');
+    EL.forwardOverlay     = $('#chatForwardOverlay');
+    EL.forwardList        = $('#chatForwardList');
+    EL.forwardClose       = $('#chatForwardClose');
 
     applyTheme(S.theme);
+    updateSoundBtn();
+    updateNotifBtn();
 
     // Load conversations
     loadConversations();
@@ -420,6 +438,11 @@
     var senderName = (!isMe && (S.roomType === 'channel' || S.roomType === 'group' || S.room === 'group'))
       ? '<div class="chat-sender-name">' + _esc(msg.user_name) + '</div>' : '';
 
+    var forwardHTML = '';
+    if (msg.forwarded && !msg.deleted) {
+      forwardHTML = '<div class="chat-forward-banner"><i class="bi bi-forward-fill"></i>הועבר מ-' + _esc(msg.forward_from || '') + '</div>';
+    }
+
     var replyHTML = '';
     if (msg.reply_to_id && msg.reply_to_text) {
       replyHTML = '<div class="chat-reply-quote" data-jump="' + _esc(msg.reply_to_id) + '">' +
@@ -454,6 +477,8 @@
 
     var reactionsHTML = buildReactionsHTML(msg);
 
+    var editedHTML = (msg.edited && !msg.deleted) ? '<span class="chat-edited-label">ערוך</span>' : '';
+
     var checks = '';
     if (isMe && !msg.deleted) {
       var seen = msg.readers && msg.readers.length > 1;
@@ -471,10 +496,12 @@
         senderName +
         '<div class="' + bubbleCls + '" style="position:relative;">' +
           picker +
+          forwardHTML +
           replyHTML +
           textHTML +
           fileHTML +
           '<div class="chat-bubble-footer">' +
+            editedHTML +
             '<span>' + _esc(msg.timestamp) + '</span>' +
             checks +
           '</div>' +
@@ -615,11 +642,13 @@
 
     var items = [];
     if (!msg.deleted) {
-      items.push({icon:'bi-reply', label:'Reply', fn: function(){ setReply(msg); }});
-      items.push({icon:'bi-clipboard', label:'Copy', fn: function(){ navigator.clipboard.writeText(msg.text||''); }});
+      items.push({icon:'bi-reply',   label:'Reply',   fn: function(){ setReply(msg); }});
+      items.push({icon:'bi-forward', label:'Forward', fn: function(){ openForwardModal(msg); }});
+      items.push({icon:'bi-clipboard', label:'Copy', fn: function(){ navigator.clipboard && navigator.clipboard.writeText(msg.text||''); }});
     }
     if (isMe && !msg.deleted) {
-      items.push({icon:'bi-trash', label:'Delete', cls:'danger', fn: function(){ deleteMsg(msg.id); }});
+      items.push({icon:'bi-pencil', label:'Edit',   fn: function(){ startEditMessage(row, msg); }});
+      items.push({icon:'bi-trash',  label:'Delete', cls:'danger', fn: function(){ deleteMsg(msg.id); }});
     }
 
     items.forEach(function(item){
@@ -673,9 +702,13 @@
 
   /* ── Toast ──────────────────────────────────────────────────────────────── */
   function showToast(msg) {
-    if (document.hidden) return;  // don't show if same chat is open
-    if (msg.room === S.room) return;
+    if (msg.room === S.room && !document.hidden) return;
     if (!EL.toastCont) return;
+    // Sound + browser notification for messages from others
+    if (msg.user_id !== S.me) {
+      playPing();
+      showBrowserNotification(msg);
+    }
 
     var toast = document.createElement('div');
     toast.className = 'chat-toast';
@@ -755,8 +788,31 @@
     if (EL.pinBtn) EL.pinBtn.addEventListener('click', togglePin);
     if (EL.favBtn) EL.favBtn.addEventListener('click', toggleFav);
 
-    // Search
+    // Sidebar search
     if (EL.searchInput) EL.searchInput.addEventListener('input', function(){ S.searchQ = this.value; renderSidebar(); });
+
+    // Search in conversation
+    if (EL.searchInConvBtn) EL.searchInConvBtn.addEventListener('click', openSearch);
+    if (EL.searchClose)     EL.searchClose.addEventListener('click', closeSearch);
+    if (EL.searchPrev)      EL.searchPrev.addEventListener('click', function(){ navSearch(-1); });
+    if (EL.searchNext)      EL.searchNext.addEventListener('click', function(){ navSearch(1); });
+    if (EL.convSearchInput) {
+      EL.convSearchInput.addEventListener('input', function(){ runSearch(); });
+      EL.convSearchInput.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') navSearch(1);
+        if (e.key === 'Escape') closeSearch();
+      });
+    }
+
+    // Sound
+    if (EL.soundBtn) EL.soundBtn.addEventListener('click', toggleSound);
+
+    // Browser notifications
+    if (EL.notifBtn) EL.notifBtn.addEventListener('click', requestNotifPermission);
+
+    // Forward modal close
+    if (EL.forwardClose)  EL.forwardClose.addEventListener('click', function(){ EL.forwardOverlay.style.display = 'none'; });
+    if (EL.forwardOverlay) EL.forwardOverlay.addEventListener('click', function(e){ if (e.target === EL.forwardOverlay) EL.forwardOverlay.style.display = 'none'; });
 
     // Lightbox close
     if (EL.lightbox) EL.lightbox.addEventListener('click', function(){ EL.lightbox.classList.remove('show'); });
@@ -777,6 +833,233 @@
         if (EL.sidebar) EL.sidebar.classList.toggle('mobile-open');
       });
     }
+  }
+
+  /* ── Feature 1: Glassmorphism — pure CSS, no JS needed ─────────────────── */
+
+  /* ── Feature 2: Edit message ────────────────────────────────────────────── */
+  function startEditMessage(row, msg) {
+    var bubble = row.querySelector('.chat-bubble-text');
+    if (!bubble) return;
+    var original = msg.text || '';
+    var input = document.createElement('textarea');
+    input.className = 'chat-edit-input';
+    input.value = original;
+    input.rows  = Math.min(4, (original.match(/\n/g) || []).length + 1);
+    bubble.replaceWith(input);
+    input.focus();
+    input.select();
+
+    function save() {
+      var newText = input.value.trim();
+      if (!newText || newText === original) { input.replaceWith(bubble); return; }
+      apiPost('/chat/api/edit/' + msg.id, {text: newText})
+        .then(function(d){
+          if (!d.ok) { input.replaceWith(bubble); return; }
+          var newBubble = document.createElement('div');
+          newBubble.className = 'chat-bubble-text';
+          newBubble.textContent = newText;
+          input.replaceWith(newBubble);
+          // Add edited label
+          var footer = row.querySelector('.chat-bubble-footer');
+          if (footer && !footer.querySelector('.chat-edited-label')) {
+            var label = document.createElement('span');
+            label.className = 'chat-edited-label';
+            label.textContent = 'ערוך';
+            footer.insertBefore(label, footer.firstChild);
+          }
+        });
+    }
+
+    input.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); }
+      if (e.key === 'Escape') { input.replaceWith(bubble); }
+    });
+    input.addEventListener('blur', save);
+  }
+
+  /* ── Feature 3: Forward message ─────────────────────────────────────────── */
+  function openForwardModal(msg) {
+    S.forwardMsgId = msg.id;
+    if (!EL.forwardList || !EL.forwardOverlay) return;
+
+    var html = '';
+    S.conversations.forEach(function(c){
+      if (c.room === S.room) return; // skip current room
+      var avatar = c.type === 'dm'
+        ? roleAvatar(c.role, 'sm')
+        : '<div class="role-avatar-sm role-admin"><i class="bi ' + (c.icon||'bi-chat') + '"></i></div>';
+      html += '<div class="chat-modal-item" data-room="' + _esc(c.room) + '" data-rcv="' + _esc(c.user_id||'') + '">' +
+        avatar + '<span class="item-name">' + _esc(c.name) + '</span></div>';
+    });
+    EL.forwardList.innerHTML = html || '<div class="p-4 text-center text-muted" style="font-size:.85rem;">אין שיחות אחרות</div>';
+
+    EL.forwardList.querySelectorAll('.chat-modal-item').forEach(function(el){
+      el.addEventListener('click', function(){
+        executeForward(S.forwardMsgId, el.dataset.room, el.dataset.rcv || null);
+        EL.forwardOverlay.style.display = 'none';
+      });
+    });
+
+    EL.forwardOverlay.style.display = 'flex';
+  }
+
+  function executeForward(msgId, targetRoom, receiverId) {
+    apiPost('/chat/api/forward', {msg_id: msgId, target_room: targetRoom, receiver_id: receiverId || null})
+      .then(function(d){
+        if (d.ok) {
+          showToast({user_name: S.meName, text: '→ הועבר', room: targetRoom});
+        }
+      });
+  }
+
+  /* ── Feature 4: Search inside conversation ──────────────────────────────── */
+  function openSearch() {
+    if (!EL.searchInConv) return;
+    EL.searchInConv.classList.add('show');
+    EL.searchInConv.style.display = '';
+    if (EL.convSearchInput) EL.convSearchInput.focus();
+  }
+
+  function closeSearch() {
+    if (!EL.searchInConv) return;
+    EL.searchInConv.classList.remove('show');
+    EL.searchInConv.style.display = 'none';
+    clearSearchHighlights();
+    S.searchResults = [];
+    S.searchIdx     = -1;
+    if (EL.searchCount) EL.searchCount.textContent = '';
+    if (EL.convSearchInput) EL.convSearchInput.value = '';
+  }
+
+  function runSearch() {
+    var q = EL.convSearchInput ? EL.convSearchInput.value.trim() : '';
+    clearSearchHighlights();
+    if (!q || q.length < 2 || !S.room) {
+      if (EL.searchCount) EL.searchCount.textContent = '';
+      S.searchResults = []; S.searchIdx = -1;
+      return;
+    }
+
+    fetch('/chat/api/search?room=' + encodeURIComponent(S.room) + '&q=' + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        S.searchResults = d.results || [];
+        S.searchIdx     = S.searchResults.length ? 0 : -1;
+        highlightResults(q);
+        updateSearchCount();
+        scrollToResult(S.searchIdx);
+      });
+  }
+
+  function highlightResults(q) {
+    if (!EL.messagesArea) return;
+    var re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    S.searchResults.forEach(function(r){
+      var row = EL.messagesArea.querySelector('[data-id="' + r.id + '"]');
+      if (!row) return;
+      row.classList.add('chat-msg-highlight');
+      var textEl = row.querySelector('.chat-bubble-text');
+      if (textEl) textEl.innerHTML = textEl.textContent.replace(re, '<mark class="chat-mark">$1</mark>');
+    });
+  }
+
+  function clearSearchHighlights() {
+    if (!EL.messagesArea) return;
+    $$('.chat-msg-highlight', EL.messagesArea).forEach(function(row){
+      row.classList.remove('chat-msg-highlight');
+      var textEl = row.querySelector('.chat-bubble-text');
+      if (textEl) textEl.innerHTML = textEl.textContent; // strip marks
+    });
+  }
+
+  function updateSearchCount() {
+    if (!EL.searchCount) return;
+    if (!S.searchResults.length) { EL.searchCount.textContent = '0 תוצאות'; return; }
+    EL.searchCount.textContent = (S.searchIdx + 1) + ' / ' + S.searchResults.length;
+  }
+
+  function scrollToResult(idx) {
+    if (idx < 0 || idx >= S.searchResults.length || !EL.messagesArea) return;
+    var id  = S.searchResults[idx].id;
+    var row = EL.messagesArea.querySelector('[data-id="' + id + '"]');
+    if (row) row.scrollIntoView({behavior:'smooth', block:'center'});
+    updateSearchCount();
+  }
+
+  function navSearch(dir) {
+    if (!S.searchResults.length) return;
+    S.searchIdx = (S.searchIdx + dir + S.searchResults.length) % S.searchResults.length;
+    scrollToResult(S.searchIdx);
+  }
+
+  /* ── Feature 5: Sound notifications ────────────────────────────────────── */
+  function playPing() {
+    if (S.soundMuted) return;
+    try {
+      var ctx  = new (window.AudioContext || window.webkitAudioContext)();
+      var osc  = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.35);
+    } catch(e) {}
+  }
+
+  function toggleSound() {
+    S.soundMuted = !S.soundMuted;
+    localStorage.setItem('chat-sound-muted', S.soundMuted ? '1' : '0');
+    updateSoundBtn();
+  }
+
+  function updateSoundBtn() {
+    if (!EL.soundBtn) return;
+    EL.soundBtn.innerHTML = S.soundMuted
+      ? '<i class="bi bi-volume-mute"></i>'
+      : '<i class="bi bi-volume-up"></i>';
+    EL.soundBtn.title = S.soundMuted ? 'הפעל צליל' : 'השתק';
+  }
+
+  /* ── Feature 6: Browser notifications ──────────────────────────────────── */
+  function requestNotifPermission() {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(updateNotifBtn);
+  }
+
+  function showBrowserNotification(msg) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!document.hidden) return;
+    if (msg.room === S.room) return;
+    try {
+      var n = new Notification(msg.user_name || 'Chat', {
+        body: msg.text ? msg.text.substring(0, 80) : '📎 ' + (msg.file_name || 'קובץ'),
+        tag:  msg.room,
+      });
+      n.onclick = function(){
+        window.focus();
+        openRoom(msg.room);
+        n.close();
+      };
+      setTimeout(function(){ n.close(); }, 6000);
+    } catch(e) {}
+  }
+
+  function updateNotifBtn() {
+    if (!EL.notifBtn) return;
+    if (!('Notification' in window)) { EL.notifBtn.style.display = 'none'; return; }
+    var perm = Notification.permission;
+    EL.notifBtn.innerHTML = perm === 'granted'
+      ? '<i class="bi bi-bell-fill text-primary"></i>'
+      : perm === 'denied'
+      ? '<i class="bi bi-bell-slash"></i>'
+      : '<i class="bi bi-bell"></i>';
+    EL.notifBtn.title = perm === 'granted' ? 'התראות פעילות' : 'הפעל התראות';
   }
 
   /* ── Helpers ────────────────────────────────────────────────────────────── */

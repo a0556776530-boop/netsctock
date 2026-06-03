@@ -469,6 +469,83 @@ def api_typing_get():
     return jsonify(typers=typers)
 
 
+# ── API: edit ─────────────────────────────────────────────────────────────────
+
+@chat_bp.route('/api/edit/<msg_id>', methods=['POST'])
+@login_required
+def api_edit(msg_id):
+    msg = ChatMessage.objects(id=msg_id).first()
+    if not msg or msg.deleted:
+        return jsonify(ok=False), 404
+    if msg.user_id != str(current_user.id):
+        return jsonify(ok=False), 403
+    data     = request.get_json(force=True) or {}
+    new_text = (data.get('text') or '').strip()[:4000]
+    if not new_text:
+        return jsonify(ok=False, error='empty'), 400
+    msg.text   = new_text
+    msg.edited = True
+    msg.save()
+    return jsonify(ok=True, text=new_text)
+
+
+# ── API: forward ───────────────────────────────────────────────────────────────
+
+@chat_bp.route('/api/forward', methods=['POST'])
+@login_required
+def api_forward():
+    data        = request.get_json(force=True) or {}
+    msg_id      = data.get('msg_id')
+    target_room = data.get('target_room', 'group')
+    receiver_id = data.get('receiver_id') or None
+
+    orig = ChatMessage.objects(id=msg_id).first()
+    if not orig or orig.deleted:
+        return jsonify(ok=False), 404
+
+    is_group = target_room == 'group' or target_room.startswith('ch_') or target_room.startswith('grp_')
+
+    fwd = ChatMessage(
+        user_id     =str(current_user.id),
+        user_name   =current_user.name,
+        user_role   =current_user.role,
+        text        =orig.text or '',
+        room        =target_room,
+        receiver_id =receiver_id,
+        read        =is_group,
+        forwarded   =True,
+        forward_from=orig.user_name,
+        reactions   ={},
+        readers     =[str(current_user.id)],
+        file_data   =orig.file_data,
+        file_name   =orig.file_name,
+        file_type   =orig.file_type,
+        file_size   =orig.file_size,
+    )
+    fwd.save()
+    return jsonify(ok=True, message=fwd.to_dict())
+
+
+# ── API: search inside conversation ───────────────────────────────────────────
+
+@chat_bp.route('/api/search')
+@login_required
+def api_search():
+    room_key = request.args.get('room', '')
+    q        = request.args.get('q', '').strip()
+    if not room_key or not q or len(q) < 2:
+        return jsonify(results=[])
+
+    import re as _re
+    pattern = _re.compile(_re.escape(q), _re.IGNORECASE)
+    msgs    = ChatMessage.objects(room=room_key, deleted=False).order_by('timestamp')
+    results = [
+        {'id': str(m.id), 'text': m.text or '', 'ts': m.timestamp.strftime('%d/%m %H:%M'), 'user': m.user_name}
+        for m in msgs if m.text and pattern.search(m.text)
+    ]
+    return jsonify(results=results)
+
+
 # ── API: inbox status (nav badge) ─────────────────────────────────────────────
 
 @chat_bp.route('/api/inbox-status')

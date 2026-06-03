@@ -41,8 +41,13 @@ class ChatMessage(me.Document):
     # Reactions: {'👍': ['uid1', 'uid2'], '❤️': ['uid3']}
     reactions   = me.DictField()
 
-    # Soft-delete
+    # Soft-delete + edit
     deleted     = me.BooleanField(default=False)
+    edited      = me.BooleanField(default=False)
+
+    # Forward
+    forwarded     = me.BooleanField(default=False)
+    forward_from  = me.StringField(max_length=100)
 
     # File attachment (base64, max ~2 MB original)
     file_data   = me.StringField()     # base64-encoded content
@@ -75,6 +80,9 @@ class ChatMessage(me.Document):
             'file_type':     self.file_type or '',
             'file_size':     self.file_size or 0,
             'has_file':      bool(self.file_data),
+            'edited':        bool(self.edited),
+            'forwarded':     bool(self.forwarded),
+            'forward_from':  self.forward_from or '',
         }
 
     def to_dict_with_file(self, viewer_id=None):
