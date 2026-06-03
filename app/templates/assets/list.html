@@ -90,14 +90,7 @@
 <div class="row g-0">
 <div class="col-12">
 
-    <!-- ── Sticky top section: action buttons + filters ──────────────────── -->
-    <div id="assetsStickyTop" style="
-      position: sticky;
-      top: 56px;
-      z-index: 40;
-      background: #f3f4f6;
-      padding-bottom: 8px;
-    ">
+    <div>
 
     <!-- Title / action buttons -->
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -180,10 +173,10 @@
       #assetsTable { border-collapse: separate; border-spacing: 0; }
       #assetsTable thead th {
         position: sticky;
+        top: 56px;
         z-index: 30;
         background: #212529;
         box-shadow: 0 2px 6px rgba(0,0,0,.35);
-        /* top is set by JS after layout */
       }
     </style>
     <div class="card border-0 shadow-sm">
@@ -463,27 +456,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-// ── Sticky thead: top = app-topbar (56px) + sticky-filters measured height ──
-(function () {
-  var APP_BAR   = 56;
-  var stickyTop = document.getElementById('assetsStickyTop');
-  var ths       = document.querySelectorAll('#assetsTable thead th');
-
-  function pin() {
-    if (!stickyTop || !ths.length) return;
-    var h = stickyTop.getBoundingClientRect().height;
-    ths.forEach(function (th) { th.style.top = (APP_BAR + h) + 'px'; });
-  }
-
-  // Two rAF passes guarantee post-layout measurement
-  requestAnimationFrame(function () {
-    requestAnimationFrame(pin);
-  });
-  window.addEventListener('resize', pin);
-  window.addEventListener('load',   pin);
-})();
-</script>
 <script>
 (function () {
   // ── Translation strings ───────────────────────────────────────────────────
