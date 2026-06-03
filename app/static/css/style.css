@@ -137,9 +137,8 @@ body {
 .search-clear:hover { color: #495057; }
 
 /* Table row smooth filter transition */
-tr[data-asset-row] {
-  transition: opacity .13s ease-out;
-}
+tr[data-asset-row],
+tr[data-lh-row],
 tr[data-group-row] {
   transition: opacity .13s ease-out;
 }

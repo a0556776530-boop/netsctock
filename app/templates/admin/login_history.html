@@ -10,8 +10,17 @@
     <div class="row g-2 align-items-end">
       <div class="col-md-3">
         <label class="form-label small text-muted mb-1">{{ t.login_history_filter_user }}</label>
-        <input type="text" name="user" value="{{ user_filter }}"
-               class="form-control form-control-sm" placeholder="{{ t.login_history_filter_user_ph }}">
+        <div class="search-wrap">
+          <i class="bi bi-search search-icon position-absolute top-50 translate-middle-y text-muted"></i>
+          <input type="text" id="lhSearch" name="user" value="{{ user_filter }}"
+                 class="form-control form-control-sm search-field"
+                 placeholder="{{ t.login_history_filter_user_ph }}"
+                 autocomplete="off" spellcheck="false">
+          <button type="button" id="lhSearchClear" class="search-clear position-absolute top-50 translate-middle-y"
+                  tabindex="-1" title="{{ t.clear_search_title }}">
+            <i class="bi bi-x-circle-fill"></i>
+          </button>
+        </div>
       </div>
       <div class="col-md-2">
         <label class="form-label small text-muted mb-1">{{ t.login_history_filter_status }}</label>
@@ -68,14 +77,18 @@
       </thead>
       <tbody>
         {% for ev in events %}
-        <tr class="{{ 'table-danger table-danger-subtle' if not ev.success else '' }}">
+        {% set ua = ev.user_agent or '' %}
+        {% set browser = 'Chrome' if 'Chrome' in ua else ('Firefox' if 'Firefox' in ua else ('Safari' if 'Safari' in ua else ('Edge' if 'Edge' in ua else ''))) %}
+        <tr class="{{ 'table-danger table-danger-subtle' if not ev.success else '' }}"
+            data-lh-row="1"
+            data-q="{{ ((ev.user_name or '') ~ ' ' ~ (ev.ip_address or '') ~ ' ' ~ browser) | lower }}">
           <td class="font-monospace text-nowrap">
             {{ (ev.timestamp | localtime).strftime('%d/%m/%Y') }}
           </td>
           <td class="font-monospace text-muted text-nowrap">
             {{ (ev.timestamp | localtime).strftime('%H:%M:%S') }}
           </td>
-          <td class="fw-semibold">{{ ev.user_name or '—' }}</td>
+          <td class="fw-semibold"><span data-hl>{{ ev.user_name or '—' }}</span></td>
           <td>
             {% set role = ev.user_role or '' %}
             {% if role == 'super_admin' %}
@@ -90,10 +103,9 @@
               <span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td class="font-monospace text-muted">{{ ev.ip_address or '—' }}</td>
+          <td class="font-monospace text-muted"><span data-hl>{{ ev.ip_address or '—' }}</span></td>
           <td class="text-muted" style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-              title="{{ ev.user_agent or '' }}">
-            {% set ua = ev.user_agent or '' %}
+              title="{{ ua }}">
             {% if 'Mobile' in ua or 'Android' in ua or 'iPhone' in ua %}
               <i class="bi bi-phone me-1"></i>
             {% else %}
@@ -153,5 +165,106 @@
 </nav>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var searchInput  = document.getElementById('lhSearch');
+  var searchClear  = document.getElementById('lhSearchClear');
+  var countEl      = document.querySelector('.lh-count');
+
+  var hlCache = new Map();
+  function getHlCells(row) {
+    if (hlCache.has(row)) return hlCache.get(row);
+    var cells = [];
+    row.querySelectorAll('[data-hl]').forEach(function (el) {
+      cells.push({ el: el, orig: el.textContent });
+    });
+    hlCache.set(row, cells);
+    return cells;
+  }
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function applyHL(row, q) {
+    getHlCells(row).forEach(function (item) {
+      if (!q) { item.el.textContent = item.orig; return; }
+      var t = item.orig, tl = t.toLowerCase(), ql = q.toLowerCase();
+      var i = tl.indexOf(ql);
+      if (i === -1) { item.el.textContent = t; return; }
+      var html = '', pos = 0;
+      while (i !== -1) {
+        html += esc(t.slice(pos, i));
+        html += '<mark class="srch-hl">' + esc(t.slice(i, i + q.length)) + '</mark>';
+        pos = i + q.length;
+        i = tl.indexOf(ql, pos);
+      }
+      item.el.innerHTML = html + esc(t.slice(pos));
+    });
+  }
+
+  var fading = new Set();
+  function setVisible(row, show) {
+    if (show) {
+      fading.delete(row);
+      if (row.style.display === 'none') {
+        row.style.display = '';
+        row.style.opacity = '0';
+        requestAnimationFrame(function () { row.style.opacity = '1'; });
+      }
+    } else {
+      if (row.style.display === 'none') return;
+      row.style.opacity = '0';
+      fading.add(row);
+      setTimeout(function () {
+        if (fading.has(row)) { row.style.display = 'none'; fading.delete(row); }
+      }, 130);
+    }
+  }
+
+  function filterRows() {
+    var q  = searchInput ? searchInput.value.trim() : '';
+    var ql = q.toLowerCase();
+    var total = 0;
+    document.querySelectorAll('tr[data-lh-row]').forEach(function (row) {
+      var text = row.getAttribute('data-q') || '';
+      var show = !ql || text.indexOf(ql) !== -1;
+      setVisible(row, show);
+      applyHL(row, show ? q : '');
+      if (show) total++;
+    });
+    if (searchClear) {
+      searchClear.style.opacity       = q ? '1' : '0';
+      searchClear.style.pointerEvents = q ? 'auto' : 'none';
+    }
+    if (searchInput) searchInput.classList.toggle('is-active', !!q);
+    try {
+      var url = new URL(window.location.href);
+      if (q) { url.searchParams.set('user', q); } else { url.searchParams.delete('user'); }
+      history.replaceState(null, '', url.toString());
+    } catch (_) {}
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', filterRows);
+    searchInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { this.value = ''; filterRows(); this.blur(); }
+    });
+    if (searchInput.value) filterRows();
+  }
+  if (searchClear) {
+    searchClear.addEventListener('click', function () {
+      searchInput.value = ''; searchInput.focus(); filterRows();
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+      e.preventDefault();
+      if (searchInput) { searchInput.focus(); searchInput.select(); }
+    }
+  });
+})();
+</script>
 {% endblock %}
 
