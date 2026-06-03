@@ -235,19 +235,9 @@ setInterval(function() { fetch('/api/ping'); }, 5000);
   display:none; position:fixed; inset:0; z-index:99999;
   background:#000; align-items:center; justify-content:center;
   flex-direction:column; gap:16px; cursor:pointer;">
-  <div style="text-align:center; user-select:none;">
-    <img src="{{ url_for('static', filename='img/ביתר.jpg') }}"
-         alt="ביתר ירושלים"
-         style="width:280px; height:auto; object-fit:contain; filter:drop-shadow(0 0 30px #FFD700);">
-    <div style="color:#FFD700; font-size:2.8rem; font-weight:900; letter-spacing:.08em;
-                font-family:'Arial Black',sans-serif; margin-top:16px; direction:rtl;">
-      ביתר ירושלים
-    </div>
-    <div style="color:#FFD700; font-size:1.1rem; letter-spacing:.25em; margin-top:6px;
-                font-family:Arial,sans-serif; opacity:.8;">
-      אין בלתך
-    </div>
-  </div>
+  <img src="{{ url_for('static', filename='img/ביתר.jpg') }}"
+       alt="ביתר ירושלים"
+       style="width:320px; height:auto; object-fit:contain;">
   <div style="color:rgba(255,215,0,.35); font-size:.75rem; margin-top:24px; letter-spacing:.1em;">
     Ctrl+B / ESC
   </div>
