@@ -38,6 +38,16 @@ def ping():
     return jsonify({'ok': True})
 
 
+@main_bp.route('/api/unread-count')
+@login_required
+def unread_count():
+    from app.models.chat_message import ChatMessage
+    count = ChatMessage.objects(
+        receiver_id=str(current_user.id), read=False
+    ).count()
+    return jsonify({'count': count})
+
+
 @main_bp.route('/api/user-activity')
 @login_required
 def user_activity_api():
