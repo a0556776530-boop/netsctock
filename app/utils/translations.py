@@ -105,7 +105,7 @@ TRANSLATIONS = {
         'purchase_section_items': 'Items',
         'purchase_col_name': 'Task Name',
         'purchase_col_bom_date': 'BOM Issue Date',
-        'purchase_col_estimate_number': 'Estimate No. (Beinat)',
+        'purchase_col_estimate_number': 'Estimate No. (Bynet)',
         'purchase_col_amount': 'Amount',
         'purchase_col_emf': 'EMF No.',
         'purchase_col_requirement': 'Requirement No.',
