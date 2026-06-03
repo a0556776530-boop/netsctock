@@ -192,7 +192,7 @@
   const prevName = document.getElementById('previewName');
   const prevAmt  = document.getElementById('previewAmt');
   const submit   = document.getElementById('linkSubmit');
-  const currency = '{{ pool.currency }}';
+  const currency = {{ pool.currency | tojson }};
   const msgLoading  = '{{ t.pool_loading }}';
   const msgError    = '{{ t.pool_load_error }}';
   const msgNoOpen   = '{{ t.pool_no_open }}';
@@ -221,6 +221,10 @@
     renderList(filtered);
   });
 
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function renderList(data) {
     results.innerHTML = '';
     if (!data.length) {
@@ -237,11 +241,11 @@
       item.innerHTML = `
         <div class="d-flex justify-content-between align-items-center">
           <div>
-            <span class="badge bg-primary font-monospace me-1">#${e.allocation_number || '—'}</span>
-            <strong>${e.task_name}</strong>
-            ${e.project_name ? '<span class="text-muted small ms-1">· ' + e.project_name + '</span>' : ''}
+            <span class="badge bg-primary font-monospace me-1">#${esc(e.allocation_number || '—')}</span>
+            <strong>${esc(e.task_name)}</strong>
+            ${e.project_name ? '<span class="text-muted small ms-1">· ' + esc(e.project_name) + '</span>' : ''}
           </div>
-          <span class="fw-semibold text-success small">${amt}</span>
+          <span class="fw-semibold text-success small">${esc(amt)}</span>
         </div>`;
       item.addEventListener('click', () => {
         hiddenId.value       = e.id;

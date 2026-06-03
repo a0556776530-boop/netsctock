@@ -642,7 +642,7 @@ def import_qty_commit():
             errors.append(asset_id)
             continue
 
-        asset.quantity = (asset.quantity or 0) + add_qty
+        asset.quantity = add_qty
         asset.save()
         updated.append({
             'serial':       asset.serial_number,

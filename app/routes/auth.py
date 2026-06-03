@@ -52,8 +52,13 @@ def login():
                 ua=request.headers.get('User-Agent', ''), success=True,
             )
             next_page = request.args.get('next', '')
-            # Only allow relative paths — blocks //evil.com and http://... redirects
-            if not next_page or not next_page.startswith('/') or next_page.startswith('//'):
+            # Allow only safe relative paths.
+            # Block: empty, non-slash-prefixed, protocol-relative (//), and backslash-relative (/\)
+            # because Chrome/Edge/Safari normalise /\ to // enabling open-redirect.
+            if (not next_page
+                    or not next_page.startswith('/')
+                    or next_page.startswith('//')
+                    or next_page[1:2] == '\\'):
                 next_page = ''
             flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=matched.name), 'success')
             return redirect(next_page or url_for('main.dashboard'))

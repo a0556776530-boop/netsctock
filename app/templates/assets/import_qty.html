@@ -68,7 +68,7 @@
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-transparent fw-semibold d-flex align-items-center gap-2">
       <i class="bi bi-table me-1"></i>בדיקה ועריכה לפני אישור
-      <span class="text-muted small fw-normal">ניתן לערוך את כמות ההוספה לפני אישור</span>
+      <span class="text-muted small fw-normal">ניתן לערוך את הכמות החדשה לפני אישור</span>
     </div>
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0" id="stagingTable">
@@ -79,8 +79,7 @@
             <th>תיאור</th>
             <th class="text-center">סטטוס</th>
             <th class="text-center">כמות נוכחית</th>
-            <th class="text-center" style="width:120px;">כמות להוספה</th>
-            <th class="text-center">סה"כ אחרי עדכון</th>
+            <th class="text-center" style="width:120px;">כמות חדשה</th>
           </tr>
         </thead>
         <tbody id="stagingBody"></tbody>
@@ -218,7 +217,6 @@
     tbody.innerHTML = '';
 
     stagingRows.forEach((row, idx) => {
-      const newTotal = row.current_qty + row.add_qty;
       const tr = document.createElement('tr');
       if (!row.found) tr.classList.add('table-warning');
 
@@ -237,22 +235,16 @@
           <input type="number" class="form-control form-control-sm text-center qty-input font-monospace"
                  data-idx="${idx}" value="${row.add_qty}" min="0" style="width:80px;margin:auto;"
                  ${row.found ? '' : 'disabled'}>
-        </td>
-        <td class="text-center font-monospace fw-semibold total-cell" id="total-${idx}">
-          ${row.found ? newTotal : '—'}
         </td>`;
 
       tbody.appendChild(tr);
     });
 
-    // Live update totals
+    // Sync edited qty back into stagingRows
     tbody.querySelectorAll('.qty-input').forEach(inp => {
       inp.addEventListener('input', () => {
         const idx = +inp.dataset.idx;
-        const add = Math.max(0, parseInt(inp.value) || 0);
-        stagingRows[idx].add_qty = add;
-        const cell = document.getElementById('total-' + idx);
-        if (cell) cell.textContent = stagingRows[idx].current_qty + add;
+        stagingRows[idx].add_qty = Math.max(0, parseInt(inp.value) || 0);
       });
     });
 

@@ -1,5 +1,6 @@
 import json
 from datetime import date, timedelta, datetime
+from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, jsonify, redirect, request, session, url_for
 from flask_login import login_required, current_user
@@ -24,7 +25,11 @@ def set_lang(code):
     if code in ('en', 'he'):
         session['lang'] = code
         session.permanent = True
-    return redirect(request.referrer or url_for('main.dashboard'))
+    # Extract only the path from the Referer to prevent open-redirect via a
+    # spoofed Referer header pointing to an external host.
+    ref = request.referrer or ''
+    safe_back = urlparse(ref).path or url_for('main.dashboard')
+    return redirect(safe_back)
 
 
 @main_bp.route('/api/ping')

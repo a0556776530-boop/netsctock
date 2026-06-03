@@ -148,9 +148,12 @@ def new_estimate():
         try:
             estimate.save()
         except NotUniqueError:
-            # Concurrent request claimed this allocation number — retry with a fresh one
             estimate.allocation_number = _next_allocation_number()
-            estimate.save()
+            try:
+                estimate.save()
+            except NotUniqueError:
+                flash('מספר הקצאה נתפס במקביל. נסה שוב.', 'danger')
+                return redirect(url_for('estimates.new_estimate'))
         flash(f'Estimate "{task_name}" saved successfully.', 'success')
         if record_type == 'estimate':
             return redirect(url_for('estimates.list_budget_estimates'))
@@ -287,7 +290,11 @@ def edit(id):
             estimate.save()
         except NotUniqueError:
             estimate.allocation_number = _next_allocation_number()
-            estimate.save()
+            try:
+                estimate.save()
+            except NotUniqueError:
+                flash('מספר הקצאה נתפס במקביל. נסה שוב.', 'danger')
+                return redirect(url_for('estimates.edit', id=str(estimate.id)))
         flash('Estimate updated successfully.', 'success')
         return redirect(url_for('estimates.detail', id=str(estimate.id)))
 
@@ -351,8 +358,9 @@ def export_csv(id):
     w.writerow([])
     w.writerow(['', '', '', '', '', 'TOTAL (ILS)', estimate.formatted_total.replace(' ₪', '')])
     from werkzeug.utils import secure_filename
-    safe_name = secure_filename(estimate.task_name.replace(' ', '_') or 'estimate')
-    filename  = f"estimate_{safe_name}_{estimate.created_date}.csv"
+    # secure_filename strips non-ASCII (e.g. Hebrew) → apply fallback AFTER the call
+    safe_name = secure_filename(estimate.task_name.replace(' ', '_')) or 'estimate'
+    filename  = f"estimate_{safe_name}_{estimate.created_date or 'unknown'}.csv"
     return Response(buf.getvalue(), mimetype='text/csv',
                     headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 

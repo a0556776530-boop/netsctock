@@ -201,10 +201,14 @@ def link_estimate(id):
 
     if not matched:
         fresh = Pool.objects(id=pool.id).first()
-        already = fresh and any(
-            str(getattr(t.estimate, 'id', None)) == estimate_id
-            for t in (fresh.transactions or [])
-        )
+        try:
+            already = fresh and any(
+                str(t.estimate.id) == estimate_id
+                for t in (fresh.transactions or [])
+            )
+        except Exception:
+            # estimate may have been deleted — treat as not-yet-linked
+            already = False
         if already:
             flash('הקצאה זו כבר מקושרת לפול זה.', 'warning')
         else:
@@ -227,7 +231,11 @@ def unlink_estimate(id, tx_index):
     try:
         tx     = pool.transactions[tx_index]
         amount = round(float(tx.amount_drawn), 2)
-        est_id = tx.estimate.id
+        try:
+            est_id = tx.estimate.id
+        except Exception:
+            flash('לא ניתן לגשת להקצאה (ייתכן שנמחקה). נסה שוב.', 'danger')
+            return redirect(url_for('pools.detail', id=id))
 
         # Single atomic operation: decrement consumed_amount AND pull transaction
         from bson import ObjectId
