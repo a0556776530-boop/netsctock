@@ -37,4 +37,5 @@ class ChatMessage(me.Document):
             'date':        self.timestamp.strftime('%d/%m/%Y'),
             'room':        self.room or 'group',
             'receiver_id': self.receiver_id or '',
+            '_iso':        self.timestamp.isoformat(),
         }
