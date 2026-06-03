@@ -229,5 +229,50 @@ setInterval(function() { fetch('/api/ping'); }, 5000);
 })();
 </script>
 {% block scripts %}{% endblock %}
+
+<!-- Boss key overlay — Ctrl+B -->
+<div id="beitar-overlay" style="
+  display:none; position:fixed; inset:0; z-index:99999;
+  background:#000; align-items:center; justify-content:center;
+  flex-direction:column; gap:16px; cursor:pointer;">
+  <div style="text-align:center; user-select:none;">
+    <!-- Shield shape -->
+    <svg width="180" height="210" viewBox="0 0 180 210" xmlns="http://www.w3.org/2000/svg">
+      <path d="M90 5 L175 40 L175 120 Q175 175 90 205 Q5 175 5 120 L5 40 Z"
+            fill="#FFD700" stroke="#FFD700" stroke-width="2"/>
+      <path d="M90 18 L163 48 L163 118 Q163 165 90 192 Q17 165 17 118 L17 48 Z"
+            fill="#000"/>
+      <!-- Lion silhouette (simplified) -->
+      <text x="90" y="130" text-anchor="middle" font-size="72" fill="#FFD700">🦁</text>
+      <!-- Stars of David -->
+      <text x="38" y="75" text-anchor="middle" font-size="22" fill="#FFD700">✡</text>
+      <text x="142" y="75" text-anchor="middle" font-size="22" fill="#FFD700">✡</text>
+    </svg>
+    <div style="color:#FFD700; font-size:2.8rem; font-weight:900; letter-spacing:.08em;
+                font-family:'Arial Black',sans-serif; margin-top:8px; direction:rtl;">
+      ביתר ירושלים
+    </div>
+    <div style="color:#FFD700; font-size:1.1rem; letter-spacing:.25em; margin-top:6px;
+                font-family:Arial,sans-serif; opacity:.8;">
+      אין בלתך
+    </div>
+  </div>
+  <div style="color:rgba(255,215,0,.35); font-size:.75rem; margin-top:24px; letter-spacing:.1em;">
+    Ctrl+B / ESC
+  </div>
+</div>
+<script>
+(function () {
+  var overlay = document.getElementById('beitar-overlay');
+  var active  = false;
+  function show() { overlay.style.display = 'flex'; active = true; }
+  function hide() { overlay.style.display = 'none';  active = false; }
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && e.key === 'b') { e.preventDefault(); active ? hide() : show(); }
+    if (e.key === 'Escape' && active) hide();
+  });
+  overlay.addEventListener('click', hide);
+})();
+</script>
 </body>
 </html>
