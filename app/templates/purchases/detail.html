@@ -32,6 +32,10 @@
         <table class="table table-sm table-borderless mb-0">
           <tbody>
             <tr>
+              <td class="text-muted small fw-semibold" style="width:45%;">{{ t.purchase_col_name }}</td>
+              <td class="small fw-semibold">{{ purchase.name or '—' }}</td>
+            </tr>
+            <tr>
               <td class="text-muted small fw-semibold" style="width:45%;">{{ t.purchase_col_bom_date }}</td>
               <td class="small">{{ purchase.bom_date.strftime('%d %b %Y') if purchase.bom_date else '—' }}</td>
             </tr>
