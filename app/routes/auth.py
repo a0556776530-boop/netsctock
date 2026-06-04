@@ -36,7 +36,9 @@ def login():
     localize_form(form, t, submit_key='login_submit')
     if form.validate_on_submit():
         matched = None
-        for u in User.objects.all():
+        # Sort by last_login so most-recently-active user is checked first,
+        # minimising bcrypt iterations on average without changing the UX.
+        for u in User.objects.order_by('-last_login'):
             if bcrypt.check_password_hash(u.password_hash, form.password.data):
                 matched = u
                 break

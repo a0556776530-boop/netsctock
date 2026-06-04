@@ -11,9 +11,13 @@ class ChatMessage(me.Document):
     meta = {
         'collection': 'chat_messages',
         'ordering': ['-timestamp'],
+        'index_background': True,
         'indexes': [
             ('room', '-timestamp'),            # main query: messages in a room, newest first
             ('receiver_id', 'read', 'room'),   # unread-count aggregation + per-room read updates
+            'user_id',                         # user message history
+            'deleted',                         # search/list filters
+            {'fields': ['file_id'], 'sparse': True},  # file cleanup queries
         ],
         'strict': False,
     }

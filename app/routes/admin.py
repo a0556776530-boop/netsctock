@@ -15,8 +15,11 @@ from app.utils.translations import localize_form
 
 
 def _password_already_used(plaintext, exclude_id=None):
-    """Return True if any user (other than exclude_id) already has this password."""
-    for u in User.objects():
+    """Return True if any user (other than exclude_id) already has this password.
+    Sorted by last_login so recently-active users are checked first — exits early on match.
+    """
+    qs = User.objects.order_by('-last_login')
+    for u in qs:
         if exclude_id and str(u.id) == str(exclude_id):
             continue
         if bcrypt.check_password_hash(u.password_hash, plaintext):
@@ -93,12 +96,29 @@ def _localize_user_form(form, t, is_new=True):
 def users():
     _admin_required()
     all_users = list(User.objects.order_by('name'))
-    user_stats = {}
-    for u in all_users:
-        user_stats[u.id] = {
-            'assets': Asset.objects(assignee=u).count(),
-            'tasks':  Task.objects(assignee_name=u.name, status__in=['pending', 'in_progress']).count(),
+
+    # Two aggregations instead of N×2 individual count queries
+    asset_counts = {
+        str(r['_id']): r['count']
+        for r in Asset._get_collection().aggregate([
+            {'$match': {'assigned_to_id': {'$exists': True, '$ne': None}}},
+            {'$group': {'_id': '$assigned_to_id', 'count': {'$sum': 1}}},
+        ])
+    }
+    task_counts = {
+        r['_id']: r['count']
+        for r in Task._get_collection().aggregate([
+            {'$match': {'status': {'$in': ['pending', 'in_progress']}}},
+            {'$group': {'_id': '$assignee_name', 'count': {'$sum': 1}}},
+        ])
+    }
+    user_stats = {
+        u.id: {
+            'assets': asset_counts.get(str(u.id), 0),
+            'tasks':  task_counts.get(u.name, 0),
         }
+        for u in all_users
+    }
     return render_template('admin/users.html', users=all_users, user_stats=user_stats)
 
 

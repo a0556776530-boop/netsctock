@@ -2,7 +2,7 @@ import mongoengine as me
 
 
 class Site(me.Document):
-    meta = {'collection': 'sites'}
+    meta = {'collection': 'sites', 'indexes': ['name']}
 
     name    = me.StringField(max_length=150, required=True)
     address = me.StringField()

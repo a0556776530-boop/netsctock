@@ -134,77 +134,77 @@ def api_conversations():
     pinned    = list(me_obj.pinned_rooms    or [])
     favorites = list(me_obj.favorite_rooms or [])
 
+    # --- Build the full list of room keys we need last-messages for ---
+    all_users   = [u for u in User.objects.order_by('name') if str(u.id) != me_id]
+    my_groups   = list(ChatGroup.objects(member_ids=me_id).order_by('name'))
+    dm_keys     = [_private_room(me_id, str(u.id)) for u in all_users]
+    grp_keys    = [g.room_key for g in my_groups]
+    ch_keys     = [ch['key'] for ch in _CHANNELS] + ['group']
+    all_keys    = ch_keys + grp_keys + dm_keys
+
+    # Single aggregation: last message per room (replaces N individual .first() queries)
+    last_msgs = {}
+    if all_keys:
+        pipeline = [
+            {'$match':  {'room': {'$in': all_keys}}},
+            {'$sort':   {'room': 1, 'timestamp': -1}},
+            {'$group':  {'_id': '$room',
+                         'text':      {'$first': '$text'},
+                         'deleted':   {'$first': '$deleted'},
+                         'timestamp': {'$first': '$timestamp'}}},
+        ]
+        for doc in ChatMessage._get_collection().aggregate(pipeline):
+            last_msgs[doc['_id']] = doc
+
+    # Single aggregation: unread DM counts for current user
+    unread_map = {}
+    if dm_keys:
+        for doc in ChatMessage._get_collection().aggregate([
+            {'$match': {'room': {'$in': dm_keys}, 'receiver_id': me_id, 'read': False}},
+            {'$group': {'_id': '$room', 'count': {'$sum': 1}}},
+        ]):
+            unread_map[doc['_id']] = doc['count']
+
+    def _last(rk):
+        doc = last_msgs.get(rk)
+        if not doc or doc.get('deleted'):
+            return '', ''
+        ts = doc['timestamp']
+        return (doc.get('text') or '')[:60], ts.strftime('%H:%M') if ts else ''
+
     result = []
 
-    # 1. Channels
+    # 1. Everyone channel
+    msg, ts = _last('group')
+    result.append({'type': 'channel', 'room': 'group', 'name': 'כולם', 'icon': 'bi-people',
+                   'last_msg': msg, 'last_ts': ts, 'unread': 0, 'online': None,
+                   'pinned': 'group' in pinned, 'favorite': 'group' in favorites})
+
+    # 2. Channels
     for ch in _CHANNELS:
-        last = ChatMessage.objects(room=ch['key']).order_by('-timestamp').first()
-        result.append({
-            'type':     'channel',
-            'room':     ch['key'],
-            'name':     ch['name'],
-            'icon':     ch['icon'],
-            'last_msg': last.text[:60] if last and not last.deleted else '',
-            'last_ts':  last.timestamp.strftime('%H:%M') if last else '',
-            'unread':   0,
-            'online':   None,
-            'pinned':   ch['key'] in pinned,
-            'favorite': ch['key'] in favorites,
-        })
+        msg, ts = _last(ch['key'])
+        result.append({'type': 'channel', 'room': ch['key'], 'name': ch['name'], 'icon': ch['icon'],
+                       'last_msg': msg, 'last_ts': ts, 'unread': 0, 'online': None,
+                       'pinned': ch['key'] in pinned, 'favorite': ch['key'] in favorites})
 
-    # 2. Groups
-    for grp in ChatGroup.objects(member_ids=me_id).order_by('name'):
-        rk   = grp.room_key
-        last = ChatMessage.objects(room=rk).order_by('-timestamp').first()
-        result.append({
-            'type':     'group',
-            'room':     rk,
-            'name':     grp.name,
-            'icon':     'bi-people-fill',
-            'last_msg': last.text[:60] if last and not last.deleted else '',
-            'last_ts':  last.timestamp.strftime('%H:%M') if last else '',
-            'unread':   0,
-            'online':   None,
-            'pinned':   rk in pinned,
-            'favorite': rk in favorites,
-        })
-
-    # 3. Everyone channel
-    rk   = 'group'
-    last = ChatMessage.objects(room=rk).order_by('-timestamp').first()
-    result.insert(0, {
-        'type':     'channel',
-        'room':     rk,
-        'name':     'כולם',
-        'icon':     'bi-people',
-        'last_msg': last.text[:60] if last and not last.deleted else '',
-        'last_ts':  last.timestamp.strftime('%H:%M') if last else '',
-        'unread':   0,
-        'online':   None,
-        'pinned':   rk in pinned,
-        'favorite': rk in favorites,
-    })
+    # 3. Groups
+    for grp in my_groups:
+        rk = grp.room_key
+        msg, ts = _last(rk)
+        result.append({'type': 'group', 'room': rk, 'name': grp.name, 'icon': 'bi-people-fill',
+                       'last_msg': msg, 'last_ts': ts, 'unread': 0, 'online': None,
+                       'pinned': rk in pinned, 'favorite': rk in favorites})
 
     # 4. Direct messages
-    all_users = [u for u in User.objects.order_by('name') if str(u.id) != me_id]
     for u in all_users:
-        rk     = _private_room(me_id, str(u.id))
-        last   = ChatMessage.objects(room=rk).order_by('-timestamp').first()
-        unread = ChatMessage.objects(room=rk, receiver_id=me_id, read=False).count()
-        result.append({
-            'type':      'dm',
-            'room':      rk,
-            'name':      u.name,
-            'role':      u.role,
-            'user_id':   str(u.id),
-            'icon':      None,
-            'last_msg':  last.text[:60] if last and not last.deleted else '',
-            'last_ts':   last.timestamp.strftime('%H:%M') if last else '',
-            'unread':    unread,
-            'online':    _is_online(u),
-            'pinned':    rk in pinned,
-            'favorite':  rk in favorites,
-        })
+        rk = _private_room(me_id, str(u.id))
+        msg, ts = _last(rk)
+        result.append({'type': 'dm', 'room': rk, 'name': u.name, 'role': u.role,
+                       'user_id': str(u.id), 'icon': None,
+                       'last_msg': msg, 'last_ts': ts,
+                       'unread': unread_map.get(rk, 0),
+                       'online': _is_online(u),
+                       'pinned': rk in pinned, 'favorite': rk in favorites})
 
     return jsonify(conversations=result, pinned=pinned, favorites=favorites)
 

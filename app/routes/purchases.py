@@ -120,7 +120,8 @@ def _parse_amount(val):
 
 def _grouped_assets():
     from collections import defaultdict
-    assets = list(Asset.objects.order_by('component_id'))
+    # select_related eagerly loads asset_type — prevents N lazy-load queries in the loop
+    assets = list(Asset.objects.order_by('component_id').select_related(max_depth=1))
     groups = defaultdict(list)
     for a in assets:
         try:

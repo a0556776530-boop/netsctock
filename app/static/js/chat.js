@@ -86,10 +86,10 @@
     var params = new URLSearchParams(window.location.search);
     if (params.get('room')) openRoom(params.get('room'));
 
-    // Polls
-    setInterval(pollMessages,      3000);
-    setInterval(pollTyping,        2500);
-    setInterval(pollConversations, 10000);
+    // Polls — reduced from 3s/2.5s/10s to 5s/4s/20s (cuts server load ~40%)
+    setInterval(pollMessages,      5000);
+    setInterval(pollTyping,        4000);
+    setInterval(pollConversations, 20000);
   }
 
   /* ── Theme ──────────────────────────────────────────────────────────────── */

@@ -7,6 +7,8 @@ class ChatGroup(me.Document):
         'collection': 'chat_groups',
         'ordering': ['name'],
         'strict': False,
+        'index_background': True,
+        'indexes': ['member_ids', 'name'],  # member_ids: sidebar query; name: ordering
     }
 
     name        = me.StringField(max_length=100, required=True)
