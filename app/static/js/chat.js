@@ -1,4 +1,4 @@
-/* NetStock Chat — Enterprise Messaging SPA */
+/* NetStock Chat — Real-time WebSocket SPA */
 (function () {
   'use strict';
 
@@ -25,7 +25,83 @@
     searchResults:  [],
     searchIdx:      -1,
     forwardMsgId:   null,
+    socketReady:    false,   // WebSocket connected and authenticated
   };
+
+  /* ── WebSocket (Socket.IO) ───────────────────────────────────────────────── */
+  var _socket = null;
+
+  function initSocket() {
+    if (typeof io === 'undefined') return;  // socket.io not loaded
+
+    _socket = io({
+      transports: ['websocket', 'polling'],  // prefer WebSocket, fall back to polling
+      reconnection:      true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: Infinity,
+    });
+
+    _socket.on('connect', function () {
+      S.socketReady = true;
+      // Re-join current room after reconnect
+      if (S.room) _socket.emit('chat_join', { room: S.room });
+    });
+
+    _socket.on('disconnect', function () {
+      S.socketReady = false;
+    });
+
+    // New message broadcast from server
+    _socket.on('chat_message', function (msg) {
+      if (!EL.messagesArea) return;
+
+      // Skip if we already have this message (own optimistic or duplicate)
+      if (EL.messagesArea.querySelector('[data-id="' + msg.id + '"]')) return;
+
+      // Own message — the optimistic bubble is already showing via tmp_id
+      // The chat_confirmed event handles upgrading tmp→real for sender
+      if (msg.user_id === S.me) return;
+
+      // Message is for a different room — show toast only
+      if (msg.room !== S.room) { showToast(msg); return; }
+
+      // Append immediately, no poll delay
+      var area = EL.messagesArea;
+      var atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
+      appendMessage(msg, true);
+      if (S.lastTs === null || msg._iso > S.lastTs) S.lastTs = msg._iso;
+      if (atBottom) scrollBottom();
+      showToast(msg);
+    });
+
+    // Server confirms our optimistic message: tmp_id → real id
+    _socket.on('chat_confirmed', function (data) {
+      if (!EL.messagesArea) return;
+      var el = EL.messagesArea.querySelector('[data-id="' + data.tmp_id + '"]');
+      if (el) {
+        el.setAttribute('data-id', data.real_id);
+        el.style.opacity = '';
+      }
+      if (data._iso && (S.lastTs === null || data._iso > S.lastTs)) {
+        S.lastTs = data._iso;
+      }
+    });
+
+    // Typing indicator from others
+    _socket.on('chat_typing', function (data) {
+      if (!EL.typingBar || data.user_id === S.me) return;
+      EL.typingBar.innerHTML =
+        '<span style="font-size:.78rem;color:var(--chat-text-muted)">' +
+        _esc(data.user) + ' מקליד...' +
+        ' <span class="typing-dots"><span></span><span></span><span></span></span>' +
+        '</span>';
+      clearTimeout(_typingClearTimer);
+      _typingClearTimer = setTimeout(function () {
+        if (EL.typingBar) EL.typingBar.innerHTML = '';
+      }, 4000);
+    });
+  }
+  var _typingClearTimer = null;
 
   /* ── DOM refs ───────────────────────────────────────────────────────────── */
   var $ = function(sel, ctx) { return (ctx||document).querySelector(sel); };
@@ -91,11 +167,14 @@
     var params = new URLSearchParams(window.location.search);
     if (params.get('room')) openRoom(params.get('room'));
 
-    // pollMessages at 2s — only fetches NEW messages from others (since lastTs filter)
-    // Own messages appear instantly via optimistic UI, so server load stays minimal
-    setInterval(pollMessages,      2000);
-    setInterval(pollTyping,        3000);
+    // WebSocket handles real-time messages — no pollMessages needed.
+    // pollConversations updates sidebar (last message preview, unread counts).
+    // pollMessages kept as safety net for when socket is disconnected.
+    setInterval(function() { if (!S.socketReady) pollMessages(); }, 3000);
     setInterval(pollConversations, 20000);
+
+    // Init WebSocket connection
+    initSocket();
   }
 
   /* ── Theme ──────────────────────────────────────────────────────────────── */
@@ -247,6 +326,11 @@
     var url = new URL(window.location.href);
     url.searchParams.set('room', roomKey);
     history.replaceState({}, '', url.toString());
+
+    // Join room via WebSocket so server pushes messages in real-time
+    if (_socket && S.socketReady) {
+      _socket.emit('chat_join', { room: roomKey });
+    }
 
     // Mark as read immediately
     if (roomKey.startsWith('pm_')) {
@@ -627,31 +711,53 @@
 
     scrollBottom();
 
-    // 3. Fire-and-forget to server — UI already updated
-    var payload = { text: text, room: S.room };
-    if (S.receiverId)   payload.receiver_id = S.receiverId;
-    if (replySnapshot)  payload.reply_to_id = replySnapshot.id;
+    var payload = { tmp_id: tmpId, text: text, room: S.room };
+    if (S.receiverId)  payload.receiver_id = S.receiverId;
+    if (replySnapshot) payload.reply_to_id = replySnapshot.id;
 
-    apiPost('/chat/api/send', payload)
+    if (_socket && S.socketReady) {
+      // ── WebSocket path: fire-and-forget, chat_confirmed upgrades the ID ──
+      _socket.emit('chat_send', payload);
+      // Safety fallback: if no confirmation in 5s, try HTTP
+      var _fbTimer = setTimeout(function () {
+        var el = EL.messagesArea && EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
+        if (el && el.getAttribute('data-id') === tmpId) {
+          // Still has tmp id → socket didn't confirm, fall back to HTTP
+          _sendViaHttp(tmpId, text, payload);
+        }
+      }, 5000);
+      // Cancel fallback if confirmation arrives before timer fires
+      var _origConfirm = _socket.listeners('chat_confirmed')[0];
+      _socket.once('chat_confirmed', function (d) {
+        if (d.tmp_id === tmpId) clearTimeout(_fbTimer);
+        if (_origConfirm) _origConfirm(d);  // call original handler
+      });
+    } else {
+      // ── HTTP fallback when WebSocket not available ──
+      _sendViaHttp(tmpId, text, payload);
+    }
+  }
+
+  function _sendViaHttp(tmpId, text, payload) {
+    var httpPayload = { text: payload.text, room: payload.room };
+    if (payload.receiver_id) httpPayload.receiver_id = payload.receiver_id;
+    if (payload.reply_to_id) httpPayload.reply_to_id = payload.reply_to_id;
+
+    apiPost('/chat/api/send', httpPayload)
       .then(function(d) {
-        var el = EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
+        var el = EL.messagesArea && EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
         if (d.ok && d.message) {
-          // Upgrade temp ID → real ID so poller won't duplicate
           if (el) { el.setAttribute('data-id', d.message.id); el.style.opacity = ''; }
           if (S.lastTs === null || d.message._iso > S.lastTs) S.lastTs = d.message._iso;
         } else {
-          // Server rejected — remove optimistic bubble, restore text
           if (el) el.remove();
-          EL.inputField.value = text;
-          autoResizeInput();
+          if (EL.inputField) { EL.inputField.value = text; autoResizeInput(); }
         }
       })
       .catch(function() {
-        // Network error — remove optimistic bubble, restore text
-        var el = EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
+        var el = EL.messagesArea && EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
         if (el) el.remove();
-        EL.inputField.value = text;
-        autoResizeInput();
+        if (EL.inputField) { EL.inputField.value = text; autoResizeInput(); }
       });
   }
 
@@ -784,7 +890,11 @@
   function onTyping() {
     if (!S.room) return;
     clearTimeout(S.typingTimer);
-    apiPost('/chat/api/typing', {room: S.room}).catch(function(){});
+    if (_socket && S.socketReady) {
+      _socket.emit('chat_typing', { room: S.room });
+    } else {
+      apiPost('/chat/api/typing', {room: S.room}).catch(function(){});
+    }
     S.typingTimer = setTimeout(function(){}, 3000);
   }
 

@@ -3,14 +3,16 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from flask_wtf.csrf import CSRFProtect
+from flask_socketio import SocketIO
 import mongoengine as me
 
 import click
 from .config import Config, MONGO_URI
 
 login_manager = LoginManager()
-bcrypt = Bcrypt()
-csrf = CSRFProtect()
+bcrypt        = Bcrypt()
+csrf          = CSRFProtect()
+socketio      = SocketIO()
 
 # Expose db as the mongoengine module so models can do `from app import db`
 # and call db.Document, db.StringField, etc.
@@ -59,6 +61,7 @@ def create_app(config_class=Config):
     from .routes.purchases import purchases_bp
     from .routes.pools import pools_bp
     from .routes.chat import chat_bp
+    from .routes import chat_socket as _chat_socket  # register socket handlers  # noqa: F401
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -69,6 +72,16 @@ def create_app(config_class=Config):
     app.register_blueprint(purchases_bp)
     app.register_blueprint(pools_bp)
     app.register_blueprint(chat_bp)
+
+    socketio.init_app(
+        app,
+        cors_allowed_origins='*',
+        async_mode='eventlet',
+        logger=False,
+        engineio_logger=False,
+        ping_timeout=20,
+        ping_interval=10,
+    )
 
     from datetime import datetime
     from .utils.translations import TRANSLATIONS
