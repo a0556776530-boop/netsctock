@@ -211,14 +211,27 @@ def api_conversations():
 @chat_bp.route('/api/messages')
 @login_required
 def api_messages():
-    room_key = request.args.get('room', 'group')
-    since    = request.args.get('since')
+    room_key    = request.args.get('room', 'group')
+    since       = request.args.get('since')
+    receiver_id = request.args.get('receiver_id', '')
 
     # Access control for group rooms
     if room_key.startswith('grp_'):
         grp = ChatGroup.objects(id=room_key[4:]).first()
         if not grp or not grp.is_member(current_user.id):
             return jsonify(messages=[])
+
+    # For DMs: look up the other user's online status once
+    recv_online = False
+    if room_key.startswith('pm_') and receiver_id:
+        other = User.objects(id=receiver_id).only('last_seen').first()
+        if other:
+            recv_online = _is_online(other)
+
+    def _to_d(m):
+        # receiver_online only relevant for messages sent by current user
+        online = recv_online if m.user_id == str(current_user.id) else False
+        return m.to_dict(receiver_online=online)
 
     qs = ChatMessage.objects(room=room_key)
     if since:
@@ -229,7 +242,7 @@ def api_messages():
     else:
         qs = qs.order_by('-timestamp').limit(_MAX_HISTORY)
         qs = list(reversed(list(qs)))
-        return jsonify(messages=[m.to_dict() for m in qs])
+        return jsonify(messages=[_to_d(m) for m in qs])
 
     messages = list(qs.order_by('timestamp').limit(50))
 
@@ -239,7 +252,7 @@ def api_messages():
             room=room_key, receiver_id=str(current_user.id), read=False
         ).update(set__read=True, add_to_set__readers=str(current_user.id))
 
-    return jsonify(messages=[m.to_dict() for m in messages])
+    return jsonify(messages=[_to_d(m) for m in messages])
 
 
 @chat_bp.route('/api/file/<msg_id>')
@@ -302,7 +315,13 @@ def api_send():
         readers     =[str(current_user.id)],
     )
     msg.save()
-    return jsonify(ok=True, message=msg.to_dict())
+    # Include receiver online status so sender sees correct tick immediately
+    recv_online = False
+    if receiver_id:
+        other = User.objects(id=receiver_id).only('last_seen').first()
+        if other:
+            recv_online = _is_online(other)
+    return jsonify(ok=True, message=msg.to_dict(receiver_online=recv_online))
 
 
 @chat_bp.route('/api/upload', methods=['POST'])

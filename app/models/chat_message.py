@@ -57,7 +57,7 @@ class ChatMessage(me.Document):
     file_type   = me.StringField(max_length=20)   # 'image'|'pdf'|'excel'|'file'
     file_size   = me.IntField()                   # bytes
 
-    def to_dict(self, viewer_id=None):
+    def to_dict(self, viewer_id=None, receiver_online=False):
         txt = '[הודעה נמחקה]' if self.deleted else (self.text or '')
         return {
             'id':            str(self.id),
@@ -84,7 +84,8 @@ class ChatMessage(me.Document):
             'file_size':     self.file_size or 0,
             'has_file':      bool(self.file_id),
             'edited':        bool(self.edited),
-            'forwarded':     bool(self.forwarded),
-            'forward_from':  self.forward_from or '',
+            'forwarded':        bool(self.forwarded),
+            'forward_from':     self.forward_from or '',
+            'receiver_online':  bool(receiver_online),
         }
 

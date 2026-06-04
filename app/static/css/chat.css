@@ -556,8 +556,9 @@
   clear: none;
 }
 
-.chat-check       { color: var(--chat-check); font-size: .78rem; }
-.chat-check.seen  { color: var(--chat-check-read); }
+.chat-check            { color: var(--chat-check); font-size: .78rem; }   /* ✓ grey — offline   */
+.chat-check.delivered  { color: var(--chat-check); font-size: .78rem; }   /* ✓✓ grey — online   */
+.chat-check.seen       { color: var(--chat-check-read); font-size: .78rem; } /* ✓✓ blue — read  */
 
 /* ── Reply quote ─────────────────────────────────────────────────────────── */
 .chat-reply-quote {

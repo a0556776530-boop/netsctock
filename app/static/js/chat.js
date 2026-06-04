@@ -325,6 +325,7 @@
     var url = '/chat/api/messages?room=' + encodeURIComponent(S.room);
     if (S.lastTs) url += '&since=' + encodeURIComponent(S.lastTs);
     if (!S.lastTs) return;
+    if (S.receiverId) url += '&receiver_id=' + encodeURIComponent(S.receiverId);
 
     fetch(url)
       .then(function(r){ return r.json(); })
@@ -505,8 +506,11 @@
 
     var checks = '';
     if (isMe && !msg.deleted) {
-      var seen = msg.readers && msg.readers.length > 1;
-      checks = '<span class="chat-check' + (seen ? ' seen' : '') + '"><i class="bi bi-check' + (seen ? '-all' : '') + '"></i></span>';
+      var read      = msg.readers && msg.readers.length > 1;  // receiver is in readers
+      var delivered = !read && msg.receiver_online;           // online but not read yet
+      var cls = read ? ' seen' : (delivered ? ' delivered' : '');
+      var icon = (read || delivered) ? 'bi-check-all' : 'bi-check';
+      checks = '<span class="chat-check' + cls + '"><i class="bi ' + icon + '"></i></span>';
     }
 
     var picker = '<div class="chat-reaction-picker">' +
