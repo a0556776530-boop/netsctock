@@ -150,7 +150,8 @@
 
     var pinned   = convs.filter(function(c){ return S.pinned.includes(c.room); });
     var favs     = convs.filter(function(c){ return S.favorites.includes(c.room) && !S.pinned.includes(c.room); });
-    var channels = convs.filter(function(c){ return c.type === 'channel' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); });
+    // "כולם" is the only channel — shown standalone at top, no section header
+    var everyone = convs.filter(function(c){ return c.type === 'channel' && c.room === 'group' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); });
     var groups   = convs.filter(function(c){ return c.type === 'group' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); });
     var dms      = convs.filter(function(c){ return c.type === 'dm' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); });
 
@@ -166,10 +167,8 @@
       favs.forEach(function(c){ html += convItem(c); });
     }
 
-    if (channels.length) {
-      html += '<div class="chat-section-label"><i class="bi bi-hash me-1"></i>ערוצים</div>';
-      channels.forEach(function(c){ html += convItem(c); });
-    }
+    // "כולם" — standalone, no section label
+    everyone.forEach(function(c){ html += convItem(c); });
 
     if (groups.length) {
       html += '<div class="chat-section-label"><i class="bi bi-people me-1"></i>קבוצות</div>';

@@ -20,12 +20,7 @@ _MAX_FILE_B   = 2 * 1024 * 1024   # 2 MB
 _ONLINE_MINS  = 3
 _REACTIONS    = ['👍', '❤️', '🔥', '✅', '😂', '😮']
 
-_CHANNELS = [
-    {'key': 'ch_it',          'name': 'IT Team',        'icon': 'bi-hdd-network'},
-    {'key': 'ch_logistics',   'name': 'Logistics',      'icon': 'bi-truck'},
-    {'key': 'ch_procurement', 'name': 'Procurement',    'icon': 'bi-bag-check'},
-    {'key': 'ch_managers',    'name': 'Managers',       'icon': 'bi-briefcase'},
-]
+_CHANNELS = []  # predefined channels removed — only groups and DMs remain
 
 
 def _can_access_room(user_id, room_key):
