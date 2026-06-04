@@ -168,8 +168,13 @@
 </div>
 
 <style>
-  main.flex-grow-1 { padding: 0 !important; overflow: hidden; }
-  footer { display: none !important; }
+  /* Chat page: claim the full viewport — no padding, no max-width, no wasted space */
+  html, body                          { height: 100%; overflow: hidden; }
+  body > .d-flex                      { height: 100%; }
+  body > .d-flex > .flex-grow-1       { height: 100%; overflow: hidden; min-height: 0; }
+  body > .d-flex > .flex-grow-1 > main{ padding: 0 !important; overflow: hidden !important;
+                                        flex: 1; min-height: 0; }
+  footer                              { display: none !important; }
 </style>
 
 {% endblock %}
