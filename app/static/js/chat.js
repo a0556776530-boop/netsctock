@@ -837,6 +837,58 @@
         if (EL.sidebar) EL.sidebar.classList.toggle('mobile-open');
       });
     }
+
+    // Sidebar collapse / expand
+    var collapseBtn = $('#chatSidebarCollapseBtn');
+    var expandBtn   = $('#chatSidebarExpandBtn');
+    if (collapseBtn) collapseBtn.addEventListener('click', function(){ toggleSidebarCollapse(); });
+    if (expandBtn)   expandBtn.addEventListener('click',   function(){ toggleSidebarCollapse(); });
+
+    // Sidebar resize by drag
+    initSidebarResizer();
+  }
+
+  function toggleSidebarCollapse() {
+    var app = $('#chatApp');
+    if (!app) return;
+    app.classList.toggle('sidebar-collapsed');
+  }
+
+  function initSidebarResizer() {
+    var resizer = $('#chatSidebarResizer');
+    var sidebar = $('#chatSidebar');
+    if (!resizer || !sidebar) return;
+
+    var dragging = false;
+    var startX, startW;
+
+    resizer.addEventListener('mousedown', function(e) {
+      dragging = true;
+      startX   = e.clientX;
+      startW   = sidebar.getBoundingClientRect().width;
+      resizer.classList.add('dragging');
+      document.body.style.cursor   = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      var minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--chat-sidebar-min')) || 220;
+      var maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--chat-sidebar-max')) || 460;
+      var newW = Math.min(maxW, Math.max(minW, startW + (e.clientX - startX)));
+      sidebar.style.width    = newW + 'px';
+      sidebar.style.minWidth = newW + 'px';
+      sidebar.style.maxWidth = newW + 'px';
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove('dragging');
+      document.body.style.cursor    = '';
+      document.body.style.userSelect = '';
+    });
   }
 
   /* ── Feature 1: Glassmorphism — pure CSS, no JS needed ─────────────────── */

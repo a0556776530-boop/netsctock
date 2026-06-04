@@ -8,7 +8,6 @@
 
 {% block content %}
 
-{# Pass data to JS #}
 <script>
   window.CHAT_ME_ID    = {{ me_id | tojson }};
   window.CHAT_ME_NAME  = {{ current_user.name | tojson }};
@@ -22,16 +21,24 @@
   <div id="chatSidebar">
 
     <div class="chat-sidebar-header">
-      <h6>Chat</h6>
-      <div class="d-flex gap-1">
-        <button class="btn btn-sm p-1" id="chatThemeBtn" title="Toggle theme" style="background:none;border:none;color:var(--chat-text-muted);font-size:1rem;">
+      <div class="chat-sidebar-me">
+        <div class="role-avatar-sm role-{{ current_user.role or 'user' }}">
+          {{ current_user.name[0] | upper }}
+        </div>
+        <span class="chat-sidebar-me-name">{{ current_user.name }}</span>
+      </div>
+      <div class="d-flex gap-1 align-items-center">
+        <button class="chat-icon-btn" id="chatThemeBtn" title="Toggle theme">
           <i class="bi bi-moon"></i>
         </button>
         {% if current_user.is_admin %}
-        <a href="{{ url_for('chat.groups') }}" class="btn btn-sm p-1" title="Manage groups" style="background:none;border:none;color:var(--chat-text-muted);font-size:1rem;">
+        <a href="{{ url_for('chat.groups') }}" class="chat-icon-btn" title="Manage groups">
           <i class="bi bi-gear"></i>
         </a>
         {% endif %}
+        <button class="chat-icon-btn" id="chatSidebarCollapseBtn" title="סגור סייד-בר">
+          <i class="bi bi-layout-sidebar-reverse"></i>
+        </button>
       </div>
     </div>
 
@@ -48,6 +55,9 @@
 
   </div>
 
+  {# ── Resize handle ── #}
+  <div class="chat-sidebar-resizer" id="chatSidebarResizer"></div>
+
   {# ── Main chat window ── #}
   <div id="chatMain">
 
@@ -57,22 +67,25 @@
       <p>בחר שיחה כדי להתחיל</p>
     </div>
 
-    {# Chat window (hidden until room selected) #}
+    {# Header #}
     <div class="chat-window-header chat-hidden-until-room" style="display:none;">
-      <button class="btn btn-sm d-md-none me-1" id="chatMobileBack" style="background:none;border:none;color:var(--chat-text-muted);">
+      <button class="chat-icon-btn d-md-none" id="chatMobileBack">
         <i class="bi bi-arrow-right"></i>
+      </button>
+      <button class="chat-icon-btn d-none d-md-flex" id="chatSidebarExpandBtn" title="פתח סייד-בר" style="display:none!important;">
+        <i class="bi bi-layout-sidebar"></i>
       </button>
       <div id="chatHeaderAvatar"></div>
       <div class="chat-header-info">
         <div class="chat-header-name" id="chatHeaderName"></div>
         <div class="chat-header-sub" id="chatHeaderSub"></div>
       </div>
-      <div class="chat-header-actions d-flex gap-1">
-        <button class="btn" id="chatSearchInConvBtn" title="חפש בשיחה"><i class="bi bi-search"></i></button>
-        <button class="btn" id="chatSoundBtn" title="השתק"><i class="bi bi-volume-up"></i></button>
-        <button class="btn" id="chatNotifBtn" title="הפעל התראות דפדפן"><i class="bi bi-bell"></i></button>
-        <button class="btn" id="chatFavBtn" title="מועדפים"><i class="bi bi-star"></i></button>
-        <button class="btn" id="chatPinBtn" title="הצמד"><i class="bi bi-pin-angle"></i></button>
+      <div class="chat-header-actions">
+        <button class="chat-icon-btn" id="chatSearchInConvBtn" title="חפש בשיחה"><i class="bi bi-search"></i></button>
+        <button class="chat-icon-btn" id="chatSoundBtn"  title="השתק"><i class="bi bi-volume-up"></i></button>
+        <button class="chat-icon-btn" id="chatNotifBtn"  title="הפעל התראות"><i class="bi bi-bell"></i></button>
+        <button class="chat-icon-btn" id="chatFavBtn"    title="מועדפים"><i class="bi bi-star"></i></button>
+        <button class="chat-icon-btn" id="chatPinBtn"    title="הצמד"><i class="bi bi-pin-angle"></i></button>
       </div>
     </div>
 
@@ -109,14 +122,20 @@
 
     {# Input bar #}
     <div class="chat-input-bar chat-hidden-until-room" style="display:none;">
-      <button class="chat-input-btn chat-attach-btn" id="chatAttachBtn" title="Upload file">
+      <button class="chat-input-btn chat-attach-btn" id="chatAttachBtn" title="צרף קובץ">
         <i class="bi bi-paperclip"></i>
       </button>
       <input type="file" id="chatFileInput" style="display:none;"
              accept="image/*,.pdf,.xls,.xlsx,.doc,.docx,.csv">
+      <button class="chat-input-btn chat-emoji-btn" id="chatEmojiBtn" title="אמוג'י">
+        <i class="bi bi-emoji-smile"></i>
+      </button>
       <textarea class="chat-input-field" id="chatInputField"
-                placeholder="כתוב הודעה..." rows="1"></textarea>
-      <button class="chat-input-btn chat-send-btn" id="chatSendBtn" title="Send">
+                placeholder="כתוב הודעה..." rows="1" dir="auto"></textarea>
+      <button class="chat-input-btn chat-voice-btn" id="chatVoiceBtn" title="הודעה קולית">
+        <i class="bi bi-mic"></i>
+      </button>
+      <button class="chat-input-btn chat-send-btn" id="chatSendBtn" title="שלח">
         <i class="bi bi-send-fill"></i>
       </button>
     </div>
@@ -148,7 +167,6 @@
   <img id="chatLightboxImg" src="" alt="">
 </div>
 
-{# Override main padding for chat page #}
 <style>
   main.flex-grow-1 { padding: 0 !important; overflow: hidden; }
   footer { display: none !important; }
