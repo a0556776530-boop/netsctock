@@ -29,7 +29,8 @@
   };
 
   /* ── WebSocket (Socket.IO) ───────────────────────────────────────────────── */
-  var _socket = null;
+  var _socket          = null;
+  var _pendingConfirms = {};   // tmpId → fallback-timer handle
 
   function initSocket() {
     if (typeof io === 'undefined') return;  // socket.io not loaded
@@ -53,19 +54,21 @@
 
     // New message broadcast from server
     _socket.on('chat_message', function (msg) {
+      // Always update sidebar preview (active room or not)
+      _sidebarTick(msg.room, msg.text, msg._iso, msg.user_id !== S.me && msg.room !== S.room);
+
       if (!EL.messagesArea) return;
 
       // Skip if we already have this message (own optimistic or duplicate)
       if (EL.messagesArea.querySelector('[data-id="' + msg.id + '"]')) return;
 
-      // Own message — the optimistic bubble is already showing via tmp_id
-      // The chat_confirmed event handles upgrading tmp→real for sender
+      // Own message — the optimistic bubble is already showing; chat_confirmed upgrades it
       if (msg.user_id === S.me) return;
 
-      // Message is for a different room — show toast only
+      // Message is for a different room — toast only
       if (msg.room !== S.room) { showToast(msg); return; }
 
-      // Append immediately, no poll delay
+      // Append instantly — no poll delay
       var area = EL.messagesArea;
       var atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
       appendMessage(msg, true);
@@ -76,6 +79,11 @@
 
     // Server confirms our optimistic message: tmp_id → real id
     _socket.on('chat_confirmed', function (data) {
+      // Cancel the HTTP fallback timer for this message
+      if (_pendingConfirms[data.tmp_id]) {
+        clearTimeout(_pendingConfirms[data.tmp_id]);
+        delete _pendingConfirms[data.tmp_id];
+      }
       if (!EL.messagesArea) return;
       var el = EL.messagesArea.querySelector('[data-id="' + data.tmp_id + '"]');
       if (el) {
@@ -311,6 +319,11 @@
 
   /* ── Open room ──────────────────────────────────────────────────────────── */
   function openRoom(roomKey) {
+    // Leave previous room so stale broadcasts stop arriving
+    if (_socket && S.socketReady && S.room && S.room !== roomKey) {
+      _socket.emit('chat_leave', { room: S.room });
+    }
+
     S.room      = roomKey;
     S.lastTs    = null;
     S.replyTo   = null;
@@ -466,6 +479,33 @@
             '</span>';
         }
       }).catch(function(){});
+  }
+
+  // Update sidebar preview + unread badge without a full re-render
+  function _sidebarTick(roomKey, text, iso, isUnread) {
+    var conv = S.conversations.find(function(c){ return c.room === roomKey; });
+    if (conv) {
+      conv.last_msg = (text || '').slice(0, 60);
+      if (iso) {
+        var d = new Date(iso);
+        conv.last_ts = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      }
+      if (isUnread) conv.unread = (conv.unread || 0) + 1;
+    }
+    if (!EL.convList) return;
+    var item = EL.convList.querySelector('[data-room="' + roomKey + '"]');
+    if (!item) return;
+    var preview = item.querySelector('.chat-conv-preview');
+    if (preview) preview.textContent = (text || '').slice(0, 60);
+    if (iso) {
+      var d = new Date(iso);
+      var timeEl = item.querySelector('.chat-conv-time');
+      if (timeEl) timeEl.textContent = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+    if (isUnread && conv) {
+      var badge = item.querySelector('.chat-unread-badge');
+      if (badge) { badge.textContent = conv.unread; badge.style.display = 'flex'; }
+    }
   }
 
   function appendDateDivider(dateStr) {
@@ -636,7 +676,17 @@
     return html;
   }
 
-  // Lazy-load file data for images / files / audio
+  function _fetchFile(el, msgId) {
+    fetch('/chat/api/file/' + msgId)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.file_data) return;
+        if (el.tagName === 'IMG') el.src = d.file_data;
+        else if (el.tagName === 'A') { el.href = d.file_data; el.download = d.file_name || 'file'; }
+      }).catch(function(){});
+  }
+
+  // Lazy-load file data: images via IntersectionObserver, audio on-play only
   function lazyLoadFiles() {
     $$('[data-msg-id]:not([data-loaded])').forEach(function(el){
       var msgId = el.dataset.msgId;
@@ -644,25 +694,28 @@
       el.dataset.loaded = '1';
 
       if (el.tagName === 'AUDIO') {
-        // Load src immediately so native controls work without async delays
-        fetch('/chat/api/file/' + msgId)
-          .then(function(r){ return r.json(); })
-          .then(function(d){ if (d.file_data) el.src = d.file_data; })
-          .catch(function(){});
+        // Fetch only when the user actually presses play — avoids fetch storms
+        el.addEventListener('play', function onPlay() {
+          el.removeEventListener('play', onPlay);
+          fetch('/chat/api/file/' + msgId)
+            .then(function(r){ return r.json(); })
+            .then(function(d){ if (d.file_data) { el.src = d.file_data; el.play().catch(function(){}); } })
+            .catch(function(){});
+        }, { once: true });
         return;
       }
 
-      fetch('/chat/api/file/' + msgId)
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          if (!d.file_data) return;
-          if (el.tagName === 'IMG') {
-            el.src = d.file_data;
-          } else if (el.tagName === 'A') {
-            el.href = d.file_data;
-            el.download = d.file_name || 'file';
-          }
-        }).catch(function(){});
+      // Images + files: load when scrolled into view
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function(entries, o) {
+          if (!entries[0].isIntersecting) return;
+          o.unobserve(el);
+          _fetchFile(el, msgId);
+        }, { rootMargin: '200px' });
+        obs.observe(el);
+      } else {
+        _fetchFile(el, msgId);
+      }
     });
   }
 
@@ -716,24 +769,17 @@
     if (replySnapshot) payload.reply_to_id = replySnapshot.id;
 
     if (_socket && S.socketReady) {
-      // ── WebSocket path: fire-and-forget, chat_confirmed upgrades the ID ──
+      // WebSocket path — confirmation handled by persistent chat_confirmed handler
       _socket.emit('chat_send', payload);
-      // Safety fallback: if no confirmation in 5s, try HTTP
-      var _fbTimer = setTimeout(function () {
+      // Fallback: if socket confirmation doesn't arrive within 5s, try HTTP
+      _pendingConfirms[tmpId] = setTimeout(function () {
+        delete _pendingConfirms[tmpId];
         var el = EL.messagesArea && EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
         if (el && el.getAttribute('data-id') === tmpId) {
-          // Still has tmp id → socket didn't confirm, fall back to HTTP
           _sendViaHttp(tmpId, text, payload);
         }
       }, 5000);
-      // Cancel fallback if confirmation arrives before timer fires
-      var _origConfirm = _socket.listeners('chat_confirmed')[0];
-      _socket.once('chat_confirmed', function (d) {
-        if (d.tmp_id === tmpId) clearTimeout(_fbTimer);
-        if (_origConfirm) _origConfirm(d);  // call original handler
-      });
     } else {
-      // ── HTTP fallback when WebSocket not available ──
       _sendViaHttp(tmpId, text, payload);
     }
   }
