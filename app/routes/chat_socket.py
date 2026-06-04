@@ -4,7 +4,7 @@ Imported once at app startup via app/__init__.py.
 """
 from datetime import datetime
 
-import eventlet
+import gevent
 from bson import ObjectId as _BsonOID
 from flask import request
 from flask_login import current_user
@@ -157,7 +157,7 @@ def on_chat_send(data):
             import traceback
             traceback.print_exc()
 
-    eventlet.spawn_n(_persist)
+    gevent.spawn(_persist)
 
 
 # ── Typing indicator ──────────────────────────────────────────────────────────
