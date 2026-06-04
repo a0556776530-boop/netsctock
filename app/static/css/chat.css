@@ -1075,8 +1075,7 @@ mark.chat-mark {
 
   .chat-msg-body { max-width: 80%; }
 
-  .chat-emoji-btn,
-  .chat-voice-btn { display: none; }
+  .chat-emoji-btn { display: none; }
 }
 
 /* ── Voice recording ──────────────────────────────────────────────────────── */
@@ -1136,22 +1135,70 @@ mark.chat-mark {
 }
 .voice-cancel-btn:hover { color: #ef4444; }
 
-/* ── Audio player in message bubble ──────────────────────────────────────── */
-.chat-audio-player {
+/* ── Custom voice message player ─────────────────────────────────────────── */
+.cap {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 4px;
+  gap: 10px;
+  padding: 4px 2px 2px;
   min-width: 200px;
+  max-width: 260px;
+  user-select: none;
 }
-.chat-audio-player audio {
-  width: 220px;
-  height: 36px;
-  border-radius: 20px;
-  outline: none;
+
+.cap-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  background: var(--chat-active-bar);
+  color: #fff;
+  transition: transform .12s, filter .12s;
 }
-/* Chromium custom audio player */
-.chat-audio-player audio::-webkit-media-controls-panel {
-  background: rgba(0,0,0,.06);
-  border-radius: 20px;
+.chat-msg-row.out .cap-btn {
+  background: rgba(0,0,0,.18);
+  color: var(--chat-bubble-out-t);
 }
+.cap-btn:hover  { filter: brightness(1.12); transform: scale(1.06); }
+.cap-btn:active { transform: scale(.93); }
+
+.cap-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.cap-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+}
+
+.cap-bar {
+  width: 3px;
+  border-radius: 3px;
+  background: rgba(0,0,0,.18);
+  flex-shrink: 0;
+  transition: background .08s;
+}
+.cap-bar.active            { background: var(--chat-active-bar); }
+.chat-msg-row.out .cap-bar { background: rgba(0,0,0,.22); }
+.chat-msg-row.out .cap-bar.active { background: rgba(0,0,0,.55); }
+
+[data-chat-theme="dark"] .cap-bar        { background: rgba(255,255,255,.22); }
+[data-chat-theme="dark"] .cap-bar.active { background: var(--chat-active-bar); }
+
+.cap-time {
+  font-size: .7rem;
+  color: var(--chat-text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+}
+
+/* ── Voice button recording state ────────────────────────────────────────── */

@@ -611,9 +611,12 @@
           'style="max-width:220px;border-radius:6px;cursor:pointer;" loading="lazy">' +
           '</div>';
       } else if (msg.file_type === 'audio') {
-        fileHTML = '<div class="chat-audio-player">' +
-          '<audio controls preload="none" data-msg-id="' + _esc(msg.id) + '">' +
-          '</audio>' +
+        fileHTML = '<div class="cap" data-msg-id="' + _esc(msg.id) + '">' +
+          '<button class="cap-btn" type="button" aria-label="נגן"><i class="bi bi-play-fill"></i></button>' +
+          '<div class="cap-body">' +
+            '<div class="cap-wave">' + _genWaveBars(msg.id) + '</div>' +
+            '<span class="cap-time">0:00</span>' +
+          '</div>' +
           '</div>';
       } else {
         var icon = msg.file_type === 'pdf' ? 'bi-file-pdf' : msg.file_type === 'excel' ? 'bi-file-earmark-excel' : 'bi-file-earmark';
@@ -676,6 +679,18 @@
     return html;
   }
 
+  // Generate consistent waveform bars from message id
+  function _genWaveBars(msgId) {
+    var html = '', seed = 0;
+    for (var c = 0; c < msgId.length; c++) seed = (seed * 31 + msgId.charCodeAt(c)) & 0xffff;
+    for (var i = 0; i < 28; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      var h = 4 + (seed % 18);
+      html += '<div class="cap-bar" style="height:' + h + 'px"></div>';
+    }
+    return html;
+  }
+
   function _fetchFile(el, msgId) {
     fetch('/chat/api/file/' + msgId)
       .then(function(r){ return r.json(); })
@@ -686,30 +701,81 @@
       }).catch(function(){});
   }
 
-  // Lazy-load file data: images via IntersectionObserver, audio on-play only
+  // Lazy-load file data: images via IntersectionObserver, audio via custom player
   function lazyLoadFiles() {
-    $$('[data-msg-id]:not([data-loaded])').forEach(function(el){
+    // ── Custom voice player (.cap) ───────────────────────────────────────────
+    $$('.cap[data-msg-id]:not([data-loaded])').forEach(function(cap) {
+      var msgId = cap.dataset.msgId;
+      cap.dataset.loaded = '1';
+      var btn   = cap.querySelector('.cap-btn');
+      var timeEl = cap.querySelector('.cap-time');
+      var bars  = Array.from(cap.querySelectorAll('.cap-bar'));
+      var audio = new Audio();
+      var loaded = false;
+
+      function _fmt(s) {
+        return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+      }
+      function _setPct(pct) {
+        var active = Math.floor(pct * bars.length);
+        bars.forEach(function(b, i) { b.classList.toggle('active', i < active); });
+      }
+
+      btn.addEventListener('click', function() {
+        if (!loaded) {
+          btn.innerHTML = '<i class="bi bi-hourglass-split" style="font-size:.8rem"></i>';
+          fetch('/chat/api/file/' + msgId)
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              if (!d.file_data) return;
+              audio.src = d.file_data;
+              loaded = true;
+              audio.play().catch(function(){});
+            }).catch(function() {
+              btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+            });
+        } else if (audio.paused) {
+          audio.play().catch(function(){});
+        } else {
+          audio.pause();
+        }
+      });
+
+      audio.addEventListener('play',  function() { btn.innerHTML = '<i class="bi bi-pause-fill"></i>'; });
+      audio.addEventListener('pause', function() { btn.innerHTML = '<i class="bi bi-play-fill"></i>'; });
+      audio.addEventListener('ended', function() {
+        btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+        _setPct(0);
+        if (audio.duration) timeEl.textContent = _fmt(audio.duration);
+        audio.currentTime = 0;
+      });
+      audio.addEventListener('loadedmetadata', function() {
+        timeEl.textContent = _fmt(audio.duration);
+      });
+      audio.addEventListener('timeupdate', function() {
+        if (!audio.duration) return;
+        _setPct(audio.currentTime / audio.duration);
+        timeEl.textContent = _fmt(audio.currentTime);
+      });
+
+      // Click on waveform to seek
+      cap.querySelector('.cap-wave').addEventListener('click', function(e) {
+        if (!loaded || !audio.duration) return;
+        var rect = this.getBoundingClientRect();
+        audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+      });
+    });
+
+    // ── Images & file links ──────────────────────────────────────────────────
+    $$('[data-msg-id]:not([data-loaded]):not(.cap)').forEach(function(el){
       var msgId = el.dataset.msgId;
       if (!msgId) return;
       el.dataset.loaded = '1';
 
-      if (el.tagName === 'AUDIO') {
-        // Fetch only when the user actually presses play — avoids fetch storms
-        el.addEventListener('play', function onPlay() {
-          el.removeEventListener('play', onPlay);
-          fetch('/chat/api/file/' + msgId)
-            .then(function(r){ return r.json(); })
-            .then(function(d){ if (d.file_data) { el.src = d.file_data; el.play().catch(function(){}); } })
-            .catch(function(){});
-        }, { once: true });
-        return;
-      }
-
-      // Images + files: load when scrolled into view
       if ('IntersectionObserver' in window) {
         var obs = new IntersectionObserver(function(entries, o) {
           if (!entries[0].isIntersecting) return;
-          o.unobserve(el);
+          o.disconnect();
           _fetchFile(el, msgId);
         }, { rootMargin: '200px' });
         obs.observe(el);
