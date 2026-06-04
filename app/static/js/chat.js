@@ -87,9 +87,9 @@
     if (params.get('room')) openRoom(params.get('room'));
 
     // Polls
-    setInterval(pollMessages, 2000);
-    setInterval(pollTyping, 1500);
-    setInterval(pollConversations, 8000);
+    setInterval(pollMessages,      3000);
+    setInterval(pollTyping,        2500);
+    setInterval(pollConversations, 10000);
   }
 
   /* ── Theme ──────────────────────────────────────────────────────────────── */
@@ -248,6 +248,7 @@
       apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
     }
 
+    closeSearch();
     renderChatWindow();
     loadMessages();
     closeReplyBar();
@@ -453,8 +454,7 @@
 
     var textHTML = '';
     if (!msg.deleted) {
-      var rawText = msg.text || '';
-      // Highlight @mentions
+      var rawText = _esc(msg.text || '');
       rawText = rawText.replace(/@(\S+)/g, '<span class="chat-mention">@$1</span>');
       textHTML = '<div class="chat-bubble-text">' + rawText + '</div>';
     }
@@ -462,7 +462,7 @@
     var fileHTML = '';
     if (msg.has_file && !msg.deleted) {
       if (msg.file_type === 'image') {
-        fileHTML = '<div class="chat-file-preview" data-msg-id="' + _esc(msg.id) + '">' +
+        fileHTML = '<div class="chat-file-preview">' +
           '<img src="" data-msg-id="' + _esc(msg.id) + '" alt="' + _esc(msg.file_name) + '" ' +
           'style="max-width:220px;border-radius:6px;cursor:pointer;" loading="lazy">' +
           '</div>';
@@ -647,7 +647,10 @@
       items.push({icon:'bi-clipboard', label:'Copy', fn: function(){ navigator.clipboard && navigator.clipboard.writeText(msg.text||''); }});
     }
     if (isMe && !msg.deleted) {
-      items.push({icon:'bi-pencil', label:'Edit',   fn: function(){ startEditMessage(row, msg); }});
+      items.push({icon:'bi-pencil', label:'Edit', fn: function(){
+        var row = EL.messagesArea && EL.messagesArea.querySelector('[data-id="' + msg.id + '"]');
+        if (row) startEditMessage(row, msg);
+      }});
       items.push({icon:'bi-trash',  label:'Delete', cls:'danger', fn: function(){ deleteMsg(msg.id); }});
     }
 
@@ -702,13 +705,14 @@
 
   /* ── Toast ──────────────────────────────────────────────────────────────── */
   function showToast(msg) {
-    if (msg.room === S.room && !document.hidden) return;
+    if (msg.room === S.room) return;   // never notify for the room the user is already in
     if (!EL.toastCont) return;
     // Sound + browser notification for messages from others
     if (msg.user_id !== S.me) {
       playPing();
       showBrowserNotification(msg);
     }
+    if (document.hidden) return;       // tab hidden — browser notification is enough
 
     var toast = document.createElement('div');
     toast.className = 'chat-toast';

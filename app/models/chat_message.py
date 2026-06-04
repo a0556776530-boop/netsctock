@@ -12,10 +12,8 @@ class ChatMessage(me.Document):
         'collection': 'chat_messages',
         'ordering': ['-timestamp'],
         'indexes': [
-            '-timestamp',
-            'room',
-            ('room', '-timestamp'),
-            ('room', 'timestamp'),
+            ('room', '-timestamp'),            # main query: messages in a room, newest first
+            ('receiver_id', 'read', 'room'),   # unread-count aggregation + per-room read updates
         ],
         'strict': False,
     }
@@ -49,11 +47,11 @@ class ChatMessage(me.Document):
     forwarded     = me.BooleanField(default=False)
     forward_from  = me.StringField(max_length=100)
 
-    # File attachment (base64, max ~2 MB original)
-    file_data   = me.StringField()     # base64-encoded content
+    # File attachment — data stored in ChatFile collection (keeps messages lightweight)
+    file_id     = me.StringField(max_length=50)   # ChatFile._id
     file_name   = me.StringField(max_length=200)
-    file_type   = me.StringField(max_length=20)  # 'image'|'pdf'|'excel'|'file'
-    file_size   = me.IntField()        # bytes
+    file_type   = me.StringField(max_length=20)   # 'image'|'pdf'|'excel'|'file'
+    file_size   = me.IntField()                   # bytes
 
     def to_dict(self, viewer_id=None):
         txt = '[הודעה נמחקה]' if self.deleted else (self.text or '')
@@ -76,16 +74,13 @@ class ChatMessage(me.Document):
             'reply_to_user': self.reply_to_user or '',
             'reactions':     self.reactions or {},
             # Only include file data when needed
+            'file_id':       self.file_id or '',
             'file_name':     self.file_name or '',
             'file_type':     self.file_type or '',
             'file_size':     self.file_size or 0,
-            'has_file':      bool(self.file_data),
+            'has_file':      bool(self.file_id),
             'edited':        bool(self.edited),
             'forwarded':     bool(self.forwarded),
             'forward_from':  self.forward_from or '',
         }
 
-    def to_dict_with_file(self, viewer_id=None):
-        d = self.to_dict(viewer_id)
-        d['file_data'] = self.file_data or ''
-        return d

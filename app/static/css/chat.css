@@ -751,28 +751,28 @@
 .chat-window-header,
 .chat-input-bar,
 .chat-sidebar-header {
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  background: rgba(255,255,255,.78) !important;
-  border-color: rgba(255,255,255,.4) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255,255,255,.92) !important;
+  border-color: rgba(255,255,255,.5) !important;
 }
 
 [data-chat-theme="dark"] #chatSidebar,
 [data-chat-theme="dark"] .chat-window-header,
 [data-chat-theme="dark"] .chat-input-bar,
 [data-chat-theme="dark"] .chat-sidebar-header {
-  background: rgba(17,27,33,.82) !important;
+  background: rgba(17,27,33,.93) !important;
   border-color: rgba(255,255,255,.06) !important;
 }
 
 .chat-toast {
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  background: rgba(255,255,255,.85) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: rgba(255,255,255,.95) !important;
 }
 
 [data-chat-theme="dark"] .chat-toast {
-  background: rgba(32,44,51,.88) !important;
+  background: rgba(32,44,51,.95) !important;
 }
 
 /* ── Edited label ───────────────────────────────────────────────────────── */

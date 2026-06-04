@@ -1,5 +1,6 @@
 import base64
 import mimetypes
+import re
 from datetime import datetime, timedelta
 
 from flask import (Blueprint, render_template, request, jsonify,
@@ -7,6 +8,7 @@ from flask import (Blueprint, render_template, request, jsonify,
 from flask_login import login_required, current_user
 
 from app.models.chat_message import ChatMessage, _private_room
+from app.models.chat_file    import ChatFile
 from app.models.chat_group   import ChatGroup
 from app.models.chat_typing  import ChatTyping
 from app.models.user         import User
@@ -24,6 +26,19 @@ _CHANNELS = [
     {'key': 'ch_procurement', 'name': 'Procurement',    'icon': 'bi-bag-check'},
     {'key': 'ch_managers',    'name': 'Managers',       'icon': 'bi-briefcase'},
 ]
+
+
+def _can_access_room(user_id, room_key):
+    """Return True if user_id is allowed to read/write this room."""
+    if room_key == 'group' or room_key.startswith('ch_'):
+        return True
+    if room_key.startswith('grp_'):
+        grp = ChatGroup.objects(id=room_key[4:]).first()
+        return bool(grp and grp.is_member(user_id))
+    if room_key.startswith('pm_'):
+        # room key: pm_<uid1>_<uid2> — uids are 24-char hex, no underscores
+        return user_id in room_key[3:].split('_')
+    return False
 
 
 def _is_online(user):
@@ -233,12 +248,16 @@ def api_messages():
 @chat_bp.route('/api/file/<msg_id>')
 @login_required
 def api_file(msg_id):
-    """Serve file data for a specific message."""
-    msg = ChatMessage.objects(id=msg_id).first()
-    if not msg or not msg.file_data:
+    """Serve file data — fetched separately to keep message queries lightweight."""
+    msg = ChatMessage.objects(id=msg_id).only('file_id', 'file_name', 'file_type', 'room', 'deleted').first()
+    if not msg or not msg.file_id or msg.deleted:
         abort(404)
-    return jsonify(file_data=msg.file_data, file_name=msg.file_name,
-                   file_type=msg.file_type)
+    if not _can_access_room(str(current_user.id), msg.room or 'group'):
+        abort(403)
+    cf = ChatFile.objects(id=msg.file_id).first()
+    if not cf:
+        abort(404)
+    return jsonify(file_data=cf.data, file_name=msg.file_name, file_type=msg.file_type)
 
 
 # ── API: send ──────────────────────────────────────────────────────────────────
@@ -252,7 +271,7 @@ def api_send():
     receiver_id = data.get('receiver_id') or None
     reply_to_id = data.get('reply_to_id') or None
 
-    if not text and not data.get('has_file'):
+    if not text:
         return jsonify(ok=False, error='empty'), 400
 
     # Access check
@@ -305,9 +324,13 @@ def api_upload():
     if len(raw) > _MAX_FILE_B:
         return jsonify(ok=False, error='too_large'), 400
 
-    mime     = f.content_type or mimetypes.guess_type(f.filename)[0] or 'application/octet-stream'
-    ftype    = _file_type(mime)
-    b64data  = 'data:' + mime + ';base64,' + base64.b64encode(raw).decode()
+    mime    = f.content_type or mimetypes.guess_type(f.filename)[0] or 'application/octet-stream'
+    ftype   = _file_type(mime)
+    b64data = 'data:' + mime + ';base64,' + base64.b64encode(raw).decode()
+
+    # Save file separately — keeps ChatMessage documents lightweight
+    cf = ChatFile(data=b64data, name=f.filename, file_type=ftype, size=len(raw))
+    cf.save()
 
     reply_text = reply_user = ''
     if reply_to_id:
@@ -319,26 +342,30 @@ def api_upload():
     is_group_room = room_key == 'group' or room_key.startswith('ch_') or room_key.startswith('grp_')
 
     msg = ChatMessage(
-        user_id     =str(current_user.id),
-        user_name   =current_user.name,
-        user_role   =current_user.role,
-        text        =caption,
-        room        =room_key,
-        receiver_id =receiver_id,
-        read        =is_group_room,
-        reply_to_id =reply_to_id or '',
+        user_id      =str(current_user.id),
+        user_name    =current_user.name,
+        user_role    =current_user.role,
+        text         =caption,
+        room         =room_key,
+        receiver_id  =receiver_id,
+        read         =is_group_room,
+        reply_to_id  =reply_to_id or '',
         reply_to_text=reply_text,
         reply_to_user=reply_user,
-        file_data   =b64data,
-        file_name   =f.filename,
-        file_type   =ftype,
-        file_size   =len(raw),
-        reactions   ={},
-        readers     =[str(current_user.id)],
+        file_id      =str(cf.id),
+        file_name    =f.filename,
+        file_type    =ftype,
+        file_size    =len(raw),
+        reactions    ={},
+        readers      =[str(current_user.id)],
     )
-    msg.save()
+    try:
+        msg.save()
+    except Exception:
+        cf.delete()
+        raise
     d = msg.to_dict()
-    d['file_data'] = b64data
+    d['file_data'] = b64data   # send back to sender immediately (no extra fetch needed)
     return jsonify(ok=True, message=d)
 
 
@@ -383,10 +410,13 @@ def api_delete(msg_id):
         return jsonify(ok=False), 404
     if msg.user_id != str(current_user.id) and not current_user.is_admin:
         return jsonify(ok=False), 403
-    msg.deleted  = True
-    msg.text     = ''
-    msg.file_data= None
+    file_id_to_clean = msg.file_id if msg.file_id else None
+    msg.deleted = True
+    msg.text    = ''
     msg.save()
+    if file_id_to_clean:
+        if ChatMessage.objects(file_id=file_id_to_clean, deleted=False).count() == 0:
+            ChatFile.objects(id=file_id_to_clean).delete()
     return jsonify(ok=True)
 
 
@@ -498,10 +528,17 @@ def api_forward():
     msg_id      = data.get('msg_id')
     target_room = data.get('target_room', 'group')
     receiver_id = data.get('receiver_id') or None
+    me_id       = str(current_user.id)
 
     orig = ChatMessage.objects(id=msg_id).first()
     if not orig or orig.deleted:
         return jsonify(ok=False), 404
+
+    # Must have read access to the source room and write access to the target room
+    if not _can_access_room(me_id, orig.room or 'group'):
+        return jsonify(ok=False), 403
+    if not _can_access_room(me_id, target_room):
+        return jsonify(ok=False), 403
 
     is_group = target_room == 'group' or target_room.startswith('ch_') or target_room.startswith('grp_')
 
@@ -517,7 +554,7 @@ def api_forward():
         forward_from=orig.user_name,
         reactions   ={},
         readers     =[str(current_user.id)],
-        file_data   =orig.file_data,
+        file_id     =orig.file_id or '',
         file_name   =orig.file_name,
         file_type   =orig.file_type,
         file_size   =orig.file_size,
@@ -536,8 +573,10 @@ def api_search():
     if not room_key or not q or len(q) < 2:
         return jsonify(results=[])
 
-    import re as _re
-    pattern = _re.compile(_re.escape(q), _re.IGNORECASE)
+    if not _can_access_room(str(current_user.id), room_key):
+        return jsonify(results=[]), 403
+
+    pattern = re.compile(re.escape(q), re.IGNORECASE)
     msgs    = ChatMessage.objects(room=room_key, deleted=False).order_by('timestamp')
     results = [
         {'id': str(m.id), 'text': m.text or '', 'ts': m.timestamp.strftime('%d/%m %H:%M'), 'user': m.user_name}
@@ -552,13 +591,26 @@ def api_search():
 @login_required
 def api_inbox_status():
     me_id  = str(current_user.id)
+
+    # One aggregation instead of N individual count() queries
+    pipeline = [
+        {'$match': {'receiver_id': me_id, 'read': False}},
+        {'$group': {'_id': '$room', 'count': {'$sum': 1}}},
+    ]
+    unread_by_room = {
+        doc['_id']: doc['count']
+        for doc in ChatMessage._get_collection().aggregate(pipeline)
+    }
+
     result = {}
     users  = list(User.objects.only('id', 'last_seen').filter(id__ne=me_id))
     for u in users:
         uid      = str(u.id)
         room_key = _private_room(me_id, uid)
-        unread   = ChatMessage.objects(room=room_key, receiver_id=me_id, read=False).count()
-        result[uid] = {'unread': unread, 'online': _is_online(u)}
+        result[uid] = {
+            'unread': unread_by_room.get(room_key, 0),
+            'online': _is_online(u),
+        }
 
     total = sum(v['unread'] for v in result.values())
     return jsonify(users=result, total_unread=total)
