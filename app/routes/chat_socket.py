@@ -2,7 +2,10 @@
 WebSocket event handlers for real-time chat (Flask-SocketIO).
 Imported once at app startup via app/__init__.py.
 """
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+_IL = ZoneInfo('Asia/Jerusalem')
 
 import threading
 from bson import ObjectId as _BsonOID
@@ -102,8 +105,8 @@ def on_chat_send(data):
         'user_role':      urole,
         'text':           text,
         'deleted':        False,
-        'timestamp':      ts.strftime('%H:%M'),
-        'date':           ts.strftime('%d/%m/%Y'),
+        'timestamp':      ts.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%H:%M'),
+        'date':           ts.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%d/%m/%Y'),
         '_iso':           ts.isoformat(),
         'room':           room_key,
         'receiver_id':    receiver_id,

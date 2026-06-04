@@ -1,5 +1,8 @@
 import mongoengine as me
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+_IL = ZoneInfo('Asia/Jerusalem')
 
 
 def _private_room(uid1, uid2):
@@ -66,8 +69,8 @@ class ChatMessage(me.Document):
             'user_role':     self.user_role or '',
             'text':          txt,
             'deleted':       bool(self.deleted),
-            'timestamp':     self.timestamp.strftime('%H:%M'),
-            'date':          self.timestamp.strftime('%d/%m/%Y'),
+            'timestamp':     self.timestamp.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%H:%M'),
+            'date':          self.timestamp.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%d/%m/%Y'),
             '_iso':          self.timestamp.isoformat(),
             'room':          self.room or 'group',
             'receiver_id':   self.receiver_id or '',
