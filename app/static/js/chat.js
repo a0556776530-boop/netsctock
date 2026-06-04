@@ -1272,12 +1272,7 @@
   var _vStream     = null;
   var _vRecording  = false;
 
-  function startVoiceRecord() {
-    if (_vRecording) return;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('הדפדפן שלך לא תומך בהקלטת שמע');
-      return;
-    }
+  function _doGetMic() {
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(function(stream) {
         _vStream    = stream;
@@ -1285,21 +1280,18 @@
         _vSecs      = 0;
         _vRecording = true;
 
-        // UI
-        if (EL.voiceBtn) EL.voiceBtn.classList.add('recording');
-        if (EL.voiceBar) EL.voiceBar.classList.add('show');
+        if (EL.voiceBtn)   EL.voiceBtn.classList.add('recording');
+        if (EL.voiceBar)   EL.voiceBar.classList.add('show');
         if (EL.voiceTimer) EL.voiceTimer.textContent = '00:00';
 
-        // Timer
         _vTimerInt = setInterval(function() {
           _vSecs++;
           var m = String(Math.floor(_vSecs / 60)).padStart(2, '0');
           var s = String(_vSecs % 60).padStart(2, '0');
           if (EL.voiceTimer) EL.voiceTimer.textContent = m + ':' + s;
-          if (_vSecs >= 120) stopVoiceRecord(); // max 2 minutes
+          if (_vSecs >= 120) stopVoiceRecord();
         }, 1000);
 
-        // Choose best supported format
         var mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg']
           .find(function(t) { return MediaRecorder.isTypeSupported(t); }) || '';
 
@@ -1310,22 +1302,96 @@
         _vRecorder.onstop = function() {
           _vStream.getTracks().forEach(function(t) { t.stop(); });
           var mimeUsed = _vRecorder.mimeType || 'audio/webm';
-          var blob = new Blob(_vChunks, { type: mimeUsed });
-          _sendVoiceBlob(blob, mimeUsed);
+          _sendVoiceBlob(new Blob(_vChunks, { type: mimeUsed }), mimeUsed);
         };
-        _vRecorder.start(200); // collect chunks every 200ms
+        _vRecorder.start(200);
       })
       .catch(function(err) {
-        var msg = 'לא ניתן לגשת למיקרופון.\n\n';
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          msg += 'ההרשאה נחסמה.\nלחץ על אייקון המנעול/מיקרופון בשורת הכתובת של הדפדפן → אפשר מיקרופון → רענן את הדף.';
-        } else if (err.name === 'NotFoundError') {
-          msg += 'לא נמצא מיקרופון במכשיר.';
-        } else {
-          msg += 'שגיאה: ' + err.name + '\n' + err.message;
-        }
-        alert(msg);
+        _showMicError(err);
       });
+  }
+
+  function _showMicError(err) {
+    // Remove any leftover permission dialog
+    var old = document.getElementById('chatMicDialog');
+    if (old) old.remove();
+
+    var msg, action = '';
+    if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+      msg    = 'ההרשאה לגישה למיקרופון נחסמה.';
+      action = 'לחץ על אייקון 🔒 / 🎤 בשורת הכתובת → מיקרופון → אפשר → רענן את הדף.';
+    } else if (err && err.name === 'NotFoundError') {
+      msg = 'לא נמצא מיקרופון במכשיר.';
+    } else {
+      msg = 'שגיאה בגישה למיקרופון' + (err ? ': ' + err.name : '') + '.';
+    }
+
+    var dlg = document.createElement('div');
+    dlg.id = 'chatMicDialog';
+    dlg.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)';
+    dlg.innerHTML = '<div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:340px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.25)">' +
+      '<div style="font-size:2.2rem;margin-bottom:10px;">🎤</div>' +
+      '<div style="font-weight:700;font-size:1rem;margin-bottom:8px;">' + msg + '</div>' +
+      (action ? '<div style="font-size:.85rem;color:#6b7280;margin-bottom:18px;">' + action + '</div>' : '<div style="height:10px"></div>') +
+      '<button id="chatMicDialogClose" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 28px;font-size:.9rem;font-weight:600;cursor:pointer;">הבנתי</button>' +
+      '</div>';
+    document.body.appendChild(dlg);
+    dlg.querySelector('#chatMicDialogClose').addEventListener('click', function() { dlg.remove(); });
+    dlg.addEventListener('click', function(e) { if (e.target === dlg) dlg.remove(); });
+  }
+
+  function startVoiceRecord() {
+    if (_vRecording) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      _showMicError({ name: 'NotSupportedError' });
+      return;
+    }
+
+    // Check existing permission state without prompting yet
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'microphone' }).then(function(perm) {
+        if (perm.state === 'denied') {
+          _showMicError({ name: 'NotAllowedError' });
+        } else {
+          // 'granted' or 'prompt' — show our dialog first if never asked before
+          if (perm.state === 'prompt') {
+            _showMicPermissionDialog(_doGetMic);
+          } else {
+            _doGetMic();
+          }
+        }
+      }).catch(function() {
+        // Permissions API not available — go straight to getUserMedia
+        _doGetMic();
+      });
+    } else {
+      _doGetMic();
+    }
+  }
+
+  function _showMicPermissionDialog(onConfirm) {
+    var old = document.getElementById('chatMicDialog');
+    if (old) old.remove();
+
+    var dlg = document.createElement('div');
+    dlg.id = 'chatMicDialog';
+    dlg.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)';
+    dlg.innerHTML = '<div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:340px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.25)">' +
+      '<div style="font-size:2.2rem;margin-bottom:10px;">🎤</div>' +
+      '<div style="font-weight:700;font-size:1rem;margin-bottom:8px;">האם לאפשר הקלטת הודעות?</div>' +
+      '<div style="font-size:.85rem;color:#6b7280;margin-bottom:20px;">הדפדפן יבקש גישה למיקרופון שלך כדי לשלוח הודעות קוליות.</div>' +
+      '<div style="display:flex;gap:10px;justify-content:center;">' +
+        '<button id="chatMicYes" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 24px;font-size:.9rem;font-weight:600;cursor:pointer;">אפשר הקלטה</button>' +
+        '<button id="chatMicNo"  style="background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:9px 24px;font-size:.9rem;cursor:pointer;">ביטול</button>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(dlg);
+    dlg.querySelector('#chatMicYes').addEventListener('click', function() {
+      dlg.remove();
+      onConfirm();
+    });
+    dlg.querySelector('#chatMicNo').addEventListener('click', function() { dlg.remove(); });
+    dlg.addEventListener('click', function(e) { if (e.target === dlg) dlg.remove(); });
   }
 
   function stopVoiceRecord() {
