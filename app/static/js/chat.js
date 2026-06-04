@@ -74,6 +74,7 @@
       appendMessage(msg, true);
       if (S.lastTs === null || msg._iso > S.lastTs) S.lastTs = msg._iso;
       if (atBottom) scrollBottom();
+      playPing();
       showToast(msg);
     });
 
