@@ -542,6 +542,12 @@
   text-align: start;
 }
 
+.chat-bubble-text.emoji-only {
+  font-size: 2.2rem;
+  line-height: 1.25;
+  letter-spacing: .04em;
+}
+
 /* Timestamp */
 .chat-bubble-footer {
   display: flex;

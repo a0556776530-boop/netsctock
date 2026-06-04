@@ -579,6 +579,12 @@
     }
   }
 
+  var _EMOJI_ONLY_RE = /^[\p{Emoji}\s]+$/u;
+  function _isEmojiOnly(text) {
+    if (!text || text.trim().length === 0 || text.length > 12) return false;
+    try { return _EMOJI_ONLY_RE.test(text.trim()); } catch(e) { return false; }
+  }
+
   function buildBubbleHTML(msg, isMe) {
     var avatar = !isMe ? '<div class="chat-msg-avatar">' + roleAvatar(msg.user_role, 'sm') + '</div>' : '';
 
@@ -602,7 +608,8 @@
     if (!msg.deleted) {
       var rawText = _esc(msg.text || '');
       rawText = rawText.replace(/@(\S+)/g, '<span class="chat-mention">@$1</span>');
-      textHTML = '<div class="chat-bubble-text">' + rawText + '</div>';
+      var onlyEmoji = !msg.has_file && _isEmojiOnly(msg.text || '');
+      textHTML = '<div class="chat-bubble-text' + (onlyEmoji ? ' emoji-only' : '') + '">' + rawText + '</div>';
     }
 
     var fileHTML = '';
