@@ -821,6 +821,10 @@
 
   /* ── Event binding ──────────────────────────────────────────────────────── */
   function bindEvents() {
+    // Unlock AudioContext on first user interaction (browser autoplay policy)
+    document.addEventListener('click',   _unlockAudio, { once: true });
+    document.addEventListener('keydown', _unlockAudio, { once: true });
+
     // Send button
     if (EL.sendBtn) EL.sendBtn.addEventListener('click', sendMessage);
 
@@ -1111,25 +1115,53 @@
   }
 
   /* ── Feature 5: Sound notifications ────────────────────────────────────── */
+
+  // Single shared AudioContext — browsers block new contexts without a user gesture.
+  // We create it lazily on the first user interaction and reuse it forever.
+  var _audioCtx = null;
+
+  function _getAudioCtx() {
+    if (!_audioCtx) {
+      try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    }
+    return _audioCtx;
+  }
+
+  // Call once on any user gesture to unlock the context (browser policy)
+  function _unlockAudio() {
+    var ctx = _getAudioCtx();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }
+
+  function _doPlayPing(ctx) {
+    var osc  = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.35);
+  }
+
   function playPing() {
     if (S.soundMuted) return;
     try {
-      var ctx  = new (window.AudioContext || window.webkitAudioContext)();
-      var osc  = ctx.createOscillator();
-      var gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.25, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.35);
+      var ctx = _getAudioCtx();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(function() { _doPlayPing(ctx); });
+      } else {
+        _doPlayPing(ctx);
+      }
     } catch(e) {}
   }
 
   function toggleSound() {
+    _unlockAudio();   // first toggle also unlocks the context
     S.soundMuted = !S.soundMuted;
     localStorage.setItem('chat-sound-muted', S.soundMuted ? '1' : '0');
     updateSoundBtn();
