@@ -76,7 +76,7 @@ def create_app(config_class=Config):
     socketio.init_app(
         app,
         cors_allowed_origins='*',
-        async_mode='gevent',
+        async_mode='threading',
         logger=False,
         engineio_logger=False,
         ping_timeout=20,
