@@ -767,22 +767,12 @@
       });
     });
 
-    // ── Images & file links ──────────────────────────────────────────────────
+    // ── Images & file links — load immediately when in DOM ──────────────────
     $$('[data-msg-id]:not([data-loaded]):not(.cap)').forEach(function(el){
       var msgId = el.dataset.msgId;
       if (!msgId) return;
       el.dataset.loaded = '1';
-
-      if ('IntersectionObserver' in window) {
-        var obs = new IntersectionObserver(function(entries, o) {
-          if (!entries[0].isIntersecting) return;
-          o.disconnect();
-          _fetchFile(el, msgId);
-        }, { rootMargin: '200px' });
-        obs.observe(el);
-      } else {
-        _fetchFile(el, msgId);
-      }
+      _fetchFile(el, msgId);
     });
   }
 
