@@ -139,6 +139,7 @@
     EL.lightboxImg  = $('#chatLightboxImg');
     EL.contextMenu  = $('#chatContextMenu');
     EL.uploadProg   = $('#chatUploadProgress');
+    EL.emojiBtn           = $('#chatEmojiBtn');
     EL.themeBtn           = $('#chatThemeBtn');
     EL.pinBtn             = $('#chatPinBtn');
     EL.favBtn             = $('#chatFavBtn');
@@ -1045,6 +1046,73 @@
       });
   }
 
+  /* ── Emoji Picker ───────────────────────────────────────────────────────── */
+  var _EMOJI_CATS = [
+    { icon: '😀', emojis: ['😀','😁','😂','🤣','😃','😄','😅','😆','😊','😋','😎','😍','🥰','😘','🙂','🤗','🤔','🤨','😐','🙄','😏','😮','😴','😷','😰','😢','😭','😤','😠','😡','🤬','😈','💀','🥹','😌','😔','😪','🤥','🫠','😬'] },
+    { icon: '👍', emojis: ['👍','👎','👌','✌️','🤞','🤟','🤙','👋','✋','👏','🙌','🙏','💪','🤝','👀','💅','🫶','🤜','🤛','☝️','🫵','🦾','🦿'] },
+    { icon: '❤️', emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','😻','🌹','💐','🫀','💟'] },
+    { icon: '🎉', emojis: ['🎉','🎊','🎁','🎈','🔥','💯','✅','❌','⭐','🌟','💫','⚡','🌈','🏆','🎯','💡','🔑','🎵','🎶','💎','🚀','🥳','🤩','🎮','🎸','🏅','🎖️','🎗️','📌','📍','💬','💭','🗯️'] },
+    { icon: '🍕', emojis: ['🍕','🍔','🍟','🌮','🌯','🍜','🍣','🍦','🎂','🍰','🍻','🥂','☕','🍵','🐶','🐱','🐻','🦁','🐼','🐸','🌸','🌊','🌍','🌞','🌙','⚽','🏀','🎾','🚗','✈️','🏠'] }
+  ];
+  var _emojiPicker = null;
+
+  function _buildEmojiPicker() {
+    var div = document.createElement('div');
+    div.id  = 'chatEmojiPicker';
+    div.className = 'cep';
+    div.style.display = 'none';
+    var tabs = '<div class="cep-tabs">';
+    _EMOJI_CATS.forEach(function(cat, i) {
+      tabs += '<button class="cep-tab' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '">' + cat.icon + '</button>';
+    });
+    tabs += '</div><div class="cep-grid" id="chatEmojiGrid"></div>';
+    div.innerHTML = tabs;
+    document.body.appendChild(div);
+    _renderEmojiCat(div, 0);
+    div.querySelectorAll('.cep-tab').forEach(function(tab) {
+      tab.addEventListener('click', function(e) {
+        e.stopPropagation();
+        div.querySelectorAll('.cep-tab').forEach(function(t){ t.classList.remove('active'); });
+        tab.classList.add('active');
+        _renderEmojiCat(div, parseInt(tab.dataset.idx));
+      });
+    });
+    return div;
+  }
+
+  function _renderEmojiCat(picker, idx) {
+    var grid = picker.querySelector('.cep-grid');
+    if (!grid) { grid = document.createElement('div'); grid.className = 'cep-grid'; picker.appendChild(grid); }
+    var html = '';
+    _EMOJI_CATS[idx].emojis.forEach(function(em) {
+      html += '<button class="cep-em" type="button">' + em + '</button>';
+    });
+    grid.innerHTML = html;
+    grid.querySelectorAll('.cep-em').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (!EL.inputField) return;
+        var s = EL.inputField.selectionStart, en = EL.inputField.selectionEnd;
+        var v = EL.inputField.value;
+        EL.inputField.value = v.slice(0, s) + btn.textContent + v.slice(en);
+        EL.inputField.selectionStart = EL.inputField.selectionEnd = s + btn.textContent.length;
+        EL.inputField.focus();
+        autoResizeInput();
+      });
+    });
+  }
+
+  function toggleEmojiPicker(e) {
+    e.stopPropagation();
+    if (!_emojiPicker) _emojiPicker = _buildEmojiPicker();
+    var p = _emojiPicker;
+    if (p.style.display !== 'none') { p.style.display = 'none'; return; }
+    var rect = EL.emojiBtn.getBoundingClientRect();
+    p.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    p.style.left   = Math.max(4, rect.left - 10) + 'px';
+    p.style.display = 'block';
+  }
+
   /* ── Scroll ─────────────────────────────────────────────────────────────── */
   function scrollBottom() {
     if (EL.messagesArea) EL.messagesArea.scrollTop = EL.messagesArea.scrollHeight;
@@ -1096,6 +1164,9 @@
     if (EL.pinBtn) EL.pinBtn.addEventListener('click', togglePin);
     if (EL.favBtn) EL.favBtn.addEventListener('click', toggleFav);
 
+    // Emoji picker
+    if (EL.emojiBtn) EL.emojiBtn.addEventListener('click', toggleEmojiPicker);
+
     // Sidebar search
     if (EL.searchInput) EL.searchInput.addEventListener('input', function(){ S.searchQ = this.value; renderSidebar(); });
 
@@ -1131,7 +1202,7 @@
     if (EL.lightbox) EL.lightbox.addEventListener('click', function(){ EL.lightbox.classList.remove('show'); });
 
     // Close context menu on click outside
-    document.addEventListener('click', function(){ if (EL.contextMenu) EL.contextMenu.classList.remove('show'); });
+    document.addEventListener('click', function(){ if (EL.contextMenu) EL.contextMenu.classList.remove('show'); if (_emojiPicker) _emojiPicker.style.display = 'none'; });
     document.addEventListener('click', function(){ $$('.chat-reaction-picker.show').forEach(function(p){ p.classList.remove('show'); }); });
 
     // Mobile back

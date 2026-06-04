@@ -1088,6 +1088,71 @@ mark.chat-mark {
   50%       { opacity: .6; transform: scale(1.2); }
 }
 
+/* ── Emoji Picker ─────────────────────────────────────────────────────────── */
+.cep {
+  position: fixed;
+  z-index: 600;
+  background: var(--chat-panel-bg, #fff);
+  border: 1px solid var(--chat-divider);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
+  width: 296px;
+  overflow: hidden;
+  animation: cepIn .12s cubic-bezier(.25,.46,.45,.94);
+}
+@keyframes cepIn {
+  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.cep-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--chat-divider);
+  padding: 5px 6px 0;
+  gap: 2px;
+  background: var(--chat-sidebar-bg, #fff);
+}
+.cep-tab {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 6px 2px;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 2.5px solid transparent;
+  transition: background .1s;
+  line-height: 1;
+}
+.cep-tab:hover  { background: var(--chat-hover); }
+.cep-tab.active { border-bottom-color: var(--chat-active-bar); }
+
+.cep-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1px;
+  padding: 8px 6px;
+  max-height: 188px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.cep-em {
+  border: none;
+  background: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 6px 4px;
+  border-radius: 7px;
+  transition: background .1s, transform .08s;
+  line-height: 1;
+  text-align: center;
+}
+.cep-em:hover  { background: var(--chat-hover); transform: scale(1.22); }
+.cep-em:active { transform: scale(.92); }
+
+[data-chat-theme="dark"] .cep { background: var(--chat-panel-bg); border-color: var(--chat-divider); }
+
+/* ── Voice recording bar ────────────────────────────────────────────────── */
 .chat-voice-bar {
   display: none;
   align-items: center;
