@@ -69,6 +69,11 @@
     EL.soundBtn           = $('#chatSoundBtn');
     EL.notifBtn           = $('#chatNotifBtn');
     EL.forwardOverlay     = $('#chatForwardOverlay');
+    EL.voiceBtn           = $('#chatVoiceBtn');
+    EL.voiceBar           = $('#chatVoiceBar');
+    EL.voiceTimer         = $('#chatVoiceTimer');
+    EL.voiceStop          = $('#chatVoiceStop');
+    EL.voiceCancel        = $('#chatVoiceCancel');
     EL.forwardList        = $('#chatForwardList');
     EL.forwardClose       = $('#chatForwardClose');
 
@@ -480,6 +485,11 @@
           '<img src="" data-msg-id="' + _esc(msg.id) + '" alt="' + _esc(msg.file_name) + '" ' +
           'style="max-width:220px;border-radius:6px;cursor:pointer;" loading="lazy">' +
           '</div>';
+      } else if (msg.file_type === 'audio') {
+        fileHTML = '<div class="chat-audio-player">' +
+          '<audio controls preload="none" data-msg-id="' + _esc(msg.id) + '">' +
+          '</audio>' +
+          '</div>';
       } else {
         var icon = msg.file_type === 'pdf' ? 'bi-file-pdf' : msg.file_type === 'excel' ? 'bi-file-earmark-excel' : 'bi-file-earmark';
         fileHTML = '<a class="chat-file-btn" href="#" data-msg-id="' + _esc(msg.id) + '">' +
@@ -538,12 +548,26 @@
     return html;
   }
 
-  // Lazy-load file data for images/files
+  // Lazy-load file data for images / files / audio
   function lazyLoadFiles() {
     $$('[data-msg-id]:not([data-loaded])').forEach(function(el){
       var msgId = el.dataset.msgId;
       if (!msgId) return;
       el.dataset.loaded = '1';
+
+      if (el.tagName === 'AUDIO') {
+        // Load audio src only when user presses play (saves bandwidth)
+        el.addEventListener('play', function onFirstPlay() {
+          el.removeEventListener('play', onFirstPlay);
+          fetch('/chat/api/file/' + msgId)
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+              if (d.file_data) { el.src = d.file_data; el.play(); }
+            }).catch(function(){});
+        }, { once: true });
+        return;
+      }
+
       fetch('/chat/api/file/' + msgId)
         .then(function(r){ return r.json(); })
         .then(function(d){
@@ -875,6 +899,11 @@
 
     // Sound
     if (EL.soundBtn) EL.soundBtn.addEventListener('click', toggleSound);
+
+    // Voice recording
+    if (EL.voiceBtn)    EL.voiceBtn.addEventListener('click', startVoiceRecord);
+    if (EL.voiceStop)   EL.voiceStop.addEventListener('click', stopVoiceRecord);
+    if (EL.voiceCancel) EL.voiceCancel.addEventListener('click', cancelVoiceRecord);
 
     // Browser notifications
     if (EL.notifBtn) EL.notifBtn.addEventListener('click', requestNotifPermission);
@@ -1233,6 +1262,115 @@
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': S.csrf },
       body: JSON.stringify(data),
     }).then(function(r){ return r.json(); });
+  }
+
+  /* ── Voice recording ────────────────────────────────────────────────────── */
+  var _vRecorder   = null;
+  var _vChunks     = [];
+  var _vTimerInt   = null;
+  var _vSecs       = 0;
+  var _vStream     = null;
+  var _vRecording  = false;
+
+  function startVoiceRecord() {
+    if (_vRecording) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('הדפדפן שלך לא תומך בהקלטת שמע');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(function(stream) {
+        _vStream    = stream;
+        _vChunks    = [];
+        _vSecs      = 0;
+        _vRecording = true;
+
+        // UI
+        if (EL.voiceBtn) EL.voiceBtn.classList.add('recording');
+        if (EL.voiceBar) EL.voiceBar.classList.add('show');
+        if (EL.voiceTimer) EL.voiceTimer.textContent = '00:00';
+
+        // Timer
+        _vTimerInt = setInterval(function() {
+          _vSecs++;
+          var m = String(Math.floor(_vSecs / 60)).padStart(2, '0');
+          var s = String(_vSecs % 60).padStart(2, '0');
+          if (EL.voiceTimer) EL.voiceTimer.textContent = m + ':' + s;
+          if (_vSecs >= 120) stopVoiceRecord(); // max 2 minutes
+        }, 1000);
+
+        // Choose best supported format
+        var mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg']
+          .find(function(t) { return MediaRecorder.isTypeSupported(t); }) || '';
+
+        _vRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+        _vRecorder.ondataavailable = function(e) {
+          if (e.data && e.data.size > 0) _vChunks.push(e.data);
+        };
+        _vRecorder.onstop = function() {
+          _vStream.getTracks().forEach(function(t) { t.stop(); });
+          var mimeUsed = _vRecorder.mimeType || 'audio/webm';
+          var blob = new Blob(_vChunks, { type: mimeUsed });
+          _sendVoiceBlob(blob, mimeUsed);
+        };
+        _vRecorder.start(200); // collect chunks every 200ms
+      })
+      .catch(function(err) {
+        alert('לא ניתן לגשת למיקרופון. ודא שנתת הרשאה.');
+      });
+  }
+
+  function stopVoiceRecord() {
+    if (!_vRecording) return;
+    _vRecording = false;
+    clearInterval(_vTimerInt);
+    if (EL.voiceBtn)  EL.voiceBtn.classList.remove('recording');
+    if (EL.voiceBar)  EL.voiceBar.classList.remove('show');
+    if (_vRecorder && _vRecorder.state !== 'inactive') _vRecorder.stop();
+  }
+
+  function cancelVoiceRecord() {
+    if (!_vRecording) return;
+    _vRecording = false;
+    clearInterval(_vTimerInt);
+    if (EL.voiceBtn) EL.voiceBtn.classList.remove('recording');
+    if (EL.voiceBar) EL.voiceBar.classList.remove('show');
+    // Stop recorder without sending
+    if (_vRecorder && _vRecorder.state !== 'inactive') {
+      _vRecorder.ondataavailable = null;
+      _vRecorder.onstop = function() {};
+      _vRecorder.stop();
+    }
+    if (_vStream) _vStream.getTracks().forEach(function(t) { t.stop(); });
+  }
+
+  function _sendVoiceBlob(blob, mimeType) {
+    if (!S.room) return;
+    if (_vSecs < 1) return; // ignore < 1s recordings
+    var ext  = mimeType.includes('ogg') ? '.ogg' : '.webm';
+    var name = 'voice_' + Date.now() + ext;
+    var file = new File([blob], name, { type: mimeType });
+    var fd   = new FormData();
+    fd.append('file', file);
+    fd.append('room', S.room);
+    if (S.receiverId) fd.append('receiver_id', S.receiverId);
+
+    fetch('/chat/api/upload', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': S.csrf },
+      body: fd,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok && d.message) {
+        if (!EL.messagesArea.querySelector('[data-id="' + d.message.id + '"]')) {
+          appendMessage(d.message, true);
+          if (S.lastTs === null || d.message._iso > S.lastTs) S.lastTs = d.message._iso;
+          scrollBottom();
+        }
+      }
+    })
+    .catch(function() { alert('שגיאה בשליחת ההקלטה. נסה שוב.'); });
   }
 
   /* ── Boot ───────────────────────────────────────────────────────────────── */

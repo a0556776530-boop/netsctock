@@ -16,7 +16,7 @@ from app.models.user         import User
 chat_bp = Blueprint('chat', __name__, url_prefix='/chat')
 
 _MAX_HISTORY  = 100
-_MAX_FILE_B   = 2 * 1024 * 1024   # 2 MB
+_MAX_FILE_B   = 5 * 1024 * 1024   # 5 MB (raised for voice messages)
 _ONLINE_MINS  = 3
 _REACTIONS    = ['👍', '❤️', '🔥', '✅', '😂', '😮']
 
@@ -45,6 +45,8 @@ def _is_online(user):
 def _file_type(mime):
     if mime and mime.startswith('image/'):
         return 'image'
+    if mime and mime.startswith('audio/'):
+        return 'audio'
     if mime == 'application/pdf':
         return 'pdf'
     if 'excel' in mime or 'spreadsheet' in mime or mime.endswith('.sheet'):
