@@ -86,9 +86,10 @@
     var params = new URLSearchParams(window.location.search);
     if (params.get('room')) openRoom(params.get('room'));
 
-    // Polls — reduced from 3s/2.5s/10s to 5s/4s/20s (cuts server load ~40%)
-    setInterval(pollMessages,      5000);
-    setInterval(pollTyping,        4000);
+    // pollMessages at 2s — only fetches NEW messages from others (since lastTs filter)
+    // Own messages appear instantly via optimistic UI, so server load stays minimal
+    setInterval(pollMessages,      2000);
+    setInterval(pollTyping,        3000);
     setInterval(pollConversations, 20000);
   }
 
@@ -331,13 +332,27 @@
         var lastDate = '';
         // Get last date from existing messages
         var lastDiv = area.querySelector('.chat-date-divider:last-of-type');
-        // Append new
+        // Append new — deduplicate against real IDs AND optimistic tmp_* elements
         msgs.forEach(function(msg){
           if (area.querySelector('[data-id="' + msg.id + '"]')) return;
+          // If this is my own message and there's a matching optimistic bubble,
+          // upgrade the tmp ID instead of appending a duplicate
+          if (msg.user_id === S.me) {
+            var tmpEls = Array.from(area.querySelectorAll('[data-id^="tmp_"]'));
+            var matched = tmpEls.find(function(el){
+              var bubble = el.querySelector('.chat-bubble-text');
+              return bubble && bubble.textContent.trim() === (msg.text || '').trim();
+            });
+            if (matched) {
+              matched.setAttribute('data-id', msg.id);
+              matched.style.opacity = '';
+              if (S.lastTs === null || msg._iso > S.lastTs) S.lastTs = msg._iso;
+              return;
+            }
+          }
           var d = msg.date || '';
           if (d !== lastDate) { appendDateDivider(d); lastDate = d; }
           appendMessage(msg, true);
-          // Toast for messages from others
           if (msg.user_id !== S.me) showToast(msg);
         });
         S.lastTs = msgs[msgs.length - 1]._iso;
@@ -549,23 +564,70 @@
     var text = EL.inputField.value.trim();
     if (!text) return;
 
+    // 1. Clear input immediately — zero input lag
     EL.inputField.value = '';
     autoResizeInput();
 
+    // 2. Build optimistic message — appears NOW, before server responds
+    var tmpId = 'tmp_' + Date.now();
+    var now   = new Date();
+    var hh = String(now.getHours()).padStart(2, '0');
+    var mm = String(now.getMinutes()).padStart(2, '0');
+    var optimistic = {
+      id:            tmpId,
+      _iso:          now.toISOString(),
+      user_id:       S.me,
+      user_name:     S.meName,
+      user_role:     S.meRole,
+      text:          text,
+      timestamp:     hh + ':' + mm,
+      date:          now.toLocaleDateString('he-IL'),
+      reactions:     {},
+      deleted:       false,
+      edited:        false,
+      has_file:      false,
+      readers:       [],
+      forwarded:     false,
+      reply_to_id:   S.replyTo ? S.replyTo.id   : null,
+      reply_to_text: S.replyTo ? S.replyTo.text  : null,
+      reply_to_user: S.replyTo ? S.replyTo.user  : null,
+    };
+
+    var replySnapshot = S.replyTo;
+    closeReplyBar();
+    appendMessage(optimistic, true);
+
+    // Mark as "sending" — subtle opacity until confirmed
+    var tmpEl = EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
+    if (tmpEl) tmpEl.style.opacity = '0.6';
+
+    scrollBottom();
+
+    // 3. Fire-and-forget to server — UI already updated
     var payload = { text: text, room: S.room };
-    if (S.receiverId)      payload.receiver_id = S.receiverId;
-    if (S.replyTo)         payload.reply_to_id = S.replyTo.id;
+    if (S.receiverId)   payload.receiver_id = S.receiverId;
+    if (replySnapshot)  payload.reply_to_id = replySnapshot.id;
 
     apiPost('/chat/api/send', payload)
-      .then(function(d){
+      .then(function(d) {
+        var el = EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
         if (d.ok && d.message) {
-          if (!EL.messagesArea.querySelector('[data-id="' + d.message.id + '"]')) {
-            appendMessage(d.message, true);
-          }
+          // Upgrade temp ID → real ID so poller won't duplicate
+          if (el) { el.setAttribute('data-id', d.message.id); el.style.opacity = ''; }
           if (S.lastTs === null || d.message._iso > S.lastTs) S.lastTs = d.message._iso;
-          scrollBottom();
-          closeReplyBar();
+        } else {
+          // Server rejected — remove optimistic bubble, restore text
+          if (el) el.remove();
+          EL.inputField.value = text;
+          autoResizeInput();
         }
+      })
+      .catch(function() {
+        // Network error — remove optimistic bubble, restore text
+        var el = EL.messagesArea.querySelector('[data-id="' + tmpId + '"]');
+        if (el) el.remove();
+        EL.inputField.value = text;
+        autoResizeInput();
       });
   }
 
