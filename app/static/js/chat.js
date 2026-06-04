@@ -539,6 +539,36 @@
     });
     row.addEventListener('touchend', function(){ clearTimeout(pressTimer); });
 
+    // Hover action menu trigger
+    var cbaTrigger = row.querySelector('.cba-trigger');
+    if (cbaTrigger) {
+      cbaTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var menu = row.querySelector('.cba-menu');
+        $$('.cba-menu.open').forEach(function(m) { if (m !== menu) m.classList.remove('open'); });
+        menu.classList.toggle('open');
+      });
+      row.querySelectorAll('.cba-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          row.querySelector('.cba-menu').classList.remove('open');
+          var act = item.dataset.act;
+          if (act === 'reply')   setReply(msg);
+          if (act === 'copy')    navigator.clipboard && navigator.clipboard.writeText(msg.text || '');
+          if (act === 'react') {
+            var rp = row.querySelector('.chat-reaction-picker');
+            if (rp) rp.classList.toggle('show');
+          }
+          if (act === 'edit') {
+            var r2 = EL.messagesArea && EL.messagesArea.querySelector('[data-id="' + msg.id + '"]');
+            if (r2) startEditMessage(r2, msg);
+          }
+          if (act === 'forward') openForwardModal(msg);
+          if (act === 'delete')  deleteMsg(msg.id);
+        });
+      });
+    }
+
     // Reaction picker toggle
     var reactionTrigger = row.querySelector('.chat-reaction-trigger');
     if (reactionTrigger) {
@@ -653,6 +683,24 @@
       S.reactions.map(function(r){ return '<span>' + r + '</span>'; }).join('') +
       '</div>';
 
+    // Hover action menu
+    var actionsHTML = '';
+    if (!msg.deleted) {
+      var canEdit   = isMe;
+      var canDelete = isMe || S.meRole === 'admin' || S.meRole === 'super_admin';
+      actionsHTML = '<div class="cba">' +
+        '<button class="cba-trigger" type="button" title="פעולות"><i class="bi bi-chevron-down"></i></button>' +
+        '<div class="cba-menu">' +
+          '<button class="cba-item" data-act="reply"><i class="bi bi-reply-fill"></i>Reply</button>' +
+          '<button class="cba-item" data-act="react"><i class="bi bi-emoji-smile"></i>React</button>' +
+          '<button class="cba-item" data-act="copy"><i class="bi bi-clipboard"></i>Copy</button>' +
+          (canEdit ? '<button class="cba-item" data-act="edit"><i class="bi bi-pencil"></i>Edit</button>' : '') +
+          '<button class="cba-item" data-act="forward"><i class="bi bi-forward-fill"></i>Forward</button>' +
+          (canDelete ? '<button class="cba-item danger" data-act="delete"><i class="bi bi-trash"></i>Delete</button>' : '') +
+        '</div>' +
+      '</div>';
+    }
+
     var bubbleCls = 'chat-bubble' + (msg.deleted ? ' deleted' : '');
 
     return (avatar || '') +
@@ -660,6 +708,7 @@
         senderName +
         '<div class="' + bubbleCls + '" style="position:relative;">' +
           picker +
+          actionsHTML +
           forwardHTML +
           replyHTML +
           textHTML +
@@ -1209,7 +1258,11 @@
     if (EL.lightbox) EL.lightbox.addEventListener('click', function(){ EL.lightbox.classList.remove('show'); });
 
     // Close context menu on click outside
-    document.addEventListener('click', function(){ if (EL.contextMenu) EL.contextMenu.classList.remove('show'); if (_emojiPicker) _emojiPicker.style.display = 'none'; });
+    document.addEventListener('click', function(){
+      if (EL.contextMenu) EL.contextMenu.classList.remove('show');
+      if (_emojiPicker) _emojiPicker.style.display = 'none';
+      $$('.cba-menu.open').forEach(function(m){ m.classList.remove('open'); });
+    });
     document.addEventListener('click', function(){ $$('.chat-reaction-picker.show').forEach(function(p){ p.classList.remove('show'); }); });
 
     // Mobile back
