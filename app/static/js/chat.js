@@ -1316,7 +1316,15 @@
         _vRecorder.start(200); // collect chunks every 200ms
       })
       .catch(function(err) {
-        alert('לא ניתן לגשת למיקרופון. ודא שנתת הרשאה.');
+        var msg = 'לא ניתן לגשת למיקרופון.\n\n';
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          msg += 'ההרשאה נחסמה.\nלחץ על אייקון המנעול/מיקרופון בשורת הכתובת של הדפדפן → אפשר מיקרופון → רענן את הדף.';
+        } else if (err.name === 'NotFoundError') {
+          msg += 'לא נמצא מיקרופון במכשיר.';
+        } else {
+          msg += 'שגיאה: ' + err.name + '\n' + err.message;
+        }
+        alert(msg);
       });
   }
 
