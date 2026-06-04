@@ -556,15 +556,11 @@
       el.dataset.loaded = '1';
 
       if (el.tagName === 'AUDIO') {
-        // Load audio src only when user presses play (saves bandwidth)
-        el.addEventListener('play', function onFirstPlay() {
-          el.removeEventListener('play', onFirstPlay);
-          fetch('/chat/api/file/' + msgId)
-            .then(function(r){ return r.json(); })
-            .then(function(d){
-              if (d.file_data) { el.src = d.file_data; el.play(); }
-            }).catch(function(){});
-        }, { once: true });
+        // Load src immediately so native controls work without async delays
+        fetch('/chat/api/file/' + msgId)
+          .then(function(r){ return r.json(); })
+          .then(function(d){ if (d.file_data) el.src = d.file_data; })
+          .catch(function(){});
         return;
       }
 
