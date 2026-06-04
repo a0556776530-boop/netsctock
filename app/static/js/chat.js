@@ -787,6 +787,8 @@
 
   /* ── Send ───────────────────────────────────────────────────────────────── */
   function sendMessage() {
+    // If recording — blue send button / Enter sends the recording
+    if (_vRecording) { stopVoiceRecord(); return; }
     if (!EL.inputField || !S.room) return;
     var text = EL.inputField.value.trim();
     if (!text) return;
