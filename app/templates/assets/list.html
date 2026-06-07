@@ -133,18 +133,7 @@
               </button>
             </div>
           </div>
-          <div class="col-6 col-md-2">
-            <select name="status" class="form-select form-select-sm" id="statusFilter">
-              <option value="">{{ t.all_statuses }}</option>
-              {% for val, label in [
-                ('in_use', t.status_in_use), ('dismantled', t.status_dismantled),
-                ('in_storage', t.status_in_storage), ('assigned', t.status_assigned),
-                ('faulty', t.status_faulty), ('retired', t.status_retired)
-              ] %}
-              <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
+
           <div class="col-6 col-md-2">
             <select name="type" class="form-select form-select-sm" id="typeFilter">
               <option value="">{{ t.all_types }}</option>
