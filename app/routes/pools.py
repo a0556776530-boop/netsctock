@@ -15,7 +15,7 @@ pools_bp = Blueprint('pools', __name__, url_prefix='/pools')
 class PoolForm(FlaskForm):
     name         = StringField('Pool Name',    validators=[DataRequired(), Length(max=200)])
     emf_number   = StringField('EMF Number',   validators=[DataRequired(), Length(max=50)])
-    total_amount = DecimalField('Total Amount', validators=[DataRequired(), NumberRange(min=None)], places=2)
+    total_amount = DecimalField('Total Amount', validators=[DataRequired()], places=2)
     currency     = SelectField('Currency',     choices=[('ILS', '₪ ILS'), ('USD', '$ USD')])
     notes        = TextAreaField('Notes',      validators=[Optional()])
     submit       = SubmitField('Save')
