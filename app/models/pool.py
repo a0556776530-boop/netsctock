@@ -42,10 +42,19 @@ class Pool(me.Document):
         return round(self.total_amount - self.consumed_amount, 2)
 
     @property
+    def is_deficit(self):
+        return self.balance < 0
+
+    @property
+    def over_pct(self):
+        """Actual usage %; can exceed 100 when in deficit."""
+        if not self.total_amount or self.total_amount <= 0:
+            return 100.0 if self.consumed_amount > 0 else 0.0
+        return round((self.consumed_amount / self.total_amount) * 100, 1)
+
+    @property
     def balance_pct(self):
-        if not self.total_amount or self.total_amount < 0:
-            return 0
-        return min(100, round((self.consumed_amount / self.total_amount) * 100, 1))
+        return min(100.0, self.over_pct)
 
     @property
     def symbol(self):

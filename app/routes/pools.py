@@ -174,13 +174,6 @@ def link_estimate(id):
         flash('להקצאה אין סכום לחיוב.', 'danger')
         return redirect(url_for('pools.detail', id=id))
 
-    if amount > pool.balance:
-        flash(
-            f'יתרה לא מספיקה. יתרת הפול: {pool.fmt(pool.balance)} | נדרש: {pool.fmt(amount)}',
-            'danger'
-        )
-        return redirect(url_for('pools.detail', id=id))
-
     tx = PoolTransaction(
         estimate=estimate,
         amount_drawn=amount,
@@ -190,32 +183,23 @@ def link_estimate(id):
         notes=notes,
     )
 
-    # Single atomic operation (balance + duplicate guard + push):
-    # transactions__estimate__ne prevents the same estimate from being linked twice,
-    # even under concurrent requests — no separate pre-check needed.
+    # Atomic: duplicate-guard only — deficit is intentionally allowed.
     matched = Pool.objects(
         id=pool.id,
-        consumed_amount__lte=pool.total_amount - amount,
         transactions__estimate__ne=estimate,
     ).update_one(inc__consumed_amount=amount, push__transactions=tx)
 
     if not matched:
-        fresh = Pool.objects(id=pool.id).first()
-        try:
-            already = fresh and any(
-                str(t.estimate.id) == estimate_id
-                for t in (fresh.transactions or [])
-            )
-        except Exception:
-            # estimate may have been deleted — treat as not-yet-linked
-            already = False
-        if already:
-            flash('הקצאה זו כבר מקושרת לפול זה.', 'warning')
-        else:
-            flash('יתרה לא מספיקה (עדכון מקביל). נסה שוב.', 'danger')
+        flash('הקצאה זו כבר מקושרת לפול זה.', 'warning')
         return redirect(url_for('pools.detail', id=id))
 
     flash(f'הקצאה קושרה. חויב {pool.fmt(amount)} מהפול.', 'success')
+    fresh = Pool.objects(id=pool.id).first()
+    if fresh and fresh.balance < 0:
+        flash(
+            f'⚠️ הפול עבר למינוס! גירעון: {pool.fmt(abs(fresh.balance))}',
+            'warning'
+        )
     return redirect(url_for('pools.detail', id=id))
 
 

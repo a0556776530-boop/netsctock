@@ -22,46 +22,90 @@
 </div>
 
 {# ── Balance cards ── #}
+{% set is_deficit = pool.is_deficit %}
 {% set pct = pool.balance_pct %}
-{% set bar_color = 'bg-success' if pct < 60 else ('bg-warning' if pct < 85 else 'bg-danger') %}
-{% set is_deficit = pool.total_amount < 0 %}
+{% set display_pct = pool.over_pct %}
+{% set bar_color = 'bg-danger' if is_deficit else ('bg-success' if pct < 60 else ('bg-warning' if pct < 85 else 'bg-danger')) %}
+
+{# ── Deficit alert banner ── #}
+{% if is_deficit %}
+<div class="alert alert-danger d-flex align-items-center gap-3 mb-3 border-0 shadow-sm" role="alert"
+     style="border-right:4px solid #dc3545!important; border-radius:10px;">
+  <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0"></i>
+  <div>
+    <strong>פול במינוס!</strong>
+    הוצא יותר מהתקציב המאושר בפול זה.
+    גירעון: <strong class="text-danger">{{ pool.fmt(pool.balance | abs) }}</strong>
+    &nbsp;|&nbsp; נוצלו <strong>{{ display_pct }}%</strong> מהתקציב.
+  </div>
+</div>
+{% endif %}
+
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center py-3 {% if is_deficit %}border-danger border{% endif %}">
+    <div class="card border-0 shadow-sm text-center py-3">
       <div class="text-muted small mb-1">{{ t.pool_card_total }}</div>
-      <div class="fw-bold fs-5 {% if is_deficit %}text-danger{% endif %}">
-        {{ pool.fmt(pool.total_amount) }}
-        {% if is_deficit %}<span class="badge bg-danger ms-1" style="font-size:.65rem;">גירעון</span>{% endif %}
-      </div>
+      <div class="fw-bold fs-5">{{ pool.fmt(pool.total_amount) }}</div>
     </div>
   </div>
   <div class="col-6 col-md-3">
     <div class="card border-0 shadow-sm text-center py-3">
       <div class="text-muted small mb-1">{{ t.pool_card_consumed }}</div>
-      <div class="fw-bold fs-5 text-danger">{{ pool.fmt(pool.consumed_amount) }}</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center py-3">
-      <div class="text-muted small mb-1">{{ t.pool_card_balance }}</div>
-      <div class="fw-bold fs-5 {% if pool.balance < pool.total_amount * 0.15 %}text-danger{% else %}text-success{% endif %}">
-        {{ pool.fmt(pool.balance) }}
+      <div class="fw-bold fs-5 {% if is_deficit %}text-danger fw-bold{% else %}text-danger{% endif %}">
+        {{ pool.fmt(pool.consumed_amount) }}
+        {% if is_deficit %}<i class="bi bi-arrow-up-circle-fill ms-1 small"></i>{% endif %}
       </div>
     </div>
   </div>
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center py-3">
+    <div class="card border-0 shadow-sm text-center py-3 {% if is_deficit %}border border-danger{% endif %}"
+         {% if is_deficit %}style="background:rgba(220,53,69,.04);"{% endif %}>
+      <div class="text-muted small mb-1">{{ t.pool_card_balance }}</div>
+      <div class="fw-bold fs-5 {% if is_deficit %}text-danger{% elif pool.balance < pool.total_amount * 0.15 %}text-danger{% else %}text-success{% endif %}">
+        {{ pool.fmt(pool.balance) }}
+        {% if is_deficit %}
+          <span class="badge bg-danger align-middle ms-1" style="font-size:.6rem; vertical-align:middle;">מינוס</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3 {% if is_deficit %}border border-danger{% endif %}"
+         {% if is_deficit %}style="background:rgba(220,53,69,.04);"{% endif %}>
       <div class="text-muted small mb-1">{{ t.pool_card_utilization }}</div>
-      <div class="fw-bold fs-5">{{ pct }}%</div>
+      <div class="fw-bold fs-5 {% if is_deficit %}text-danger{% endif %}">{{ display_pct }}%</div>
     </div>
   </div>
 </div>
 
 {# ── Progress bar ── #}
 <div class="mb-4">
+  {% if is_deficit %}
+  {# Deficit: full danger bar + overflow stripe animation #}
+  <div class="position-relative" style="height:14px; border-radius:7px; background:#f8d7da; overflow:hidden;">
+    <div class="progress-bar bg-danger w-100 h-100 position-absolute top-0 start-0"
+         style="border-radius:7px;
+                background: repeating-linear-gradient(
+                  -45deg,
+                  #dc3545,
+                  #dc3545 8px,
+                  #b02a37 8px,
+                  #b02a37 16px
+                ) !important;
+                animation: deficit-stripe 1.2s linear infinite;">
+    </div>
+  </div>
+  <style>
+    @keyframes deficit-stripe {
+      0%   { background-position: 0 0; }
+      100% { background-position: 22.6px 0; }
+    }
+  </style>
+  {% else %}
   <div class="progress" style="height:12px; border-radius:6px;">
     <div class="progress-bar {{ bar_color }}" style="width:{{ pct }}%;"></div>
   </div>
+  {% endif %}
 </div>
 
 {% if pool.notes %}
