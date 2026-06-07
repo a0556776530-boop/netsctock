@@ -86,11 +86,15 @@
               </div>
             </div>
 
-            <!-- Stock Qty -->
+            <!-- Stock Qty — read-only, updated via CSV import only -->
             <div class="col-md-4">
-              {{ form.quantity.label(class="form-label fw-semibold") }}
-              {{ form.quantity(class="form-control", type="text", inputmode="numeric",
-                               id="quantityInput", placeholder="0") }}
+              <label class="form-label fw-semibold">{{ t.col_stock_qty }}</label>
+              <div class="form-control bg-light" style="color:#6b7280;">
+                {% if asset and asset.quantity is not none %}{{ asset.quantity }}{% else %}0{% endif %}
+              </div>
+              <div class="form-text text-muted" style="font-size:.75rem;">
+                <i class="bi bi-info-circle me-1"></i>מתעדכן דרך ייבוא CSV בלבד
+              </div>
             </div>
 
             <!-- Min Threshold (Red Line) -->

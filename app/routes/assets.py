@@ -244,7 +244,7 @@ def new_asset():
             notes         = (form.notes.data or '').strip() or None,
             price_usd     = float(form.price_usd.data) if form.price_usd.data is not None else None,
             price_nis     = float(form.price_nis.data) if form.price_nis.data is not None else None,
-            quantity      = form.quantity.data,
+            quantity      = 0,
             min_threshold = form.min_threshold.data,
         )
         asset.save()
@@ -309,7 +309,6 @@ def edit(id):
         asset.notes         = (form.notes.data or '').strip() or None
         asset.price_usd     = float(form.price_usd.data) if form.price_usd.data is not None else None
         asset.price_nis     = float(form.price_nis.data) if form.price_nis.data is not None else None
-        asset.quantity      = form.quantity.data
         asset.min_threshold = form.min_threshold.data
         asset.save()
         flash(t.get('flash_asset_updated', 'Asset updated successfully.'), 'success')
