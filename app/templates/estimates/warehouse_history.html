@@ -3,8 +3,14 @@
 {% block page_title %}{{ t.wh_history_title }}{% endblock %}
 
 {% block content %}
-<div class="mb-3">
-  <span class="text-muted small">{{ estimates | length }} {{ t.wh_history_count }}</span>
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+  <span class="text-muted small" id="whCount">{{ estimates | length }} {{ t.wh_history_count }}</span>
+  <div class="position-relative ms-auto" style="width:260px;">
+    <i class="bi bi-search position-absolute top-50 translate-middle-y text-muted" style="right:10px;pointer-events:none;font-size:.85rem;"></i>
+    <input type="text" id="whSearch" class="form-control form-control-sm"
+           placeholder="חפש מספר הקצאה, שם, פרויקט…"
+           style="padding-right:32px;" dir="auto" autocomplete="off">
+  </div>
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -23,7 +29,8 @@
       </thead>
       <tbody>
         {% for e in estimates %}
-        <tr>
+        <tr class="wh-row"
+            data-q="{{ ((e.allocation_number or '') ~ ' ' ~ (e.task_name or '') ~ ' ' ~ (e.project_name or '')) | lower }}">
           <td><span class="badge bg-success font-monospace">{{ e.allocation_number or '—' }}</span></td>
           <td class="fw-semibold">
             <a href="{{ url_for('estimates.detail', id=e.id) }}" class="text-decoration-none">{{ e.task_name }}</a>
@@ -52,4 +59,25 @@
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  var inp   = document.getElementById('whSearch');
+  var count = document.getElementById('whCount');
+  var total = {{ estimates | length }};
+  if (!inp) return;
+  inp.addEventListener('input', function(){
+    var q = this.value.trim().toLowerCase();
+    var visible = 0;
+    document.querySelectorAll('.wh-row').forEach(function(r){
+      var show = !q || r.dataset.q.includes(q);
+      r.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    if (count) count.textContent = (q ? visible + ' / ' + total : total) + ' {{ t.wh_history_count }}';
+  });
+})();
+</script>
 {% endblock %}
