@@ -130,13 +130,14 @@ def dashboard():
     today = date.today()
 
     # ── Core counts ───────────────────────────────────────────────────────────
+    from app.models.purchase import ACTIVE_STATUSES
     total_assets = Asset.objects.count()
     open_tasks_count = Task.objects(status__ne='done').count()
     pending_allocations_count = Estimate.objects(
         Q(status='pending') & Q(record_type__ne='estimate')
     ).count()
     open_purchases_count = Purchase.objects(
-        status__ne='Order Received in Warehouse'
+        status__in=ACTIVE_STATUSES
     ).count()
 
     # ── Status counts ─────────────────────────────────────────────────────────
@@ -155,16 +156,50 @@ def dashboard():
         if len(recent_events) >= 8:
             break
 
-    # ── Low stock (respects min_threshold) ───────────────────────────────────
+    # ── Commitments + in-purchase (same logic as assets list) ────────────────
+    _commit_pipeline = [
+        {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
+        {'$unwind': '$items'},
+        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
+    ]
+    dash_commitments = {str(r['_id']): r['total']
+                        for r in Estimate._get_collection().aggregate(_commit_pipeline)}
+
+    _purchase_pipeline = [
+        {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
+        {'$unwind': '$items'},
+        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
+    ]
+    dash_in_purchase = {str(r['_id']): r['total']
+                        for r in Purchase._get_collection().aggregate(_purchase_pipeline)}
+
+    # ── Low stock — after commitments, only assets with min_threshold set ─────
     low_stock_assets = []
+    red_line_count   = 0
     for a in Asset.objects(quantity__exists=True, quantity__ne=None).only(
         'component_id', 'serial_number', 'model', 'quantity', 'min_threshold', 'price_usd'
-    ).order_by('quantity').limit(50):
-        threshold = a.min_threshold if a.min_threshold else 5
-        if (a.quantity or 0) < threshold:
-            low_stock_assets.append(a)
-        if len(low_stock_assets) >= 10:
-            break
+    ):
+        stock     = a.quantity or 0
+        committed = dash_commitments.get(str(a.id), 0)
+        purchased = dash_in_purchase.get(str(a.id), 0)
+        after     = stock + purchased - committed
+        threshold = a.min_threshold if (a.min_threshold is not None and a.min_threshold > 0) else None
+
+        is_low = threshold is not None and after <= threshold
+        is_neg = after < 0
+
+        if is_low or is_neg:
+            red_line_count += 1
+            if len(low_stock_assets) < 10:
+                a._after     = after
+                a._threshold = threshold
+                a._committed = committed
+                a._purchased = purchased
+                low_stock_assets.append(a)
+
+    low_stock_assets.sort(key=lambda a: a._after)
 
     # ── Expiring allocations (expired or within 14 days) ─────────────────────
     cutoff = today + timedelta(days=7)
@@ -251,6 +286,7 @@ def dashboard():
         pending_allocations_count=pending_allocations_count,
         open_purchases_count=open_purchases_count,
         low_stock_assets=low_stock_assets,
+        red_line_count=red_line_count,
         expiring_estimates=expiring_estimates,
         purchases_pipeline=purchases_pipeline,
         top_committed=top_committed,

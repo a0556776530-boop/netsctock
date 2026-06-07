@@ -85,6 +85,24 @@
     </a>
   </div>
 
+  {% if red_line_count > 0 %}
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('assets.list_assets') }}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100 kpi-card" style="border-left:4px solid #dc3545!important;">
+        <div class="card-body d-flex align-items-center gap-3 py-3">
+          <div class="kpi-icon" style="background:rgba(220,53,69,.12);">
+            <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+          </div>
+          <div>
+            <div class="fs-2 fw-bold lh-1 text-danger">{{ red_line_count }}</div>
+            <div class="text-muted small mt-1">{{ t.low_stock_title }}</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endif %}
+
 </div>
 
 <!-- ── Charts Row ────────────────────────────────────────────────────── -->
@@ -282,7 +300,8 @@
                 <th>{{ t.col_asset_id }}</th>
                 <th>{{ t.col_model }}</th>
                 <th class="text-center">{{ t.col_stock_qty }}</th>
-                <th class="text-center">Min</th>
+                <th class="text-center">{{ t.col_after_commitments }}</th>
+                <th class="text-center">{{ t.col_alert }}</th>
               </tr>
             </thead>
             <tbody>
@@ -292,10 +311,15 @@
                 <td>
                   <a href="{{ url_for('assets.detail', id=asset.id) }}" class="fw-semibold small font-monospace text-decoration-none">{{ asset.serial_number }}</a>
                 </td>
+                <td class="text-center small">{{ asset.quantity }}</td>
                 <td class="text-center">
-                  <span class="badge bg-danger">{{ asset.quantity }}</span>
+                  {% if asset._after < 0 %}
+                  <span class="badge bg-danger fw-bold">{{ asset._after }}</span>
+                  {% else %}
+                  <span class="badge bg-warning text-dark">{{ asset._after }}</span>
+                  {% endif %}
                 </td>
-                <td class="text-center text-muted small">{{ asset.min_threshold or 5 }}</td>
+                <td class="text-center text-muted small">{{ asset._threshold or '—' }}</td>
               </tr>
               {% endfor %}
             </tbody>
