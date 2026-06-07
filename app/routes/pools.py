@@ -62,7 +62,13 @@ def new_pool():
 @login_required
 def detail(id):
     pool = get_or_404(Pool, id)
-    return render_template('pools/detail.html', pool=pool)
+    try:
+        return render_template('pools/detail.html', pool=pool)
+    except Exception as e:
+        import traceback, logging
+        logging.error('Pool detail crash: %s\n%s', e, traceback.format_exc())
+        flash(f'שגיאה בטעינת הפול: {type(e).__name__}: {e}', 'danger')
+        return redirect(url_for('pools.list_pools'))
 
 
 # ── Edit ──────────────────────────────────────────────────────────────────────
@@ -81,12 +87,18 @@ def edit_pool(id):
             flash(f'מספר EMF "{new_emf}" כבר קיים בפול אחר.', 'danger')
             return render_template('pools/form.html', form=form, pool=pool)
 
-        pool.name         = form.name.data.strip()
-        pool.emf_number   = new_emf
-        pool.total_amount = float(form.total_amount.data)
-        pool.currency     = form.currency.data
-        pool.notes        = form.notes.data.strip() if form.notes.data else ''
-        pool.save()
+        try:
+            pool.name         = form.name.data.strip()
+            pool.emf_number   = new_emf
+            pool.total_amount = float(form.total_amount.data)
+            pool.currency     = form.currency.data
+            pool.notes        = form.notes.data.strip() if form.notes.data else ''
+            pool.save()
+        except Exception as e:
+            import traceback, logging
+            logging.error('Pool save crash: %s\n%s', e, traceback.format_exc())
+            flash(f'שגיאה בשמירת הפול: {type(e).__name__}: {e}', 'danger')
+            return render_template('pools/form.html', form=form, pool=pool)
         flash('פול עודכן.', 'success')
         return redirect(url_for('pools.detail', id=pool.id))
     return render_template('pools/form.html', form=form, pool=pool)
