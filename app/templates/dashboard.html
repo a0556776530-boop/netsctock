@@ -109,29 +109,13 @@
 <div class="row g-3 mb-4">
 
   <!-- Activity chart -->
-  <div class="col-12 col-md-8">
+  <div class="col-12">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-transparent fw-semibold small border-0 pt-3">
         <i class="bi bi-activity me-1 text-primary"></i>{{ t.activity_chart_title }}
       </div>
       <div class="card-body pt-0">
         <canvas id="activityChart" style="max-height:200px; width:100%;"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Status donut -->
-  <div class="col-12 col-md-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-transparent fw-semibold small border-0 pt-3">
-        <i class="bi bi-pie-chart me-1 text-primary"></i>{{ t.assets_by_status }}
-      </div>
-      <div class="card-body d-flex align-items-center justify-content-center pt-0">
-        {% if total_assets > 0 %}
-        <canvas id="statusChart" style="max-height:180px;"></canvas>
-        {% else %}
-        <p class="text-muted small">{{ t.no_assets_yet }}</p>
-        {% endif %}
       </div>
     </div>
   </div>
@@ -344,23 +328,7 @@
 Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 Chart.defaults.font.size   = 12;
 
-const statusData   = {{ status_chart | safe }};
 const activityData = {{ activity_chart | safe }};
-
-const statusEl = document.getElementById('statusChart');
-if (statusEl) {
-  new Chart(statusEl, {
-    type: 'doughnut',
-    data: {
-      labels:   statusData.labels,
-      datasets: [{ data: statusData.data, backgroundColor: statusData.colors, borderWidth: 2, borderColor: '#fff' }],
-    },
-    options: {
-      cutout: '68%',
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } } },
-    },
-  });
-}
 
 const actEl = document.getElementById('activityChart');
 if (actEl) {
