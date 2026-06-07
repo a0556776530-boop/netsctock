@@ -29,14 +29,6 @@
               <div class="form-text" id="serialHint"></div>
             </div>
 
-            <!-- Barcode -->
-            <div class="col-md-6">
-              {{ form.barcode.label(class="form-label fw-semibold") }}
-              {{ form.barcode(class="form-control" + (" is-invalid" if form.barcode.errors else ""),
-                              placeholder="Optional secondary barcode") }}
-              {% for e in form.barcode.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
-            </div>
-
             <!-- Asset Type -->
             <div class="col-md-6">
               {{ form.asset_type_id.label(class="form-label fw-semibold") }}

@@ -44,7 +44,6 @@ def _type_choices():
 class AssetForm(FlaskForm):
     component_id  = StringField('Asset ID',       validators=[Optional(), Length(max=50)])
     serial_number = StringField('Mfr. Part No.',  validators=[DataRequired(), Length(max=100)])
-    barcode       = StringField('Barcode',         validators=[Optional(), Length(max=100)])
     asset_type_id = SelectField('Asset Type', coerce=str, validators=[DataRequired()])
     model         = StringField('Description',     validators=[Optional(), Length(max=150)])
     manufacturer  = StringField('Manufacturer',    validators=[Optional(), Length(max=150)])
@@ -238,7 +237,6 @@ def new_asset():
         asset = Asset(
             component_id  = (form.component_id.data or '').strip() or None,
             serial_number = form.serial_number.data.strip().upper(),
-            barcode       = (form.barcode.data or '').strip() or None,
             asset_type    = asset_type,
             model         = (form.model.data or '').strip() or None,
             manufacturer  = (form.manufacturer.data or '').strip() or None,
@@ -293,7 +291,6 @@ def edit(id):
     if request.method == 'GET':
         form.component_id.data  = asset.component_id or ''
         form.serial_number.data = asset.serial_number
-        form.barcode.data       = asset.barcode or ''
         form.asset_type_id.data = str(asset.asset_type.id) if asset.asset_type else ''
         form.model.data         = asset.model or ''
         form.manufacturer.data  = asset.manufacturer or ''
@@ -306,7 +303,6 @@ def edit(id):
     if form.validate_on_submit():
         asset.component_id  = (form.component_id.data or '').strip() or None
         asset.serial_number = form.serial_number.data.strip().upper()
-        asset.barcode       = (form.barcode.data or '').strip() or None
         asset.asset_type    = AssetType.objects(id=form.asset_type_id.data).first()
         asset.model         = (form.model.data or '').strip() or None
         asset.manufacturer  = (form.manufacturer.data or '').strip() or None
