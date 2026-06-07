@@ -78,7 +78,7 @@ TRANSLATIONS = {
         'status_retired': 'Deleted',
         # Column headers
         'col_asset_id': 'Asset ID',
-        'col_model': 'Mfr. Part No.',
+        'col_model': 'Product ID',
         'col_feature': 'Description',
         'col_stock_qty': 'Stock Qty',
         'col_nis': 'ILS ₪',
@@ -232,7 +232,7 @@ TRANSLATIONS = {
         # Form labels — Asset
         'form_component_id': 'Asset ID',
         'field_asset_id': 'Asset ID',
-        'form_serial_number': 'Mfr. Part No.',
+        'form_serial_number': 'Product ID',
         'form_barcode': 'Barcode',
         'form_asset_type': 'Asset Type',
         'form_feature': 'Description',
@@ -558,7 +558,7 @@ TRANSLATIONS = {
         'import_qty_errors_badge':  'errors',
         'import_qty_skipped_badge': 'skipped',
         'import_qty_updated_title': 'Updated Successfully',
-        'import_qty_col_part':      'Mfr. Part No.',
+        'import_qty_col_part':      'Product ID',
         'import_qty_col_desc':      'Description',
         'import_qty_col_new_qty':   'New Quantity',
         'import_qty_notfound_title':'Not Found in System',

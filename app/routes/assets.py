@@ -43,7 +43,7 @@ def _type_choices():
 
 class AssetForm(FlaskForm):
     component_id  = StringField('Asset ID',       validators=[Optional(), Length(max=50)])
-    serial_number = StringField('Mfr. Part No.',  validators=[DataRequired(), Length(max=100)])
+    serial_number = StringField('Product ID',      validators=[DataRequired(), Length(max=100)])
     asset_type_id = SelectField('Asset Type', coerce=str, validators=[DataRequired()])
     model         = StringField('Description',     validators=[Optional(), Length(max=150)])
     manufacturer  = StringField('Manufacturer',    validators=[Optional(), Length(max=150)])
@@ -513,6 +513,7 @@ def _csv_col(row, *names):
     return ''
 
 _SERIAL_COLS = (
+    'product id', 'productid', 'product_id',
     'מקט יצרן', 'מקט', 'מקט רכיב', 'שם רכיב',
     'mfr part no', 'manufacturer part no', 'manufacturer part number',
     'serial number', 'serial', 'part no', 'part number',
