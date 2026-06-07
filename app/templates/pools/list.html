@@ -41,7 +41,7 @@
               {{ pool.name }}
             </a>
             {% if is_deficit %}
-              <span class="badge bg-danger ms-1" style="font-size:.6rem;">מינוס</span>
+              <span class="badge bg-danger ms-1" style="font-size:.6rem;">{{ t.pool_badge_deficit }}</span>
             {% endif %}
           </td>
           <td class="font-monospace small text-muted">{{ pool.emf_number }}</td>

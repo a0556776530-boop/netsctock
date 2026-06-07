@@ -33,10 +33,10 @@
      style="border-right:4px solid #dc3545!important; border-radius:10px;">
   <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0"></i>
   <div>
-    <strong>פול במינוס!</strong>
-    הוצא יותר מהתקציב המאושר בפול זה.
-    גירעון: <strong class="text-danger">{{ pool.fmt(pool.balance | abs) }}</strong>
-    &nbsp;|&nbsp; נוצלו <strong>{{ display_pct }}%</strong> מהתקציב.
+    <strong>{{ t.pool_deficit_title }}</strong>
+    {{ t.pool_deficit_body }}
+    {{ t.pool_deficit_shortfall }}: <strong class="text-danger">{{ pool.fmt(pool.balance | abs) }}</strong>
+    &nbsp;|&nbsp; {{ display_pct }}% {{ t.pool_deficit_utilized }}.
   </div>
 </div>
 {% endif %}
@@ -64,7 +64,7 @@
       <div class="fw-bold fs-5 {% if is_deficit %}text-danger{% elif pool.balance < pool.total_amount * 0.15 %}text-danger{% else %}text-success{% endif %}">
         {{ pool.fmt(pool.balance) }}
         {% if is_deficit %}
-          <span class="badge bg-danger align-middle ms-1" style="font-size:.6rem; vertical-align:middle;">מינוס</span>
+          <span class="badge bg-danger align-middle ms-1" style="font-size:.6rem; vertical-align:middle;">{{ t.pool_badge_deficit }}</span>
         {% endif %}
       </div>
     </div>

@@ -610,6 +610,11 @@ TRANSLATIONS = {
         'pool_loading':             'Loading...',
         'pool_load_error':          'Error loading estimates',
         'pool_no_open':             'No open estimates found',
+        'pool_deficit_title':       'Pool in deficit!',
+        'pool_deficit_body':        'More than the approved budget has been drawn from this pool.',
+        'pool_deficit_shortfall':   'Shortfall',
+        'pool_deficit_utilized':    'utilized',
+        'pool_badge_deficit':       'Deficit',
     },
     'he': {
         # App
@@ -1222,6 +1227,11 @@ TRANSLATIONS = {
         'pool_loading':             'טוען...',
         'pool_load_error':          'שגיאה בטעינה',
         'pool_no_open':             'לא נמצאו אומדנים פתוחים',
+        'pool_deficit_title':       'פול במינוס!',
+        'pool_deficit_body':        'הוצא יותר מהתקציב המאושר בפול זה.',
+        'pool_deficit_shortfall':   'גירעון',
+        'pool_deficit_utilized':    'נוצלו',
+        'pool_badge_deficit':       'מינוס',
     },
 }
 
