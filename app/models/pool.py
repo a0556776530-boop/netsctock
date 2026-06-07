@@ -39,7 +39,9 @@ class Pool(me.Document):
 
     @property
     def balance(self):
-        return round(self.total_amount - self.consumed_amount, 2)
+        total    = self.total_amount    or 0.0
+        consumed = self.consumed_amount or 0.0
+        return round(total - consumed, 2)
 
     @property
     def is_deficit(self):
@@ -48,9 +50,11 @@ class Pool(me.Document):
     @property
     def over_pct(self):
         """Actual usage %; can exceed 100 when in deficit."""
-        if not self.total_amount or self.total_amount <= 0:
-            return 100.0 if self.consumed_amount > 0 else 0.0
-        return round((self.consumed_amount / self.total_amount) * 100, 1)
+        total    = self.total_amount    or 0.0
+        consumed = self.consumed_amount or 0.0
+        if total <= 0:
+            return 100.0 if consumed > 0 else 0.0
+        return round((consumed / total) * 100, 1)
 
     @property
     def balance_pct(self):
@@ -61,6 +65,7 @@ class Pool(me.Document):
         return '₪' if self.currency == 'ILS' else '$'
 
     def fmt(self, amount):
+        amount = amount or 0.0
         if self.currency == 'ILS':
             return '₪{:,.0f}'.format(amount)
         return '${:,.2f}'.format(amount)
