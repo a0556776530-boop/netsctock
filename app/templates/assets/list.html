@@ -297,7 +297,7 @@
               </td>
 
               <!-- 2. Mfr. Part No. -->
-              <td>
+              <td data-hover-cell>
                 <a href="{{ url_for('assets.detail', id=asset.id) }}" class="fw-semibold text-decoration-none font-monospace small" data-hl>{{ asset.serial_number }}</a>
                 {% if asset.barcode %}
                 <div class="text-muted x-small"><i class="bi bi-upc"></i> <span data-hl>{{ asset.barcode }}</span></div>
@@ -904,15 +904,17 @@
 
     function hide() { pop.style.display = 'none'; }
 
-    document.querySelectorAll('tr[data-asset-row]').forEach(function (row) {
-      row.addEventListener('mouseenter', function (e) {
+    document.querySelectorAll('td[data-hover-cell]').forEach(function (cell) {
+      var row = cell.closest('tr');
+      cell.style.cursor = 'default';
+      cell.addEventListener('mouseenter', function (e) {
         clearTimeout(hideTimer);
         show(row, e);
       });
-      row.addEventListener('mousemove', function (e) {
+      cell.addEventListener('mousemove', function (e) {
         if (pop.style.display !== 'none') position(e);
       });
-      row.addEventListener('mouseleave', function () {
+      cell.addEventListener('mouseleave', function () {
         hideTimer = setTimeout(hide, 120);
       });
     });
