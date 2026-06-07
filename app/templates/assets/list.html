@@ -275,21 +275,21 @@
                 data-status="{{ asset.status }}"
                 data-type="{{ asset.asset_type.id if asset.asset_type else '' }}"
                 style="{{ 'background-color:#fff5f5;' if is_low else '' }}"
-                data-preview="{{ {
-                  'id':           asset.component_id or '',
-                  'sn':           asset.serial_number,
-                  'model':        asset.model or '',
-                  'manufacturer': asset.manufacturer or '',
-                  'type':         asset.asset_type.name if asset.asset_type else '',
-                  'status':       asset.status_label,
-                  'status_color': asset.status_color,
-                  'qty':          asset.quantity if asset.quantity is not none else '',
-                  'threshold':    asset.min_threshold if asset.min_threshold is not none else '',
-                  'price_usd':    asset.price_usd|float if asset.price_usd else 0,
-                  'barcode':      asset.barcode or '',
-                  'notes':        asset.notes or '',
-                  'created':      asset.created_at.strftime('%d %b %Y') if asset.created_at else ''
-                } | tojson | e }}">
+                data-preview='{{ {
+                  "id":           asset.component_id or "",
+                  "sn":           asset.serial_number,
+                  "model":        asset.model or "",
+                  "manufacturer": asset.manufacturer or "",
+                  "type":         asset.asset_type.name if asset.asset_type else "",
+                  "status":       asset.status_label,
+                  "status_color": asset.status_color,
+                  "qty":          asset.quantity if asset.quantity is not none else "",
+                  "threshold":    asset.min_threshold if asset.min_threshold is not none else "",
+                  "price_usd":    asset.price_usd|float if asset.price_usd else 0,
+                  "barcode":      asset.barcode or "",
+                  "notes":        asset.notes or "",
+                  "created":      asset.created_at.strftime("%d %b %Y") if asset.created_at else ""
+                } | tojson }}'>
 
               <!-- 1. Asset ID -->
               <td class="small font-monospace fw-semibold">
