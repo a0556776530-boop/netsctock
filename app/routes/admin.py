@@ -287,8 +287,25 @@ def reset_password(id):
 @login_required
 def settings():
     _super_admin_required()
+    from app.models.settings import AppSetting
     all_users = list(User.objects.order_by('name'))
-    return render_template('admin/settings.html', users=all_users)
+    alloc_counter = int(AppSetting.get('alloc_counter') or 0)
+    return render_template('admin/settings.html', users=all_users,
+                           alloc_counter=alloc_counter)
+
+
+@admin_bp.route('/settings/alloc-counter', methods=['POST'])
+@login_required
+def set_alloc_counter():
+    _super_admin_required()
+    from app.models.settings import AppSetting
+    val = request.form.get('alloc_counter', '').strip()
+    if val.isdigit() and int(val) > 0:
+        AppSetting.set('alloc_counter', int(val))
+        flash(f'Counter הקצאות עודכן ל-{val}. ההצעה הבאה תהיה {int(val)+1}.', 'success')
+    else:
+        flash('ערך לא תקין.', 'danger')
+    return redirect(url_for('admin.settings'))
 
 
 @admin_bp.route('/users/<id>/role', methods=['POST'])

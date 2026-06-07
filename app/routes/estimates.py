@@ -16,27 +16,45 @@ from app.utils.mongo_helpers import get_or_404
 estimates_bp = Blueprint('estimates', __name__, url_prefix='/estimates')
 
 
+def _dense_max_allocation():
+    """Find the highest allocation number that belongs to the main sequence.
+
+    Sorts all allocation numbers and scans from the top. Whenever the gap
+    between consecutive numbers exceeds 50, everything above the gap is
+    treated as a manual outlier and ignored.  This ensures that an
+    accidental high number (e.g. 1080 when the sequence was at 1018)
+    does not permanently shift the counter.
+    """
+    nums = sorted([
+        r['allocation_number']
+        for r in Estimate._get_collection().find(
+            {'allocation_number': {'$exists': True, '$ne': None}},
+            {'allocation_number': 1, '_id': 0},
+        )
+        if isinstance(r.get('allocation_number'), int)
+    ])
+    if not nums:
+        return 1000
+    # Walk backwards; stop at the first gap > 50 (outlier boundary)
+    for i in range(len(nums) - 1, 0, -1):
+        if nums[i] - nums[i - 1] > 50:
+            return nums[i - 1]
+    return nums[-1]
+
+
 def _next_allocation_number():
     """Return next suggested allocation number based on internal counter.
 
-    Uses 'alloc_counter' in AppSetting — only updated when user accepts
-    the auto-suggested number.  Manual overrides (high or low) never
-    advance the counter, so the sequence stays coherent.
-    On first run, seeds from the current DB max so nothing is lost.
+    Counter only advances when the user accepts the auto-suggestion.
+    Manual overrides never shift it.
     """
-    # Seed from DB max on first use (counter not yet stored)
-    counter_row = AppSetting._get_collection().find_one({'_id': 'alloc_counter'})
-    if counter_row is None:
-        result = list(Estimate._get_collection().aggregate([
-            {'$match': {'allocation_number': {'$exists': True, '$ne': None}}},
-            {'$group': {'_id': None, 'max_num': {'$max': '$allocation_number'}}},
-        ]))
-        seed = result[0]['max_num'] if result else 1000
-        AppSetting.set('alloc_counter', seed)
+    counter = int(AppSetting.get('alloc_counter') or 0)
+    if counter == 0:
+        # First use — seed from the dense max (ignore outliers)
+        counter = _dense_max_allocation()
+        AppSetting.set('alloc_counter', counter)
 
-    counter = int(AppSetting.get('alloc_counter') or 1000)
     proposed = counter + 1
-    # Skip numbers already taken (e.g. manual overrides that landed here)
     while Estimate.objects(allocation_number=proposed).first():
         proposed += 1
     return proposed

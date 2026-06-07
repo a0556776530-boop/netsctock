@@ -74,6 +74,28 @@
     </table>
   </div>
 </div>
+<!-- ── Allocation Counter ──────────────────────────────────────────── -->
+<div class="card border-0 shadow-sm mt-4">
+  <div class="card-header bg-white py-3">
+    <span class="fw-semibold"><i class="bi bi-hash me-1 text-primary"></i>Counter מספרי הקצאה</span>
+  </div>
+  <div class="card-body">
+    <p class="text-muted small mb-3">
+      ה-Counter קובע מה יוצע כמספר הקצאה הבא. שינויים ידניים בטופס לא מזיזים אותו.
+      הערך הנוכחי: <strong class="font-monospace">{{ alloc_counter }}</strong>
+      &nbsp;→ ההצעה הבאה תהיה <strong class="font-monospace text-primary">{{ alloc_counter + 1 }}</strong>
+    </p>
+    <form method="POST" action="{{ url_for('admin.set_alloc_counter') }}" class="d-flex gap-2 align-items-end" style="max-width:340px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="flex-grow-1">
+        <label class="form-label small fw-semibold mb-1">הגדר Counter ל:</label>
+        <input type="number" name="alloc_counter" class="form-control font-monospace"
+               min="1" step="1" value="{{ alloc_counter }}" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">שמור</button>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
