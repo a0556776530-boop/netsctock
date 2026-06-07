@@ -24,11 +24,15 @@
 {# ── Balance cards ── #}
 {% set pct = pool.balance_pct %}
 {% set bar_color = 'bg-success' if pct < 60 else ('bg-warning' if pct < 85 else 'bg-danger') %}
+{% set is_deficit = pool.total_amount < 0 %}
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center py-3">
+    <div class="card border-0 shadow-sm text-center py-3 {% if is_deficit %}border-danger border{% endif %}">
       <div class="text-muted small mb-1">{{ t.pool_card_total }}</div>
-      <div class="fw-bold fs-5">{{ pool.fmt(pool.total_amount) }}</div>
+      <div class="fw-bold fs-5 {% if is_deficit %}text-danger{% endif %}">
+        {{ pool.fmt(pool.total_amount) }}
+        {% if is_deficit %}<span class="badge bg-danger ms-1" style="font-size:.65rem;">גירעון</span>{% endif %}
+      </div>
     </div>
   </div>
   <div class="col-6 col-md-3">

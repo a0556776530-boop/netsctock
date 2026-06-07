@@ -43,7 +43,7 @@ class Pool(me.Document):
 
     @property
     def balance_pct(self):
-        if not self.total_amount:
+        if not self.total_amount or self.total_amount < 0:
             return 0
         return min(100, round((self.consumed_amount / self.total_amount) * 100, 1))
 
