@@ -195,9 +195,19 @@ def new_purchase():
             name = request.form.get('name', '').strip()
             if not name:
                 flash(t.get('flash_name_required', 'Purchase name is required.'), 'danger')
+                # Build prefill_items so the items list is preserved
+                asset_ids = request.form.getlist('item_asset_id')
+                quantities = request.form.getlist('item_quantity')
+                prefill_items = []
+                for aid, qty in zip(asset_ids, quantities):
+                    a = assets_by_id.get(aid)
+                    if a:
+                        prefill_items.append({'asset': a, 'quantity': int(qty or 1)})
                 return render_template('purchases/form.html', purchase=None,
                                        assets=assets, grouped_assets=grouped_assets,
-                                       statuses=STATUSES, currencies=CURRENCIES)
+                                       statuses=STATUSES, currencies=CURRENCIES,
+                                       form_data=request.form,
+                                       prefill_items=prefill_items)
 
             bom_date = _parse_date(request.form.get('bom_date'))
             estimate_number = request.form.get('estimate_number', '').strip() or None
@@ -232,7 +242,8 @@ def new_purchase():
     return render_template('purchases/form.html', purchase=None,
                            assets=assets, grouped_assets=grouped_assets,
                            statuses=[s for s in STATUSES if s != 'בוטל'],
-                           currencies=CURRENCIES)
+                           currencies=CURRENCIES,
+                           form_data=None, prefill_items=[])
 
 
 @purchases_bp.route('/<id>')

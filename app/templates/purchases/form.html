@@ -22,20 +22,21 @@
 
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_name }} <span class="text-danger">*</span></label>
-          <input type="text" name="name" class="form-control"
-                 value="{{ purchase.name if is_edit else '' }}" required maxlength="200" autofocus>
+          <input type="text" name="name" class="form-control {% if form_data and not form_data.get('name','').strip() %}is-invalid{% endif %}"
+                 value="{{ purchase.name if is_edit else (form_data.get('name','') if form_data else '') }}"
+                 required maxlength="200" autofocus>
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_bom_date }}</label>
           <input type="date" name="bom_date" class="form-control"
-                 value="{{ purchase.bom_date.strftime('%Y-%m-%d') if is_edit and purchase.bom_date else '' }}">
+                 value="{{ purchase.bom_date.strftime('%Y-%m-%d') if is_edit and purchase.bom_date else (form_data.get('bom_date','') if form_data else '') }}">
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_estimate_number }}</label>
           <input type="text" name="estimate_number" class="form-control"
-                 value="{{ purchase.estimate_number or '' if is_edit else '' }}" maxlength="200">
+                 value="{{ purchase.estimate_number or '' if is_edit else (form_data.get('estimate_number','') if form_data else '') }}" maxlength="200">
         </div>
 
         <div class="col-12 col-md-3">
@@ -60,19 +61,19 @@
         <div class="col-12 col-md-4">
           <label class="form-label fw-semibold">{{ t.purchase_col_emf }}</label>
           <input type="text" name="emf" class="form-control"
-                 value="{{ purchase.emf or '' if is_edit else '' }}" maxlength="200">
+                 value="{{ purchase.emf or '' if is_edit else (form_data.get('emf','') if form_data else '') }}" maxlength="200">
         </div>
 
         <div class="col-12 col-md-4">
           <label class="form-label fw-semibold">{{ t.purchase_col_requirement }}</label>
           <input type="text" name="requirement" class="form-control"
-                 value="{{ purchase.requirement or '' if is_edit else '' }}" maxlength="200">
+                 value="{{ purchase.requirement or '' if is_edit else (form_data.get('requirement','') if form_data else '') }}" maxlength="200">
         </div>
 
         <div class="col-12 col-md-4">
           <label class="form-label fw-semibold">{{ t.purchase_col_order }}</label>
           <input type="text" name="order" class="form-control"
-                 value="{{ purchase.order or '' if is_edit else '' }}" maxlength="200">
+                 value="{{ purchase.order or '' if is_edit else (form_data.get('order','') if form_data else '') }}" maxlength="200">
         </div>
 
         <div class="col-12 col-md-6">
@@ -123,31 +124,31 @@
             </tr>
           </thead>
           <tbody id="itemsBody">
-            {% if is_edit and purchase.items %}
-              {% for item in purchase.items %}
-              {% set a = item.asset %}
-              <tr class="item-row" data-asset-id="{{ a.id if a else '' }}">
-                <td>
-                  <div class="small fw-semibold">{{ a.serial_number if a else '—' }}</div>
-                  {% if a and a.model %}<div class="x-small text-muted">{{ a.model }}</div>{% endif %}
-                </td>
-                <td class="text-center">
-                  <input type="hidden" name="item_asset_id" value="{{ a.id if a else '' }}">
-                  <input type="number" name="item_quantity" class="form-control form-control-sm text-center"
-                         style="width:80px;margin:auto;" value="{{ item.quantity }}" min="1" required>
-                </td>
-                <td>
-                  <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-item">
-                    <i class="bi bi-x-circle"></i>
-                  </button>
-                </td>
-              </tr>
-              {% endfor %}
-            {% endif %}
+            {% set restore_items = (purchase.items if (is_edit and purchase.items) else prefill_items) or [] %}
+            {% for item in restore_items %}
+            {% set a = item.asset %}
+            {% set qty = item.quantity %}
+            <tr class="item-row" data-asset-id="{{ a.id if a else '' }}">
+              <td>
+                <div class="small fw-semibold">{{ a.serial_number if a else '—' }}</div>
+                {% if a and a.model %}<div class="x-small text-muted">{{ a.model }}</div>{% endif %}
+              </td>
+              <td class="text-center">
+                <input type="hidden" name="item_asset_id" value="{{ a.id if a else '' }}">
+                <input type="number" name="item_quantity" class="form-control form-control-sm text-center"
+                       style="width:80px;margin:auto;" value="{{ qty }}" min="1" required>
+              </td>
+              <td>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-item">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
           </tbody>
         </table>
       </div>
-      <div id="noItemsMsg" class="text-center text-muted small py-3 {{ 'd-none' if is_edit and purchase.items }}">
+      <div id="noItemsMsg" class="text-center text-muted small py-3 {{ 'd-none' if restore_items }}">
         {{ t.purchase_no_items }}
       </div>
     </div>
