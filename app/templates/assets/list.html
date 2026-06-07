@@ -274,7 +274,22 @@
                 data-q="{{ ((asset.component_id or '') ~ ' ' ~ asset.serial_number ~ ' ' ~ (asset.model or '') ~ ' ' ~ (asset.manufacturer or '') ~ ' ' ~ (asset.barcode or '')) | lower }}"
                 data-status="{{ asset.status }}"
                 data-type="{{ asset.asset_type.id if asset.asset_type else '' }}"
-                style="{{ 'background-color:#fff5f5;' if is_low else '' }}">
+                style="{{ 'background-color:#fff5f5;' if is_low else '' }}"
+                data-preview="{{ {
+                  'id':           asset.component_id or '',
+                  'sn':           asset.serial_number,
+                  'model':        asset.model or '',
+                  'manufacturer': asset.manufacturer or '',
+                  'type':         asset.asset_type.name if asset.asset_type else '',
+                  'status':       asset.status_label,
+                  'status_color': asset.status_color,
+                  'qty':          asset.quantity if asset.quantity is not none else '',
+                  'threshold':    asset.min_threshold if asset.min_threshold is not none else '',
+                  'price_usd':    asset.price_usd|float if asset.price_usd else 0,
+                  'barcode':      asset.barcode or '',
+                  'notes':        asset.notes or '',
+                  'created':      asset.created_at.strftime('%d %b %Y') if asset.created_at else ''
+                } | tojson | e }}">
 
               <!-- 1. Asset ID -->
               <td class="small font-monospace fw-semibold">
@@ -443,6 +458,60 @@
   </div>
 </div>
 {% endif %}
+<!-- ── Asset hover popover ─────────────────────────────────────────────── -->
+<div id="assetPopover" style="
+  display:none; position:fixed; z-index:9999;
+  width:280px; pointer-events:none;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,.18));
+">
+  <div class="card border-0" style="border-radius:12px; overflow:hidden; font-size:.82rem;">
+    <div id="popHeader" class="px-3 pt-3 pb-2" style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span id="popStatus" class="badge"></span>
+        <span id="popSN" class="fw-bold font-monospace text-truncate" style="max-width:180px;"></span>
+      </div>
+      <div id="popType" class="text-muted small"></div>
+    </div>
+    <div class="card-body p-3" style="background:#fff;">
+      <table class="table table-sm table-borderless mb-0" style="font-size:.8rem;">
+        <tr id="popRowId">
+          <td class="text-muted pe-2" style="width:45%; white-space:nowrap;">{{ t.field_asset_id }}</td>
+          <td id="popId" class="font-monospace fw-semibold"></td>
+        </tr>
+        <tr id="popRowFeature">
+          <td class="text-muted pe-2">{{ t.field_feature }}</td>
+          <td id="popModel"></td>
+        </tr>
+        <tr id="popRowMfr">
+          <td class="text-muted pe-2">{{ t.field_manufacturer }}</td>
+          <td id="popMfr"></td>
+        </tr>
+        <tr id="popRowBarcode">
+          <td class="text-muted pe-2">{{ t.field_barcode }}</td>
+          <td id="popBarcode" class="font-monospace small"></td>
+        </tr>
+        <tr id="popRowQty">
+          <td class="text-muted pe-2">{{ t.col_stock_qty }}</td>
+          <td id="popQty" class="fw-semibold" style="color:#6366f1;"></td>
+        </tr>
+        <tr id="popRowThresh">
+          <td class="text-muted pe-2">{{ t.col_alert }}</td>
+          <td id="popThresh"></td>
+        </tr>
+        <tr id="popRowPrice">
+          <td class="text-muted pe-2">{{ t.base_price_label }}</td>
+          <td id="popPrice" class="font-monospace fw-semibold text-success"></td>
+        </tr>
+        <tr id="popRowDate">
+          <td class="text-muted pe-2">{{ t.field_registered }}</td>
+          <td id="popDate" class="small"></td>
+        </tr>
+      </table>
+      <div id="popNotes" class="mt-2 small text-muted fst-italic border-top pt-2" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -750,6 +819,104 @@
     var el = document.getElementById(id);
     if (el) el.addEventListener('change', function () { if (searchForm) searchForm.submit(); });
   });
+
+  // ── Asset hover popover ────────────────────────────────────────────────────
+  (function () {
+    var pop      = document.getElementById('assetPopover');
+    var hideTimer = null;
+
+    var STATUS_COLORS = {
+      'primary':   ['#dbeafe','#1d4ed8'],
+      'success':   ['#dcfce7','#15803d'],
+      'warning':   ['#fef9c3','#92400e'],
+      'danger':    ['#fee2e2','#991b1b'],
+      'secondary': ['#f1f5f9','#475569'],
+      'info':      ['#e0f2fe','#0369a1'],
+    };
+
+    function show(row, e) {
+      var raw = row.getAttribute('data-preview');
+      if (!raw) return;
+      var d;
+      try { d = JSON.parse(raw); } catch (_) { return; }
+
+      // Header
+      var sc = STATUS_COLORS[d.status_color] || STATUS_COLORS['secondary'];
+      var statusEl = document.getElementById('popStatus');
+      statusEl.textContent = d.status;
+      statusEl.style.background = sc[0];
+      statusEl.style.color = sc[1];
+      document.getElementById('popSN').textContent = d.sn || '—';
+
+      var typeParts = [d.type, d.manufacturer].filter(Boolean);
+      var typeEl = document.getElementById('popType');
+      typeEl.textContent = typeParts.join(' · ') || '';
+      typeEl.style.display = typeParts.length ? '' : 'none';
+
+      // Rows
+      function setRow(rowId, cellId, val) {
+        var rowEl  = document.getElementById(rowId);
+        var cellEl = document.getElementById(cellId);
+        if (!rowEl || !cellEl) return;
+        if (val === '' || val === null || val === undefined) {
+          rowEl.style.display = 'none';
+        } else {
+          rowEl.style.display = '';
+          cellEl.textContent = val;
+        }
+      }
+
+      setRow('popRowId',      'popId',      d.id      || '');
+      setRow('popRowFeature', 'popModel',   d.model   || '');
+      setRow('popRowMfr',     'popMfr',     d.manufacturer || '');
+      setRow('popRowBarcode', 'popBarcode', d.barcode || '');
+      setRow('popRowQty',     'popQty',     d.qty !== '' ? d.qty : '');
+      setRow('popRowThresh',  'popThresh',  d.threshold !== '' ? d.threshold : '');
+      setRow('popRowDate',    'popDate',    d.created || '');
+
+      if (d.price_usd > 0) {
+        document.getElementById('popRowPrice').style.display = '';
+        document.getElementById('popPrice').textContent = '$' + d.price_usd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+      } else {
+        document.getElementById('popRowPrice').style.display = 'none';
+      }
+
+      var notesEl = document.getElementById('popNotes');
+      if (d.notes) { notesEl.textContent = d.notes; notesEl.style.display = ''; }
+      else { notesEl.style.display = 'none'; }
+
+      // Position
+      pop.style.display = 'block';
+      position(e);
+    }
+
+    function position(e) {
+      var pw = pop.offsetWidth  || 280;
+      var ph = pop.offsetHeight || 240;
+      var vw = window.innerWidth, vh = window.innerHeight;
+      var x  = e.clientX + 16;
+      var y  = e.clientY + 16;
+      if (x + pw > vw - 8) x = e.clientX - pw - 8;
+      if (y + ph > vh - 8) y = e.clientY - ph - 8;
+      pop.style.left = x + 'px';
+      pop.style.top  = y + 'px';
+    }
+
+    function hide() { pop.style.display = 'none'; }
+
+    document.querySelectorAll('tr[data-asset-row]').forEach(function (row) {
+      row.addEventListener('mouseenter', function (e) {
+        clearTimeout(hideTimer);
+        show(row, e);
+      });
+      row.addEventListener('mousemove', function (e) {
+        if (pop.style.display !== 'none') position(e);
+      });
+      row.addEventListener('mouseleave', function () {
+        hideTimer = setTimeout(hide, 120);
+      });
+    });
+  })();
 })();
 </script>
 {% endblock %}
