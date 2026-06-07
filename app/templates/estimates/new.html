@@ -7,6 +7,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="items_json" id="itemsJson" value="{{ prefill.items_raw if prefill else '[]' }}">
   <input type="hidden" name="record_type" id="recordTypeInput" value="{{ prefill.record_type if prefill else 'allocation' }}">
+  <input type="hidden" name="alloc_suggested" value="{{ next_num }}">
 
   <!-- ── Type Selector ────────────────────────────────────────────────────── -->
   <div class="card border-0 shadow-sm mb-4">

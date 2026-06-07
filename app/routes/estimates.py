@@ -17,11 +17,29 @@ estimates_bp = Blueprint('estimates', __name__, url_prefix='/estimates')
 
 
 def _next_allocation_number():
-    result = list(Estimate._get_collection().aggregate([
-        {'$match': {'allocation_number': {'$exists': True, '$ne': None}}},
-        {'$group': {'_id': None, 'max_num': {'$max': '$allocation_number'}}},
-    ]))
-    return (result[0]['max_num'] + 1) if result else 1001
+    """Return next suggested allocation number based on internal counter.
+
+    Uses 'alloc_counter' in AppSetting — only updated when user accepts
+    the auto-suggested number.  Manual overrides (high or low) never
+    advance the counter, so the sequence stays coherent.
+    On first run, seeds from the current DB max so nothing is lost.
+    """
+    # Seed from DB max on first use (counter not yet stored)
+    counter_row = AppSetting._get_collection().find_one({'_id': 'alloc_counter'})
+    if counter_row is None:
+        result = list(Estimate._get_collection().aggregate([
+            {'$match': {'allocation_number': {'$exists': True, '$ne': None}}},
+            {'$group': {'_id': None, 'max_num': {'$max': '$allocation_number'}}},
+        ]))
+        seed = result[0]['max_num'] if result else 1000
+        AppSetting.set('alloc_counter', seed)
+
+    counter = int(AppSetting.get('alloc_counter') or 1000)
+    proposed = counter + 1
+    # Skip numbers already taken (e.g. manual overrides that landed here)
+    while Estimate.objects(allocation_number=proposed).first():
+        proposed += 1
+    return proposed
 
 
 @estimates_bp.route('/')
@@ -114,6 +132,9 @@ def new_estimate():
         alloc_raw    = (request.form.get('allocation_number') or '').strip()
         record_type  = request.form.get('record_type', 'allocation')
 
+        suggested_raw = (request.form.get('alloc_suggested') or '').strip()
+        suggested_num = int(suggested_raw) if suggested_raw.isdigit() else None
+
         _form_data = {
             'task_name':    task_name,
             'project_name': project_name,
@@ -121,6 +142,7 @@ def new_estimate():
             'alloc_num':    alloc_raw,
             'record_type':  record_type,
             'next_num':     int(alloc_raw) if alloc_raw.isdigit() and int(alloc_raw) > 0 else _next_allocation_number(),
+            'suggested':    suggested_num,
         }
 
         if not task_name:
@@ -183,6 +205,14 @@ def new_estimate():
             except NotUniqueError:
                 flash('מספר הקצאה נתפס במקביל. נסה שוב.', 'danger')
                 return redirect(url_for('estimates.new_estimate'))
+
+        # Advance counter ONLY when user accepted the auto-suggestion.
+        # Manual overrides (higher or lower) are saved as-is but never
+        # shift the counter — next suggestion stays coherent.
+        suggested = _form_data.get('suggested')
+        if suggested and next_num == suggested:
+            AppSetting.set('alloc_counter', next_num)
+
         flash(f'Estimate "{task_name}" saved successfully.', 'success')
         if record_type == 'estimate':
             return redirect(url_for('estimates.list_budget_estimates'))
