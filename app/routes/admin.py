@@ -70,13 +70,19 @@ class ResetPasswordForm(FlaskForm):
 
 VALID_ROLES = ('super_admin', 'admin', 'viewer', 'warehouse')
 
-def _role_choices(t):
-    return [
-        ('super_admin', t.get('role_super_admin', 'Super Admin')),
-        ('admin',       t.get('role_admin',       'Admin')),
-        ('viewer',      t.get('role_viewer',      'Viewer')),
-        ('warehouse',   t.get('role_warehouse',   'Warehouse')),
+def _role_choices(t, include_super=True):
+    choices = []
+    if include_super:
+        choices.append(('super_admin', t.get('role_super_admin', 'Super Admin')))
+    choices += [
+        ('admin',     t.get('role_admin',     'Admin')),
+        ('viewer',    t.get('role_viewer',    'Viewer')),
+        ('warehouse', t.get('role_warehouse', 'Warehouse')),
     ]
+    return choices
+
+# Roles an admin (non-super) is allowed to assign
+_ADMIN_ASSIGNABLE_ROLES = {'admin', 'viewer', 'warehouse'}
 
 
 def _localize_user_form(form, t, is_new=True):
@@ -85,7 +91,8 @@ def _localize_user_form(form, t, is_new=True):
                   extra={'password': 'form_initial_password'} if is_new else
                         {'new_password': 'form_new_password_optional'})
     form.name.label.text = t.get('col_name', 'Name')
-    form.role.choices = _role_choices(t)
+    if not form.role.choices:
+        form.role.choices = _role_choices(t, include_super=current_user.is_super_admin)
     return form
 
 
@@ -125,11 +132,16 @@ def users():
 @admin_bp.route('/users/new', methods=['GET', 'POST'])
 @login_required
 def new_user():
-    _super_admin_required()
+    _admin_required()
     t = getattr(g, 't', {})
     form = NewUserForm()
+    include_super = current_user.is_super_admin
+    form.role.choices = _role_choices(t, include_super=include_super)
     _localize_user_form(form, t, is_new=True)
     if form.validate_on_submit():
+        # Admin (non-super) can only assign allowed roles
+        if not current_user.is_super_admin and form.role.data not in _ADMIN_ASSIGNABLE_ROLES:
+            abort(403)
         if form.role.data not in VALID_ROLES:
             abort(400)
         if _password_already_used(form.password.data):
@@ -152,25 +164,44 @@ def edit_user(id):
     t = getattr(g, 't', {})
     user = get_or_404(User, id)
 
-    # Regular admin can only edit their own account (password only)
+    # Non-super admin: can edit name+role of non-super users, or own password
     if not current_user.is_super_admin:
-        if user.id != current_user.id:
+        # Cannot edit super_admin accounts
+        if user.is_super_admin:
             abort(403)
-        # Show password-only form
-        form = ChangeOwnPasswordForm()
+        # Editing own account — password only
+        if user.id == current_user.id:
+            form = ChangeOwnPasswordForm()
+            if form.validate_on_submit():
+                if not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
+                    flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
+                elif bcrypt.check_password_hash(user.password_hash, form.new_password.data):
+                    flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
+                elif _password_already_used(form.new_password.data, exclude_id=user.id):
+                    flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
+                else:
+                    user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+                    user.save()
+                    flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
+                    return redirect(url_for('main.dashboard'), 303)
+            return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
+        # Editing another user (non-super) — name + role only, no password
+        form = EditUserForm()
+        form.role.choices = _role_choices(t, include_super=False)
+        localize_form(form, t, submit_key='form_save')
+        form.name.label.text = t.get('col_name', 'Name')
+        if request.method == 'GET':
+            form.name.data = user.name
+            form.role.data = user.role
         if form.validate_on_submit():
-            if not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
-                flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
-            elif bcrypt.check_password_hash(user.password_hash, form.new_password.data):
-                flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
-            elif _password_already_used(form.new_password.data, exclude_id=user.id):
-                flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
-            else:
-                user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
-                user.save()
-                flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
-                return redirect(url_for('main.dashboard'), 303)
-        return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
+            if form.role.data not in _ADMIN_ASSIGNABLE_ROLES:
+                abort(403)
+            user.name = form.name.data.strip()
+            user.role = form.role.data
+            user.save()
+            flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
+            return redirect(url_for('admin.users'))
+        return render_template('admin/edit_user.html', form=form, user=user)
 
     # Super admin: full edit
     form = EditUserForm()
