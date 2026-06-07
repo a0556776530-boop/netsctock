@@ -82,37 +82,67 @@ def new_estimate():
     today    = date.today()
     validity = today + timedelta(days=90)
 
+    # Always build assets list (needed for both GET and POST re-render)
+    assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())
+    assets_json = json.dumps([{
+        'id':            str(a.id),
+        'component_id':  a.component_id or '',
+        'serial_number': a.serial_number,
+        'model':         a.model or '',
+        'manufacturer':  a.manufacturer or '',
+        'type':          a.asset_type.name if a.asset_type else '',
+        'price_usd':     float(a.price_usd),
+        'quantity':      a.quantity if a.quantity is not None else 0,
+    } for a in assets])
+    maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
+
+    def _rerender(error_msg, form_data):
+        flash(error_msg, 'danger')
+        return render_template('estimates/new.html',
+                               assets_json=assets_json,
+                               usd_rate=float(usd_rate),
+                               maint_factor=maint_factor,
+                               today=today,
+                               valid_until=validity,
+                               next_num=form_data.get('next_num', _next_allocation_number()),
+                               prefill=form_data)
+
     if request.method == 'POST':
         task_name    = (request.form.get('task_name') or '').strip()
         project_name = (request.form.get('project_name') or '').strip()
         items_raw    = request.form.get('items_json', '[]')
+        alloc_raw    = (request.form.get('allocation_number') or '').strip()
+        record_type  = request.form.get('record_type', 'allocation')
+
+        _form_data = {
+            'task_name':    task_name,
+            'project_name': project_name,
+            'items_raw':    items_raw,
+            'alloc_num':    alloc_raw,
+            'record_type':  record_type,
+            'next_num':     int(alloc_raw) if alloc_raw.isdigit() and int(alloc_raw) > 0 else _next_allocation_number(),
+        }
 
         if not task_name:
-            flash('Task name is required.', 'danger')
-            return redirect(url_for('estimates.new_estimate'))
+            return _rerender('Task name is required.', _form_data)
 
         try:
             items_data = json.loads(items_raw)
         except (json.JSONDecodeError, TypeError):
             items_data = []
 
-        alloc_raw = (request.form.get('allocation_number') or '').strip()
-        next_num  = int(alloc_raw) if alloc_raw.isdigit() and int(alloc_raw) > 0 else _next_allocation_number()
+        next_num = _form_data['next_num']
 
         conflict = Estimate.objects(allocation_number=next_num).first()
         if conflict:
-            flash(
+            return _rerender(
                 f'Allocation number {next_num} is already in use '
                 f'(assigned to "{conflict.task_name}"). Please choose a different number.',
-                'danger',
+                _form_data,
             )
-            return redirect(url_for('estimates.new_estimate'))
 
-        record_type  = request.form.get('record_type', 'allocation')
         if record_type not in ('allocation', 'estimate'):
             record_type = 'allocation'
-
-        maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
         estimate = Estimate(
             allocation_number=next_num,
             task_name=task_name,
@@ -141,8 +171,7 @@ def new_estimate():
             estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
 
         if not estimate.items:
-            flash('לא ניתן לשמור הצעה ללא פריטים. הוסף לפחות פריט אחד.', 'danger')
-            return redirect(url_for('estimates.new_estimate'))
+            return _rerender('לא ניתן לשמור הצעה ללא פריטים. הוסף לפחות פריט אחד.', _form_data)
 
         estimate.total_nis = round(total_nis, 2)
         try:
@@ -159,24 +188,15 @@ def new_estimate():
             return redirect(url_for('estimates.list_budget_estimates'))
         return redirect(url_for('estimates.list_estimates'))
 
-    assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())
-    assets_json = json.dumps([{
-        'id':            str(a.id),
-        'component_id':  a.component_id or '',
-        'serial_number': a.serial_number,
-        'model':         a.model or '',
-        'manufacturer':  a.manufacturer or '',
-        'type':          a.asset_type.name if a.asset_type else '',
-        'price_usd':     float(a.price_usd),
-        'quantity':      a.quantity if a.quantity is not None else 0,
-    } for a in assets])
-
-    next_num     = _next_allocation_number()
-    maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
+    # GET
     return render_template('estimates/new.html',
-                           assets_json=assets_json, usd_rate=float(usd_rate),
+                           assets_json=assets_json,
+                           usd_rate=float(usd_rate),
                            maint_factor=maint_factor,
-                           today=today, valid_until=validity, next_num=next_num)
+                           today=today,
+                           valid_until=validity,
+                           next_num=_next_allocation_number(),
+                           prefill=None)
 
 
 @estimates_bp.route('/<id>')

@@ -5,8 +5,8 @@
 {% block content %}
 <form method="POST" id="estimateForm" novalidate>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="hidden" name="items_json" id="itemsJson" value="[]">
-  <input type="hidden" name="record_type" id="recordTypeInput" value="allocation">
+  <input type="hidden" name="items_json" id="itemsJson" value="{{ prefill.items_raw if prefill else '[]' }}">
+  <input type="hidden" name="record_type" id="recordTypeInput" value="{{ prefill.record_type if prefill else 'allocation' }}">
 
   <!-- ── Type Selector ────────────────────────────────────────────────────── -->
   <div class="card border-0 shadow-sm mb-4">
@@ -46,7 +46,7 @@
             <span class="input-group-text text-muted">#</span>
             <input type="number" name="allocation_number" id="allocNum"
                    class="form-control font-monospace fw-semibold"
-                   min="1" step="1" value="{{ next_num }}"
+                   min="1" step="1" value="{{ prefill.alloc_num if prefill and prefill.alloc_num else next_num }}"
                    title="Auto-generated — change only if needed"
                    autocomplete="off">
           </div>
@@ -57,13 +57,15 @@
         </div>
         <div class="col-md-5">
           <label class="form-label fw-semibold">{{ t.col_requester }} <span class="text-danger">*</span></label>
-          <input type="text" name="task_name" class="form-control" required
-                 placeholder="e.g. John Smith">
+          <input type="text" name="task_name" class="form-control {% if prefill and not prefill.task_name %}is-invalid{% endif %}" required
+                 placeholder="e.g. John Smith"
+                 value="{{ prefill.task_name if prefill else '' }}" autofocus>
         </div>
         <div class="col-md-4">
           <label class="form-label fw-semibold">{{ t.col_project }}</label>
           <input type="text" name="project_name" class="form-control"
-                 placeholder="e.g. Project Alpha">
+                 placeholder="e.g. Project Alpha"
+                 value="{{ prefill.project_name if prefill else '' }}">
         </div>
         <div class="col-sm-4">
           <label class="form-label fw-semibold">{{ t.current_date_label }}</label>
@@ -175,6 +177,15 @@
   var FACTOR = {{ maint_factor }};
   var ASSETS = {{ assets_json|safe }};
   var sel    = {};
+
+  // Restore items from server prefill (validation error re-render)
+  var PREFILL_ITEMS = {{ (prefill.items_raw if prefill else '[]') | safe }};
+  if (Array.isArray(PREFILL_ITEMS) && PREFILL_ITEMS.length) {
+    PREFILL_ITEMS.forEach(function (item) {
+      var a = ASSETS.find(function (x) { return x.id === item.asset_id; });
+      if (a) sel[item.asset_id] = { asset: a, qty: item.quantity || 1 };
+    });
+  }
 
   // Formula: USD × RATE × FACTOR × 1.18
   function calcILS(usd, qty) {
@@ -364,6 +375,10 @@
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   renderAll();
+
+  // Restore record type after prefill
+  var prefillType = '{{ prefill.record_type if prefill else "allocation" }}';
+  if (prefillType === 'estimate') selectType('estimate');
 })();
 
 // ── Type selector ─────────────────────────────────────────────────────────
