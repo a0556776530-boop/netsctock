@@ -35,7 +35,7 @@
   <div>
     <strong>{{ t.pool_deficit_title }}</strong>
     {{ t.pool_deficit_body }}
-    {{ t.pool_deficit_shortfall }}: <strong class="text-danger">{{ pool.fmt(pool.consumed_amount - pool.total_amount) }}</strong>
+    {{ t.pool_deficit_shortfall }}: <strong class="text-danger">{{ pool.fmt(pool.balance * -1) }}</strong>
     &nbsp;|&nbsp; {{ display_pct }}% {{ t.pool_deficit_utilized }}.
   </div>
 </div>
