@@ -4,6 +4,8 @@ from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from flask_wtf.csrf import CSRFProtect
 from flask_socketio import SocketIO
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import mongoengine as me
 
 import click
@@ -13,6 +15,7 @@ login_manager = LoginManager()
 bcrypt        = Bcrypt()
 csrf          = CSRFProtect()
 socketio      = SocketIO()
+limiter       = Limiter(key_func=get_remote_address, default_limits=[])
 
 # Expose db as the mongoengine module so models can do `from app import db`
 # and call db.Document, db.StringField, etc.
@@ -29,6 +32,7 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
     bcrypt.init_app(app)
     csrf.init_app(app)
+    limiter.init_app(app)
 
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
@@ -73,9 +77,12 @@ def create_app(config_class=Config):
     app.register_blueprint(pools_bp)
     app.register_blueprint(chat_bp)
 
+    import os as _os
+    _origin_env = _os.environ.get('ALLOWED_ORIGIN', '').strip()
+    _cors = [o.strip() for o in _origin_env.split(',') if o.strip()] if _origin_env else '*'
     socketio.init_app(
         app,
-        cors_allowed_origins='*',
+        cors_allowed_origins=_cors,
         async_mode='threading',
         logger=False,
         engineio_logger=False,
@@ -130,6 +137,16 @@ def create_app(config_class=Config):
 
     from .seed import register_commands
     register_commands(app)
+
+    @app.errorhandler(429)
+    def handle_429(e):
+        from flask import render_template_string
+        return render_template_string(
+            '<html><body style="font-family:sans-serif;padding:40px;direction:ltr;text-align:center">'
+            '<h2 style="color:#dc2626">Too Many Attempts</h2>'
+            '<p>Too many login attempts. Please wait a minute and try again.</p>'
+            '<a href="/auth/login">Back to Login</a></body></html>'
+        ), 429
 
     @app.errorhandler(500)
     def handle_500(e):

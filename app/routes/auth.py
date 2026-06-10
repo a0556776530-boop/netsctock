@@ -6,7 +6,7 @@ from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired
 
-from app import bcrypt
+from app import bcrypt, limiter
 from app.routes.admin import _password_already_used
 from app.models.user import User
 from app.utils.translations import localize_form
@@ -28,6 +28,7 @@ class ChangePasswordForm(FlaskForm):
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit('10 per minute')
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
