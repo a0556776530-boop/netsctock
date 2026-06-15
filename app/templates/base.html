@@ -306,7 +306,7 @@ setInterval(function() {
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key === 'b') { e.preventDefault(); if (beitar.style.display==='flex'){hideAll();}else{hideAll();lazyLoad(beitar);beitar.style.display='flex';} }
     if (e.ctrlKey && e.key === 'a') { e.preventDefault(); if (messi.style.display==='flex'){hideAll();}else{hideAll();lazyLoad(messi);messi.style.display='flex';} }
-    if (e.ctrlKey && e.key === 'c') { e.preventDefault(); if (dubi.style.display==='flex'){hideAll();}else{hideAll();lazyLoad(dubi);dubi.style.display='flex';} }
+    if (e.ctrlKey && e.shiftKey && e.key === 'C') { e.preventDefault(); if (dubi.style.display==='flex'){hideAll();}else{hideAll();lazyLoad(dubi);dubi.style.display='flex';} }
     if (e.key === 'Escape') hideAll();
   });
 
