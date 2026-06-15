@@ -10,6 +10,7 @@ from flask_login import login_required, current_user
 
 from app.models.estimate import Estimate, EstimateItem
 from app.models.asset import Asset
+from app.models.pool import Pool
 from app.models.settings import AppSetting
 from app.utils.mongo_helpers import get_or_404
 
@@ -132,6 +133,8 @@ def new_estimate():
     } for a in assets])
     maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
 
+    active_pools = list(Pool.objects(is_active=True).order_by('name').only('id', 'name', 'emf_number', 'currency', 'balance'))
+
     def _rerender(error_msg, form_data):
         flash(error_msg, 'danger')
         return render_template('estimates/new.html',
@@ -141,6 +144,7 @@ def new_estimate():
                                today=today,
                                valid_until=validity,
                                next_num=form_data.get('next_num', _next_allocation_number()),
+                               active_pools=active_pools,
                                prefill=form_data)
 
     if request.method == 'POST':
@@ -149,6 +153,7 @@ def new_estimate():
         items_raw    = request.form.get('items_json', '[]')
         alloc_raw    = (request.form.get('allocation_number') or '').strip()
         record_type  = request.form.get('record_type', 'allocation')
+        pool_id      = (request.form.get('pool_id') or '').strip()
 
         suggested_raw = (request.form.get('alloc_suggested') or '').strip()
         suggested_num = int(suggested_raw) if suggested_raw.isdigit() else None
@@ -159,6 +164,7 @@ def new_estimate():
             'items_raw':    items_raw,
             'alloc_num':    alloc_raw,
             'record_type':  record_type,
+            'pool_id':      pool_id,
             'next_num':     int(alloc_raw) if alloc_raw.isdigit() and int(alloc_raw) > 0 else _next_allocation_number(),
             'suggested':    suggested_num,
         }
@@ -183,6 +189,9 @@ def new_estimate():
 
         if record_type not in ('allocation', 'estimate'):
             record_type = 'allocation'
+
+        selected_pool = Pool.objects(id=pool_id, is_active=True).first() if pool_id else None
+
         estimate = Estimate(
             allocation_number=next_num,
             task_name=task_name,
@@ -192,6 +201,7 @@ def new_estimate():
             usd_rate=usd_rate,
             maintenance_factor=maint_factor,
             record_type=record_type,
+            pool=selected_pool,
             created_by=current_user._get_current_object(),
         )
 
@@ -244,6 +254,7 @@ def new_estimate():
                            today=today,
                            valid_until=validity,
                            next_num=_next_allocation_number(),
+                           active_pools=active_pools,
                            prefill=None)
 
 
@@ -306,6 +317,7 @@ def edit(id):
         task_name    = (request.form.get('task_name') or '').strip()
         project_name = (request.form.get('project_name') or '').strip()
         items_raw    = request.form.get('items_json', '[]')
+        pool_id      = (request.form.get('pool_id') or '').strip()
 
         if not task_name:
             flash('Requester name is required.', 'danger')
@@ -353,6 +365,7 @@ def edit(id):
             flash('לא ניתן לשמור הצעה ללא פריטים. הוסף לפחות פריט אחד.', 'danger')
             return redirect(url_for('estimates.edit', id=str(estimate.id)))
 
+        estimate.pool      = Pool.objects(id=pool_id, is_active=True).first() if pool_id else None
         estimate.total_nis = round(total_nis, 2)
         try:
             estimate.save()
@@ -384,10 +397,12 @@ def edit(id):
     } for item in estimate.items])
 
     stored_factor = float(estimate.maintenance_factor or AppSetting.get('maintenance_factor') or 1.7)
+    active_pools  = list(Pool.objects(is_active=True).order_by('name').only('id', 'name', 'emf_number', 'currency', 'balance'))
     return render_template('estimates/edit.html',
                            estimate=estimate, assets_json=assets_json,
                            selected_json=selected_json, usd_rate=usd_rate,
-                           maint_factor=stored_factor)
+                           maint_factor=stored_factor,
+                           active_pools=active_pools)
 
 
 @estimates_bp.route('/<id>/export.csv')

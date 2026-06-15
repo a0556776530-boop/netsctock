@@ -51,6 +51,7 @@ class Estimate(me.Document):
     created_at         = me.DateTimeField(default=datetime.utcnow)
     withdrawn_at       = me.DateTimeField()
 
+    pool  = me.ReferenceField('Pool', null=True)
     items = me.EmbeddedDocumentListField(EstimateItem)
 
     @property

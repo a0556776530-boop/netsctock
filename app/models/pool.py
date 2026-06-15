@@ -32,6 +32,7 @@ class Pool(me.Document):
     total_amount    = me.FloatField(required=True)
     consumed_amount = me.FloatField(default=0.0)
     currency        = me.StringField(default='ILS')   # 'ILS' | 'USD'
+    is_active       = me.BooleanField(default=True)
     notes           = me.StringField()
     created_at      = me.DateTimeField(default=datetime.utcnow)
     created_by      = me.ReferenceField('User')
