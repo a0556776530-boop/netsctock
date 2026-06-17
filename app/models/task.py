@@ -22,7 +22,6 @@ class Task(me.Document):
     assignee_name = me.StringField(max_length=200)
     status        = me.StringField(default='in_progress', choices=STATUSES)
     notes         = me.StringField()
-    pool          = me.ReferenceField('Pool', null=True)
     created_at    = me.DateTimeField(default=datetime.utcnow)
 
     def __repr__(self):

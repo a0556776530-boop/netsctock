@@ -38,26 +38,6 @@
             </div>
           </div>
 
-          {% if active_pools %}
-          <hr class="my-4">
-          <div class="mb-3">
-            <label class="form-label fw-semibold d-flex align-items-center gap-2">
-              <i class="bi bi-wallet2 text-primary"></i>
-              שיוך לפול תקציבי
-              <span class="badge bg-secondary fw-normal ms-1" style="font-size:.75rem;">אופציונלי</span>
-            </label>
-            <select name="pool_id" class="form-select" style="max-width:480px;">
-              <option value="">— ללא שיוך לפול —</option>
-              {% for p in active_pools %}
-              <option value="{{ p.id }}"
-                      {% if task and task.pool and task.pool.id == p.id %}selected{% endif %}>
-                {{ p.name }}{% if p.emf_number %} ({{ p.emf_number }}){% endif %} — יתרה: {{ p.fmt(p.balance) }}
-              </option>
-              {% endfor %}
-            </select>
-          </div>
-          {% endif %}
-
           <hr class="my-4">
           <div class="d-flex gap-2">
             {{ form.submit(class="btn btn-primary") }}
