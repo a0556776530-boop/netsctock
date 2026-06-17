@@ -59,6 +59,31 @@ def _sync_inventory_on_receipt(purchase):
             updated += 1
     return updated
 
+def _sync_inventory_newly_received(purchase, newly_received_ids):
+    """Add quantities to stock only for items transitioning to received."""
+    col = Asset._get_collection()
+    updated = 0
+    for item in purchase.items:
+        if not item.asset:
+            continue
+        try:
+            asset_id = item.asset.id
+        except Exception:
+            continue
+        if str(asset_id) not in newly_received_ids:
+            continue
+        qty = item.quantity or 0
+        if qty <= 0:
+            continue
+        result = col.update_one(
+            {'_id': asset_id},
+            [{'$set': {'quantity': {'$add': [{'$ifNull': ['$quantity', 0]}, qty]}}}]
+        )
+        if result.modified_count:
+            updated += 1
+    return updated
+
+
 ALLOWED_EXTENSIONS = {'pdf', 'xlsx', 'xls', 'csv', 'doc', 'docx', 'png', 'jpg'}
 
 
@@ -387,3 +412,58 @@ def delete(id):
     if was_history:
         return redirect(url_for('purchases.purchase_history'))
     return redirect(url_for('purchases.list_purchases'))
+
+
+@purchases_bp.route('/<id>/receive', methods=['POST'])
+@login_required
+def receive(id):
+    if not current_user.can_edit:
+        abort(403)
+    purchase = get_or_404(Purchase, id)
+
+    if purchase.status in ('Order Received in Warehouse', 'בוטל'):
+        flash('לא ניתן לעדכן קליטה על הזמנה זו.', 'warning')
+        return redirect(url_for('purchases.edit', id=id))
+
+    checked_ids = set(request.form.getlist('received_item'))
+
+    # Determine which items are newly received (were not received before)
+    newly_received_ids = set()
+    for item in purchase.items:
+        try:
+            asset_id = str(item.asset.id)
+        except Exception:
+            continue
+        was_received = item.received or False
+        is_now_received = asset_id in checked_ids
+        if is_now_received and not was_received:
+            newly_received_ids.add(asset_id)
+        item.received = is_now_received
+
+    # Sync inventory for newly received items
+    if newly_received_ids:
+        _sync_inventory_newly_received(purchase, newly_received_ids)
+
+    # Update status based on received state
+    total = len([i for i in purchase.items if i.asset])
+    received_count = len([i for i in purchase.items if i.received])
+
+    if received_count == 0:
+        pass  # keep current status
+    elif received_count == total:
+        purchase.status = 'Order Received in Warehouse'
+        if not purchase.received_at:
+            purchase.received_at = datetime.utcnow()
+    else:
+        purchase.status = 'Partial Delivery'
+
+    purchase.save()
+
+    if received_count == total:
+        flash(f'כל הפריטים נקלטו — הסטטוס עודכן ל"הזמנה נקלטה במחסן".', 'success')
+    elif received_count > 0:
+        flash(f'{received_count} מתוך {total} פריטים נקלטו — סטטוס: קליטה חלקית.', 'info')
+    else:
+        flash('לא סומן אף פריט כנקלט.', 'warning')
+
+    return redirect(url_for('purchases.edit', id=id))

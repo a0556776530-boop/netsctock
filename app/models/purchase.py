@@ -6,6 +6,7 @@ STATUSES = [
     'BOM Transferred',
     'Requirement Created',
     'Order Signed',
+    'Partial Delivery',
     'Order Received in Warehouse',
     'בוטל',
 ]
@@ -14,6 +15,7 @@ ACTIVE_STATUSES = [
     'BOM Transferred',
     'Requirement Created',
     'Order Signed',
+    'Partial Delivery',
 ]
 
 CURRENCIES = ['ILS', 'USD Aid', 'USD Cash']
@@ -22,6 +24,7 @@ STATUS_COLORS = {
     'BOM Transferred':             'secondary',
     'Requirement Created':         'info',
     'Order Signed':                'primary',
+    'Partial Delivery':            'warning',
     'Order Received in Warehouse': 'success',
     'בוטל':                        'danger',
 }
@@ -31,6 +34,7 @@ class PurchaseItem(me.EmbeddedDocument):
     asset      = me.ReferenceField('Asset', required=True)
     quantity   = me.IntField(required=True)
     unit_price = me.FloatField(default=0)
+    received   = me.BooleanField(default=False)
 
     @property
     def safe_asset(self):
