@@ -10,7 +10,7 @@ from flask_login import login_required, current_user
 
 from app.models.estimate import Estimate, EstimateItem
 from app.models.asset import Asset
-from app.models.pool import Pool
+from app.models.pool import Pool, PoolTransaction
 from app.models.settings import AppSetting
 from app.utils.mongo_helpers import get_or_404
 
@@ -190,7 +190,7 @@ def new_estimate():
         if record_type not in ('allocation', 'estimate'):
             record_type = 'allocation'
 
-        selected_pool = Pool.objects(id=pool_id, is_active=True).first() if pool_id else None
+        selected_pool = Pool.objects(Q(id=pool_id) & (Q(is_active=True) | Q(is_active__exists=False))).first() if pool_id else None
 
         estimate = Estimate(
             allocation_number=next_num,
@@ -233,6 +233,18 @@ def new_estimate():
             except NotUniqueError:
                 flash('מספר הקצאה נתפס במקביל. נסה שוב.', 'danger')
                 return redirect(url_for('estimates.new_estimate'))
+
+        if selected_pool:
+            amount = round(total_nis, 2) if selected_pool.currency == 'ILS' else round(total_nis / float(usd_rate), 2)
+            selected_pool.transactions.append(PoolTransaction(
+                estimate=estimate,
+                amount_drawn=amount,
+                currency=selected_pool.currency,
+                exchange_rate=float(usd_rate),
+                created_by=current_user._get_current_object(),
+            ))
+            selected_pool.consumed_amount = round((selected_pool.consumed_amount or 0.0) + amount, 2)
+            selected_pool.save()
 
         # Advance counter ONLY when user accepted the auto-suggestion.
         # Manual overrides (higher or lower) are saved as-is but never
