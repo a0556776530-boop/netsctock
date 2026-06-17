@@ -18,6 +18,9 @@ ACTIVE_STATUSES = [
     'Partial Delivery',
 ]
 
+# Statuses available for manual selection — Partial Delivery is set automatically only
+MANUAL_STATUSES = [s for s in STATUSES if s != 'Partial Delivery']
+
 CURRENCIES = ['ILS', 'USD Aid', 'USD Cash']
 
 STATUS_COLORS = {

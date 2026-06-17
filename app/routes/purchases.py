@@ -7,7 +7,7 @@ from flask import (Blueprint, render_template, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
-from app.models.purchase import Purchase, PurchaseItem, STATUSES, ACTIVE_STATUSES, CURRENCIES
+from app.models.purchase import Purchase, PurchaseItem, STATUSES, ACTIVE_STATUSES, MANUAL_STATUSES, CURRENCIES
 from app.models.asset import Asset
 from app.utils.mongo_helpers import get_or_404
 
@@ -226,7 +226,7 @@ def new_purchase():
                         prefill_items.append({'asset': a, 'quantity': int(qty or 1)})
                 return render_template('purchases/form.html', purchase=None,
                                        assets=assets, grouped_assets=grouped_assets,
-                                       statuses=STATUSES, currencies=CURRENCIES,
+                                       statuses=MANUAL_STATUSES, currencies=CURRENCIES,
                                        form_data=request.form,
                                        prefill_items=prefill_items)
 
@@ -327,7 +327,7 @@ def edit(id):
             flash(f'Error saving purchase: {e}', 'danger')
             return render_template('purchases/form.html', purchase=purchase,
                                    assets=assets, grouped_assets=grouped_assets,
-                                   statuses=STATUSES, currencies=CURRENCIES)
+                                   statuses=MANUAL_STATUSES, currencies=CURRENCIES)
 
         # ── Inventory sync on status transitions ─────────────────────────────
         _RECEIVED  = 'Order Received in Warehouse'
@@ -383,7 +383,7 @@ def edit(id):
 
     return render_template('purchases/form.html', purchase=purchase,
                            assets=assets, grouped_assets=grouped_assets,
-                           statuses=STATUSES, currencies=CURRENCIES,
+                           statuses=MANUAL_STATUSES, currencies=CURRENCIES,
                            ACTIVE_STATUSES=ACTIVE_STATUSES)
 
 
