@@ -38,6 +38,7 @@
   .pf-bom     { --c: #7c3aed; }   /* purple    — הועבר BOM    */
   .pf-req     { --c: #0891b2; }   /* cyan      — הוקמה דרישה */
   .pf-signed  { --c: #2563eb; }   /* blue      — נחתמה        */
+  .pf-partial { --c: #d97706; }   /* amber     — קליטה חלקית  */
   .pf-rcvd    { --c: #16a34a; }   /* green     — נקלטה        */
   .pf-cancel  { --c: #dc2626; }   /* red       — בוטל         */
 
@@ -60,13 +61,15 @@
   .pf-btn.active:hover { filter: brightness(1.1); }
 </style>
 
-{% set active_count = purchases | selectattr('status','in',['BOM Transferred','Requirement Created','Order Signed']) | list | length %}
+{% set active_count   = purchases | selectattr('status','in',['BOM Transferred','Requirement Created','Order Signed','Partial Delivery']) | list | length %}
+{% set partial_count  = purchases | selectattr('status','equalto','Partial Delivery') | list | length %}
 {% set status_defs = [
   ('all',                           'pf-all',     t.get('filter_all','הכל'),                                                  purchases | length),
   ('active',                        'pf-active',  t.get('filter_active','פעיל'),                                              active_count),
   ('BOM Transferred',               'pf-bom',     t.get('purchase_status_bom_transferred','הועבר BOM'),                       purchases | selectattr('status','equalto','BOM Transferred')             | list | length),
   ('Requirement Created',           'pf-req',     t.get('purchase_status_requirement_created','הוקמה דרישה'),                 purchases | selectattr('status','equalto','Requirement Created')         | list | length),
   ('Order Signed',                  'pf-signed',  t.get('purchase_status_order_signed','נחתמה ההזמנה'),                       purchases | selectattr('status','equalto','Order Signed')                | list | length),
+  ('Partial Delivery',              'pf-partial', t.get('purchase_status_partial_delivery','קליטה חלקית'),                    partial_count),
   ('Order Received in Warehouse',   'pf-rcvd',    t.get('purchase_status_order_received_in_warehouse','נקלטה במחסן'),         purchases | selectattr('status','equalto','Order Received in Warehouse') | list | length),
   ('בוטל',                          'pf-cancel',  t.get('purchase_status_בוטל','בוטל'),                                       purchases | selectattr('status','equalto','בוטל')                        | list | length),
 ] %}
@@ -133,6 +136,14 @@
                style="width:30px;height:30px;background:#fef9c3;color:#854d0e;border:none;">
               <i class="bi bi-pencil" style="font-size:.8rem;"></i>
             </a>
+            {% if p.status not in ('Order Received in Warehouse', 'בוטל') and p.items %}
+            <a href="{{ url_for('purchases.receive', id=p.id) }}"
+               class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+               style="width:30px;height:30px;background:#fef3c7;color:#92400e;border:none;"
+               title="קליטת פריטים במחסן">
+              <i class="bi bi-box-seam" style="font-size:.8rem;"></i>
+            </a>
+            {% endif %}
             {% endif %}
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('purchases.delete', id=p.id) }}" class="d-inline"
@@ -165,7 +176,7 @@
 {% block scripts %}
 <script>
 (function () {
-  var ACTIVE = ['BOM Transferred', 'Requirement Created', 'Order Signed'];
+  var ACTIVE = ['BOM Transferred', 'Requirement Created', 'Order Signed', 'Partial Delivery'];
   var buttons = document.querySelectorAll('.pf-btn');
   var rows    = document.querySelectorAll('.purchase-row');
   var countEl = document.getElementById('purchaseCount');

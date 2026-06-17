@@ -1,5 +1,6 @@
 import os
 import traceback
+from bson import ObjectId
 from datetime import datetime
 from flask import (Blueprint, render_template, redirect, url_for, flash,
                    request, abort, g, current_app)
@@ -14,13 +15,14 @@ purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
 
 
 def _sync_inventory_on_cancel(purchase):
-    """Subtract received quantities from asset stock when cancelling a received order."""
+    """Subtract received quantities from asset stock when cancelling/reversing an order."""
     col = Asset._get_collection()
     updated = 0
     for item in purchase.items:
         if not item.asset:
             continue
-        qty = item.quantity or 0
+        # Use received_qty if tracked (partial delivery), else fall back to quantity
+        qty = item.received_qty or item.quantity or 0
         if qty <= 0:
             continue
         try:
@@ -59,28 +61,22 @@ def _sync_inventory_on_receipt(purchase):
             updated += 1
     return updated
 
-def _sync_inventory_newly_received(purchase, newly_received_ids):
-    """Add quantities to stock only for items transitioning to received."""
+def _sync_inventory_delta(delta_map):
+    """Increment asset stock by delta quantities. delta_map: {asset_id_str: delta_int}"""
     col = Asset._get_collection()
     updated = 0
-    for item in purchase.items:
-        if not item.asset:
+    for asset_id_str, delta in delta_map.items():
+        if delta <= 0:
             continue
         try:
-            asset_id = item.asset.id
+            result = col.update_one(
+                {'_id': ObjectId(asset_id_str)},
+                [{'$set': {'quantity': {'$add': [{'$ifNull': ['$quantity', 0]}, delta]}}}]
+            )
+            if result.modified_count:
+                updated += 1
         except Exception:
             continue
-        if str(asset_id) not in newly_received_ids:
-            continue
-        qty = item.quantity or 0
-        if qty <= 0:
-            continue
-        result = col.update_one(
-            {'_id': asset_id},
-            [{'$set': {'quantity': {'$add': [{'$ifNull': ['$quantity', 0]}, qty]}}}]
-        )
-        if result.modified_count:
-            updated += 1
     return updated
 
 
@@ -338,6 +334,11 @@ def edit(id):
         _CANCELLED = 'בוטל'
 
         if old_status != _RECEIVED and status == _RECEIVED:
+            # Mark all items as fully received so cancel logic uses received_qty correctly
+            for item in purchase.items:
+                if item.safe_asset:
+                    item.received_qty = item.quantity or 0
+            purchase.save()
             # Atomic guard: only the first request to set received_at runs the sync
             guard = Purchase._get_collection().find_one_and_update(
                 {'_id': purchase.id, 'received_at': None},
@@ -414,7 +415,7 @@ def delete(id):
     return redirect(url_for('purchases.list_purchases'))
 
 
-@purchases_bp.route('/<id>/receive', methods=['POST'])
+@purchases_bp.route('/<id>/receive', methods=['GET', 'POST'])
 @login_required
 def receive(id):
     if not current_user.can_edit:
@@ -422,48 +423,52 @@ def receive(id):
     purchase = get_or_404(Purchase, id)
 
     if purchase.status in ('Order Received in Warehouse', 'בוטל'):
-        flash('לא ניתן לעדכן קליטה על הזמנה זו.', 'warning')
+        flash('הזמנה זו כבר הסתיימה ולא ניתן לעדכן קליטה.', 'warning')
         return redirect(url_for('purchases.edit', id=id))
 
-    checked_ids = set(request.form.getlist('received_item'))
+    if request.method == 'GET':
+        return render_template('purchases/receive.html', purchase=purchase)
 
-    # Determine which items are newly received (were not received before)
-    newly_received_ids = set()
+    # POST — process received quantities
+    delta_map = {}
+    any_received = False
     for item in purchase.items:
-        try:
-            asset_id = str(item.asset.id)
-        except Exception:
+        a = item.safe_asset
+        if not a:
             continue
-        was_received = item.received or False
-        is_now_received = asset_id in checked_ids
-        if is_now_received and not was_received:
-            newly_received_ids.add(asset_id)
-        item.received = is_now_received
+        asset_id_str = str(a.id)
+        key = f'received_now_{asset_id_str}'
+        try:
+            now_val = int(request.form.get(key, 0) or 0)
+        except (ValueError, TypeError):
+            now_val = 0
+        now_val = max(0, min(now_val, item.remaining_qty))
+        if now_val > 0:
+            delta_map[asset_id_str] = now_val
+            item.received_qty = (item.received_qty or 0) + now_val
+            any_received = True
 
-    # Sync inventory for newly received items
-    if newly_received_ids:
-        _sync_inventory_newly_received(purchase, newly_received_ids)
+    if delta_map:
+        _sync_inventory_delta(delta_map)
 
-    # Update status based on received state
-    total = len([i for i in purchase.items if i.asset])
-    received_count = len([i for i in purchase.items if i.received])
+    # Recalculate status
+    active_items = [i for i in purchase.items if i.safe_asset]
+    total        = len(active_items)
+    fully_done   = sum(1 for i in active_items if i.is_fully_received)
+    any_received_total = sum(1 for i in active_items if (i.received_qty or 0) > 0)
 
-    if received_count == 0:
-        pass  # keep current status
-    elif received_count == total:
+    if fully_done == total and total > 0:
         purchase.status = 'Order Received in Warehouse'
         if not purchase.received_at:
             purchase.received_at = datetime.utcnow()
-    else:
+        flash('כל הפריטים נקלטו — ההזמנה הושלמה!', 'success')
+    elif any_received_total > 0:
         purchase.status = 'Partial Delivery'
+        received_units = sum(i.received_qty or 0 for i in active_items)
+        total_units    = sum(i.quantity or 0 for i in active_items)
+        flash(f'קליטה עודכנה — {received_units} מתוך {total_units} יח\' נקלטו.', 'info')
+    elif not any_received:
+        flash('לא הוזנו כמויות לקליטה.', 'warning')
 
     purchase.save()
-
-    if received_count == total:
-        flash(f'כל הפריטים נקלטו — הסטטוס עודכן ל"הזמנה נקלטה במחסן".', 'success')
-    elif received_count > 0:
-        flash(f'{received_count} מתוך {total} פריטים נקלטו — סטטוס: קליטה חלקית.', 'info')
-    else:
-        flash('לא סומן אף פריט כנקלט.', 'warning')
-
-    return redirect(url_for('purchases.edit', id=id))
+    return redirect(url_for('purchases.receive', id=id))

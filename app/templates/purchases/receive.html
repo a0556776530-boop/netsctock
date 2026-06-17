@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}קליטת פריטים — {{ purchase.name }}{% endblock %}
+{% block page_title %}קליטת פריטים{% endblock %}
+
+{% block content %}
+{% set prog = purchase.delivery_progress %}
+{% set prog_received = prog[0] %}
+{% set prog_total    = prog[1] %}
+{% set prog_pct = ((prog_received / prog_total * 100) | round(0) | int) if prog_total > 0 else 0 %}
+
+<div class="row justify-content-center">
+<div class="col-12 col-xl-9">
+
+  {# ── כותרת + חזור ──────────────────────────────────────────────────────── #}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h5 class="fw-bold mb-1">
+        <i class="bi bi-box-seam-fill text-warning me-2"></i>{{ purchase.name }}
+      </h5>
+      <span class="text-muted small">
+        {% if purchase.emf %}<span class="me-3"><i class="bi bi-hash me-1"></i>{{ purchase.emf }}</span>{% endif %}
+        {% if purchase.order %}<span><i class="bi bi-file-text me-1"></i>{{ purchase.order }}</span>{% endif %}
+      </span>
+    </div>
+    <a href="{{ url_for('purchases.edit', id=purchase.id) }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-right me-1"></i>חזור לרכש
+    </a>
+  </div>
+
+  {# ── סרגל התקדמות כולל ─────────────────────────────────────────────────── #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="fw-semibold">התקדמות כוללת</span>
+        <span class="fw-bold font-monospace">
+          {{ prog_received }} / {{ prog_total }} יח'
+          <span class="text-muted fw-normal small ms-1">({{ prog_pct }}%)</span>
+        </span>
+      </div>
+      <div class="progress" style="height:14px; border-radius:8px;">
+        <div class="progress-bar
+          {% if prog_pct == 100 %}bg-success
+          {% elif prog_pct > 0 %}bg-warning
+          {% else %}bg-secondary{% endif %}
+          progress-bar-striped progress-bar-animated"
+          role="progressbar"
+          style="width: {{ prog_pct }}%; border-radius:8px;"
+          aria-valuenow="{{ prog_pct }}" aria-valuemin="0" aria-valuemax="100">
+        </div>
+      </div>
+      {% if prog_pct == 100 %}
+      <div class="mt-2 small text-success fw-semibold">
+        <i class="bi bi-check-circle-fill me-1"></i>כל הפריטים נקלטו במחסן
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── טבלת פריטים + קליטה ───────────────────────────────────────────────── #}
+  <form method="POST" action="{{ url_for('purchases.receive', id=purchase.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-3 pb-0">
+        <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing:.07em;">
+          <i class="bi bi-boxes me-1"></i>פריטי ההזמנה
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="padding:10px 16px;">פריט</th>
+                <th class="text-center" style="width:90px; padding:10px 16px;">הוזמן</th>
+                <th class="text-center" style="width:160px; padding:10px 16px;">התקבל עד כה</th>
+                <th class="text-center" style="width:160px; padding:10px 16px;">מגיע עכשיו</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in purchase.items %}
+              {% set a = item.safe_asset %}
+              {% if a %}
+              {% set item_pct = ((item.received_qty / item.quantity * 100) | round(0) | int) if item.quantity > 0 else 0 %}
+              <tr {% if item.is_fully_received %}style="opacity:.55;"{% endif %}>
+                <td style="padding:10px 16px;">
+                  <div class="small fw-semibold">{{ a.serial_number }}</div>
+                  {% if a.model %}<div class="x-small text-muted">{{ a.model }}</div>{% endif %}
+                </td>
+                <td class="text-center small font-monospace fw-semibold" style="padding:10px 16px;">
+                  {{ item.quantity }}
+                </td>
+                <td class="text-center" style="padding:10px 16px;">
+                  <div class="d-flex flex-column align-items-center gap-1">
+                    <span class="fw-semibold font-monospace small
+                      {% if item.is_fully_received %}text-success
+                      {% elif item.received_qty > 0 %}text-warning
+                      {% else %}text-muted{% endif %}">
+                      {{ item.received_qty or 0 }}
+                    </span>
+                    <div class="progress w-100" style="height:5px; border-radius:4px; max-width:100px;">
+                      <div class="progress-bar
+                        {% if item_pct == 100 %}bg-success{% elif item_pct > 0 %}bg-warning{% else %}bg-secondary{% endif %}"
+                        style="width:{{ item_pct }}%;"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center" style="padding:10px 16px;">
+                  {% if item.is_fully_received %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">
+                    <i class="bi bi-check-lg me-1"></i>הושלם
+                  </span>
+                  {% else %}
+                  <div class="d-flex align-items-center justify-content-center gap-2">
+                    <input type="number"
+                           name="received_now_{{ a.id }}"
+                           class="form-control form-control-sm text-center font-monospace fw-semibold"
+                           style="width:80px;"
+                           min="0" max="{{ item.remaining_qty }}"
+                           value="0"
+                           placeholder="0">
+                    <span class="x-small text-muted">/ {{ item.remaining_qty }}</span>
+                  </div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <a href="{{ url_for('purchases.edit', id=purchase.id) }}" class="btn btn-outline-secondary">
+        ביטול
+      </a>
+      {% if prog_pct < 100 %}
+      <button type="submit" class="btn btn-warning fw-semibold px-4">
+        <i class="bi bi-box-seam me-2"></i>שמור קליטה
+      </button>
+      {% else %}
+      <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-success fw-semibold px-4">
+        <i class="bi bi-check-circle me-2"></i>חזור לרשימה
+      </a>
+      {% endif %}
+    </div>
+
+  </form>
+
+</div>
+</div>
+{% endblock %}
