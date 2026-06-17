@@ -133,7 +133,7 @@ def new_estimate():
     } for a in assets])
     maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
 
-    active_pools = list(Pool.objects(is_active=True).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
+    active_pools = list(Pool.objects(Q(is_active=True) | Q(is_active__exists=False)).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
 
     def _rerender(error_msg, form_data):
         flash(error_msg, 'danger')
@@ -397,7 +397,7 @@ def edit(id):
     } for item in estimate.items])
 
     stored_factor = float(estimate.maintenance_factor or AppSetting.get('maintenance_factor') or 1.7)
-    active_pools  = list(Pool.objects(is_active=True).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
+    active_pools  = list(Pool.objects(Q(is_active=True) | Q(is_active__exists=False)).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
     return render_template('estimates/edit.html',
                            estimate=estimate, assets_json=assets_json,
                            selected_json=selected_json, usd_rate=usd_rate,
