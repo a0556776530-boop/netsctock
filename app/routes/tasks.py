@@ -1,10 +1,12 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
+from mongoengine import Q
 from wtforms import StringField, SelectField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Optional, Length
 
 from app.models.task import Task
+from app.models.pool import Pool
 from app.utils.mongo_helpers import get_or_404
 
 tasks_bp = Blueprint('tasks', __name__, url_prefix='/tasks')
@@ -54,18 +56,23 @@ def new_task():
     t    = getattr(g, 't', {})
     form = TaskForm()
 
+    active_pools = list(Pool.objects(Q(is_active=True) | Q(is_active__exists=False)).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
+
     if form.validate_on_submit():
+        pool_id = (request.form.get('pool_id') or '').strip()
+        selected_pool = Pool.objects(id=pool_id).first() if pool_id else None
         task = Task(
             title=form.title.data.strip(),
             assignee_name=(form.assignee_name.data or '').strip() or None,
             status=form.status.data,
             notes=(form.notes.data or '').strip() or None,
+            pool=selected_pool,
         )
         task.save()
         flash('Task created successfully.', 'success')
         return redirect(url_for('tasks.list_tasks'))
 
-    return render_template('tasks/form.html', form=form, task=None, title='New Task')
+    return render_template('tasks/form.html', form=form, task=None, title='New Task', active_pools=active_pools)
 
 
 @tasks_bp.route('/<id>/edit', methods=['GET', 'POST'])
@@ -75,6 +82,7 @@ def edit(id):
         abort(403)
     task = get_or_404(Task, id)
     form = TaskForm()
+    active_pools = list(Pool.objects(Q(is_active=True) | Q(is_active__exists=False)).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
 
     if request.method == 'GET':
         form.title.data         = task.title
@@ -83,15 +91,17 @@ def edit(id):
         form.notes.data         = task.notes or ''
 
     if form.validate_on_submit():
+        pool_id = (request.form.get('pool_id') or '').strip()
         task.title         = form.title.data.strip()
         task.assignee_name = (form.assignee_name.data or '').strip() or None
         task.status        = form.status.data
         task.notes         = (form.notes.data or '').strip() or None
+        task.pool          = Pool.objects(id=pool_id).first() if pool_id else None
         task.save()
         flash('Task updated successfully.', 'success')
         return redirect(url_for('tasks.list_tasks'))
 
-    return render_template('tasks/form.html', form=form, task=task, title='Edit Task')
+    return render_template('tasks/form.html', form=form, task=task, title='Edit Task', active_pools=active_pools)
 
 
 @tasks_bp.route('/<id>/done', methods=['POST'])
