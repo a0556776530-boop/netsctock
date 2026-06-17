@@ -31,6 +31,8 @@ STATUS_COLORS = {
 
 
 class PurchaseItem(me.EmbeddedDocument):
+    meta = {'strict': False}
+
     asset        = me.ReferenceField('Asset', required=True)
     quantity     = me.IntField(required=True)
     unit_price   = me.FloatField(default=0)
