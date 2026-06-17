@@ -136,7 +136,7 @@
                style="width:30px;height:30px;background:#fef9c3;color:#854d0e;border:none;">
               <i class="bi bi-pencil" style="font-size:.8rem;"></i>
             </a>
-            {% if p.status not in ('Order Received in Warehouse', 'בוטל') and p.items %}
+            {% if p.status in ('Order Signed', 'Partial Delivery') and p.items %}
             <a href="{{ url_for('purchases.receive', id=p.id) }}"
                class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
                style="width:30px;height:30px;background:#fef3c7;color:#92400e;border:none;"
