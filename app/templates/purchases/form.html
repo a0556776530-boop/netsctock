@@ -79,7 +79,7 @@
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_status }}</label>
           <select name="status" id="statusSelect" class="form-select">
-            {% for s in statuses %}
+            {% for s in statuses if s != 'Partial Delivery' %}
             {% set key = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
             <option value="{{ s }}"
                     {{ 'selected' if is_edit and purchase.status == s else '' }}
