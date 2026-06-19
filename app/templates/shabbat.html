@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>שבת שלום</title>
+  <!-- Refresh every 60s — when Shabbat ends the server redirects to dashboard -->
+  <meta http-equiv="refresh" content="60">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    .shabbat-bg {
+      min-height: 100vh;
+      background: url("{{ url_for('static', filename='img/shabbat.jpg') }}") center center / cover no-repeat fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .shabbat-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+    }
+
+    .shabbat-card {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      color: #fff;
+      padding: 3rem 4rem;
+      border-radius: 1.5rem;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      max-width: 480px;
+      width: 90%;
+    }
+
+    .shabbat-candles {
+      font-size: 3.5rem;
+      margin-bottom: 1rem;
+      line-height: 1;
+    }
+
+    .shabbat-title {
+      font-size: 2.8rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+
+    .shabbat-divider {
+      width: 60px;
+      height: 2px;
+      background: rgba(255,220,100,0.7);
+      margin: 1.2rem auto;
+      border-radius: 2px;
+    }
+
+    .shabbat-msg {
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.88);
+      line-height: 1.7;
+    }
+
+    .shabbat-time {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.4rem 1.2rem;
+      border-radius: 2rem;
+      background: rgba(255,220,100,0.18);
+      border: 1px solid rgba(255,220,100,0.4);
+      color: #ffd970;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+  </style>
+</head>
+<body>
+  <div class="shabbat-bg">
+    <div class="shabbat-overlay"></div>
+    <div class="shabbat-card">
+      <div class="shabbat-candles">🕯️🕯️</div>
+      <div class="shabbat-title">שבת שלום</div>
+      <div class="shabbat-divider"></div>
+      <div class="shabbat-msg">
+        האפליקציה סגורה לכבוד השבת.<br>
+        נשוב לפעילות מלאה במוצאי שבת.
+      </div>
+      <div class="shabbat-time">פתיחה במוצ״ש בשעה {{ shabbat_out }}</div>
+    </div>
+  </div>
+</body>
+</html>

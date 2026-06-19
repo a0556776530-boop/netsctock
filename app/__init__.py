@@ -109,6 +109,13 @@ def create_app(config_class=Config):
             from .models.user import User
             User.objects(id=current_user.id).update_one(set__last_seen=datetime.utcnow())
 
+        # Shabbat mode — block all requests except the shabbat page itself and static files
+        from flask import request as _req
+        from .utils.shabbat import is_shabbat
+        if is_shabbat() and _req.endpoint not in ('main.shabbat_page', 'static'):
+            from flask import redirect, url_for
+            return redirect(url_for('main.shabbat_page'))
+
 
     from zoneinfo import ZoneInfo
     from datetime import timezone as _tz
