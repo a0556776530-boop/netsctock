@@ -299,11 +299,16 @@ def edit(id):
                 bom_filename = saved
 
         old_status = purchase.status
+        # "Order Received in Warehouse" is fully locked — admin cannot edit a purchase
+        # in this state (form shows hidden input preserving the status, but we guard server-side too)
+        if old_status == 'Order Received in Warehouse':
+            flash('לא ניתן לערוך הזמנה שנקלטה במחסן.', 'warning')
+            return redirect(url_for('purchases.detail', id=purchase.id))
         status = request.form.get('status', purchase.status)
         if status not in STATUSES:
             status = purchase.status
-        # "Order Received in Warehouse" can only be set by the warehouse receive page
-        if status == 'Order Received in Warehouse' and old_status != 'Order Received in Warehouse':
+        # Cannot set TO "Order Received in Warehouse" from edit form — warehouse page only
+        if status == 'Order Received in Warehouse':
             status = purchase.status
         currency = request.form.get('currency', purchase.currency)
         if currency not in CURRENCIES:
@@ -388,10 +393,13 @@ def quick_status(id):
     _RECEIVED  = 'Order Received in Warehouse'
     _CANCELLED = 'בוטל'
 
+    # "Order Received in Warehouse" is a warehouse-only terminal status — admin cannot
+    # change FROM it either. Use delete or a dedicated admin action to correct mistakes.
+    if old_status == _RECEIVED:
+        return jsonify({'ok': False, 'error': 'לא ניתן לשנות סטטוס של הזמנה שנקלטה במחסן'}), 400
+
     purchase.status = new_status
 
-    # Note: new_status == _RECEIVED is blocked above by MANUAL_STATUSES check.
-    # Reversal (admin corrects a warehouse receipt back to active) is still allowed.
     if old_status == _RECEIVED and new_status in ACTIVE_STATUSES:
         Purchase._get_collection().update_one(
             {'_id': purchase.id}, {'$unset': {'received_at': ''}}

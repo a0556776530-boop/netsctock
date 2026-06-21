@@ -129,13 +129,15 @@
             'בוטל':                        '#dc2626',
           } %}
           <td class="status-cell" style="padding:10px 16px; min-width:190px;">
-            {% if current_user.can_edit %}
+            {% set _skey = 'purchase_status_' ~ p.status.lower().replace(' ', '_') %}
+            {% set _slabel = t[_skey] if _skey in t else p.status %}
+            {% if current_user.can_edit and p.status != 'Order Received in Warehouse' %}
             <div class="dropdown d-inline-block w-100">
               <span class="status-badge d-flex align-items-center justify-content-between gap-2"
                     style="cursor:pointer; user-select:none; font-size:.78rem; font-weight:600; padding:6px 12px; width:100%; min-width:160px; border-radius:8px; background:{{ STATUS_BG.get(p.status, '#475569') }}; color:#fff;"
                     data-bs-toggle="dropdown" data-purchase-id="{{ p.id }}"
                     title="לחץ לשינוי סטטוס">
-                <span>{{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}</span>
+                <span>{{ _slabel }}</span>
                 <i class="bi bi-chevron-down" style="font-size:.65rem; opacity:.8; flex-shrink:0;"></i>
               </span>
               <ul class="dropdown-menu shadow" style="min-width:190px; font-size:.85rem; background:#fff; border:1px solid #e2e8f0; z-index:9999;">
@@ -153,8 +155,12 @@
               </ul>
             </div>
             {% else %}
-            <span class="badge bg-{{ p.status_color }}-subtle text-{{ p.status_color }} border border-{{ p.status_color }}-subtle small">
-              {{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}
+            {# "Order Received in Warehouse" is locked — warehouse-only, no dropdown even for admin #}
+            <span style="display:inline-flex; align-items:center; font-size:.78rem; font-weight:600; padding:6px 12px; border-radius:8px; background:{{ STATUS_BG.get(p.status, '#475569') }}; color:#fff; min-width:160px;">
+              {{ _slabel }}
+              {% if p.status == 'Order Received in Warehouse' %}
+              <i class="bi bi-lock-fill ms-auto" style="font-size:.65rem; opacity:.7;" title="נקבע ע"י המחסנאי"></i>
+              {% endif %}
             </span>
             {% endif %}
           </td>
