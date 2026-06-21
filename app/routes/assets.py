@@ -189,6 +189,27 @@ def list_assets():
     in_purchase = {str(r['_id']): r['total']
                    for r in Purchase._get_collection().aggregate(_purchase_pipeline)}
 
+    # Purchase order counts per asset (open / closed) for hover popover
+    _open_count_pipeline = [
+        {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
+        {'$unwind': '$items'},
+        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': {'asset': '$items.asset', 'purchase': '$_id'}}},
+        {'$group': {'_id': '$_id.asset', 'count': {'$sum': 1}}},
+    ]
+    open_order_counts = {str(r['_id']): r['count']
+                         for r in Purchase._get_collection().aggregate(_open_count_pipeline)}
+
+    _closed_count_pipeline = [
+        {'$match': {'status': 'Order Received in Warehouse'}},
+        {'$unwind': '$items'},
+        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': {'asset': '$items.asset', 'purchase': '$_id'}}},
+        {'$group': {'_id': '$_id.asset', 'count': {'$sum': 1}}},
+    ]
+    closed_order_counts = {str(r['_id']): r['count']
+                           for r in Purchase._get_collection().aggregate(_closed_count_pipeline)}
+
     return render_template(
         'assets/list.html',
         assets=assets,
@@ -202,6 +223,8 @@ def list_assets():
         global_settings=global_settings,
         commitments=commitments,
         in_purchase=in_purchase,
+        open_order_counts=open_order_counts,
+        closed_order_counts=closed_order_counts,
     )
 
 

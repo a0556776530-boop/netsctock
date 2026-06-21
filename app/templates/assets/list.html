@@ -288,7 +288,9 @@
                   "price_usd":    asset.price_usd|float if asset.price_usd else 0,
                   "barcode":      asset.barcode or "",
                   "notes":        asset.notes or "",
-                  "created":      asset.created_at.strftime("%d %b %Y") if asset.created_at else ""
+                  "created":      asset.created_at.strftime("%d %b %Y") if asset.created_at else "",
+                  "open_orders":  open_order_counts.get(asset.id|string, 0),
+                  "closed_orders": closed_order_counts.get(asset.id|string, 0)
                 } | tojson }}'>
 
               <!-- 1. Asset ID -->
@@ -471,6 +473,7 @@
         <span id="popSN" class="fw-bold font-monospace text-truncate" style="max-width:180px;"></span>
       </div>
       <div id="popType" class="text-muted small"></div>
+      <div id="popOrders" style="display:none; margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"></div>
     </div>
     <div class="card-body p-3" style="background:#fff;">
       <table class="table table-sm table-borderless mb-0" style="font-size:.8rem;">
@@ -884,6 +887,23 @@
       var notesEl = document.getElementById('popNotes');
       if (d.notes) { notesEl.textContent = d.notes; notesEl.style.display = ''; }
       else { notesEl.style.display = 'none'; }
+
+      // Purchase order badges
+      var ordersEl = document.getElementById('popOrders');
+      ordersEl.innerHTML = '';
+      if ((d.open_orders || 0) > 0) {
+        var b = document.createElement('span');
+        b.style.cssText = 'font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:5px;background:#fef3c7;color:#92400e;';
+        b.textContent = '📦 ' + d.open_orders + ' הזמנות פתוחות';
+        ordersEl.appendChild(b);
+      }
+      if ((d.closed_orders || 0) > 0) {
+        var b2 = document.createElement('span');
+        b2.style.cssText = 'font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:5px;background:#dcfce7;color:#15803d;';
+        b2.textContent = '✓ ' + d.closed_orders + ' נקלטו';
+        ordersEl.appendChild(b2);
+      }
+      ordersEl.style.display = (d.open_orders || d.closed_orders) ? 'flex' : 'none';
 
       // Position
       pop.style.display = 'block';
