@@ -288,52 +288,7 @@
     .then(function (r) { return r.json(); })
     .then(function (data) {
       if (!data.ok) { alert(data.error || 'שגיאה'); return; }
-
-      // Update row data-status
-      var row = document.querySelector('.purchase-row[data-status]' +
-        '[data-status]');
-      // Find the row by the badge
-      var badge = document.querySelector(
-        '.status-badge[data-purchase-id="' + purchaseId + '"]');
-      if (!badge) return;
-
-      var bgColor = COLOR_MAP[data.status] || '#475569';
-      badge.className = 'status-badge d-flex align-items-center justify-content-between gap-2';
-      badge.style.cursor = 'pointer';
-      badge.style.userSelect = 'none';
-      badge.style.fontSize = '.78rem';
-      badge.style.fontWeight = '600';
-      badge.style.padding = '6px 12px';
-      badge.style.width = '100%';
-      badge.style.minWidth = '160px';
-      badge.style.borderRadius = '8px';
-      badge.style.background = bgColor;
-      badge.style.color = '#fff';
-      badge.innerHTML = '<span>' + data.label + '</span><i class="bi bi-chevron-down" style="font-size:.65rem;opacity:.8;flex-shrink:0;"></i>';
-      badge.dataset.purchaseId = purchaseId;
-
-      // Update row
-      var tr = badge.closest('tr');
-      if (tr) {
-        tr.dataset.status = data.status;
-        var faded = (data.status === 'Order Received in Warehouse' || data.status === 'בוטל');
-        tr.classList.toggle('row-faded', faded);
-      }
-
-      // Update dropdown active/disabled state
-      var allOptions = badge.closest('.dropdown').querySelectorAll('.status-option');
-      allOptions.forEach(function (o) {
-        var isNew = o.dataset.status === data.status;
-        o.classList.toggle('active', isNew);
-        o.disabled = isNew;
-      });
-
-      // Update receive button visibility
-      var receivable = (data.status === 'Order Received in Warehouse' || data.status === 'Partial Delivery');
-      var receiveBtn = tr ? tr.querySelector('a[href*="/receive"]') : null;
-      if (receiveBtn) {
-        receiveBtn.style.display = receivable ? '' : 'none';
-      }
+      window.location.reload();
     })
     .catch(function () { alert('שגיאת רשת'); });
   });
