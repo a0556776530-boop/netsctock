@@ -302,6 +302,9 @@ def edit(id):
         status = request.form.get('status', purchase.status)
         if status not in STATUSES:
             status = purchase.status
+        # "Order Received in Warehouse" can only be set by the warehouse receive page
+        if status == 'Order Received in Warehouse' and old_status != 'Order Received in Warehouse':
+            status = purchase.status
         currency = request.form.get('currency', purchase.currency)
         if currency not in CURRENCIES:
             currency = purchase.currency
@@ -330,28 +333,12 @@ def edit(id):
                                    statuses=MANUAL_STATUSES, currencies=CURRENCIES)
 
         # ── Inventory sync on status transitions ─────────────────────────────
+        # Note: transitioning TO "Order Received in Warehouse" is only possible via
+        # the warehouse receive page — the edit form blocks it above.
         _RECEIVED  = 'Order Received in Warehouse'
         _CANCELLED = 'בוטל'
 
-        if old_status != _RECEIVED and status == _RECEIVED:
-            # Mark all items as fully received so cancel logic uses received_qty correctly
-            for item in purchase.items:
-                if item.safe_asset:
-                    item.received_qty = item.quantity or 0
-            purchase.save()
-            # Atomic guard: only the first request to set received_at runs the sync
-            guard = Purchase._get_collection().find_one_and_update(
-                {'_id': purchase.id, 'received_at': None},
-                {'$set': {'received_at': datetime.utcnow()}},
-            )
-            if guard is not None:
-                # We claimed the slot — run sync
-                updated = _sync_inventory_on_receipt(purchase)
-                if updated > 0:
-                    flash(f'{updated} פריטים נוספו למלאי אוטומטית.', 'success')
-            # else: another concurrent save already ran the sync — skip silently
-
-        elif old_status == _RECEIVED and status in ACTIVE_STATUSES:
+        if old_status == _RECEIVED and status in ACTIVE_STATUSES:
             # Reversed from received → subtract back, clear the guard
             Purchase._get_collection().update_one(
                 {'_id': purchase.id},
@@ -403,19 +390,9 @@ def quick_status(id):
 
     purchase.status = new_status
 
-    if old_status != _RECEIVED and new_status == _RECEIVED:
-        for item in purchase.items:
-            if item.safe_asset:
-                item.received_qty = item.quantity or 0
-        purchase.save()
-        guard = Purchase._get_collection().find_one_and_update(
-            {'_id': purchase.id, 'received_at': None},
-            {'$set': {'received_at': datetime.utcnow()}},
-        )
-        if guard is not None:
-            _sync_inventory_on_receipt(purchase)
-
-    elif old_status == _RECEIVED and new_status in ACTIVE_STATUSES:
+    # Note: new_status == _RECEIVED is blocked above by MANUAL_STATUSES check.
+    # Reversal (admin corrects a warehouse receipt back to active) is still allowed.
+    if old_status == _RECEIVED and new_status in ACTIVE_STATUSES:
         Purchase._get_collection().update_one(
             {'_id': purchase.id}, {'$unset': {'received_at': ''}}
         )
@@ -477,9 +454,9 @@ def receive(id):
         abort(403)
     purchase = get_or_404(Purchase, id)
 
-    if purchase.status not in ('Order Received in Warehouse', 'Partial Delivery'):
-        flash('קליטת פריטים אפשרית רק לאחר שהרכש עבר לסטטוס "נקלטה במחסן".', 'warning')
-        return redirect(url_for('purchases.edit', id=id))
+    if purchase.status not in ('Order Signed', 'Partial Delivery', 'Order Received in Warehouse'):
+        flash('קליטת פריטים אפשרית רק לאחר שההזמנה נחתמה.', 'warning')
+        return redirect(url_for('purchases.list_purchases'))
 
     if request.method == 'GET':
         return render_template('purchases/receive.html', purchase=purchase)

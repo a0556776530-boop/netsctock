@@ -18,8 +18,9 @@ ACTIVE_STATUSES = [
     'Partial Delivery',
 ]
 
-# Statuses available for manual selection — Partial Delivery is set automatically only
-MANUAL_STATUSES = [s for s in STATUSES if s != 'Partial Delivery']
+# Statuses available for manual selection — Partial Delivery and Order Received in Warehouse
+# are set automatically only (warehouse receive page handles the latter)
+MANUAL_STATUSES = [s for s in STATUSES if s not in ('Partial Delivery', 'Order Received in Warehouse')]
 
 CURRENCIES = ['ILS', 'USD Aid', 'USD Cash']
 

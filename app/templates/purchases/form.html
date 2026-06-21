@@ -78,15 +78,19 @@
 
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_status }}</label>
-          {% if is_edit and purchase.status == 'Partial Delivery' %}
-          <input type="hidden" name="status" value="Partial Delivery">
+          {% if is_edit and purchase.status in ('Partial Delivery', 'Order Received in Warehouse') %}
+          {% set _locked_status_key = 'purchase_status_' ~ purchase.status.lower().replace(' ', '_') %}
+          {% set _locked_status_colors = {'Partial Delivery': '#d97706', 'Order Received in Warehouse': '#16a34a'} %}
+          <input type="hidden" name="status" value="{{ purchase.status }}">
           <div class="form-control bg-light d-flex align-items-center gap-2" style="max-width:fit-content; cursor:default;">
-            <span class="badge bg-warning text-dark">{{ t.get('purchase_status_partial_delivery', 'קליטה חלקית') }}</span>
-            <span class="small text-muted">נקבע אוטומטית</span>
+            <span class="badge" style="background:{{ _locked_status_colors[purchase.status] }}; color:#fff;">
+              {{ t[_locked_status_key] if _locked_status_key in t else purchase.status }}
+            </span>
+            <span class="small text-muted">נקבע אוטומטית ע"י המחסנאי</span>
           </div>
           {% else %}
           <select name="status" id="statusSelect" class="form-select">
-            {% for s in statuses if s != 'Partial Delivery' %}
+            {% for s in statuses %}
             {% set key = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
             <option value="{{ s }}"
                     {{ 'selected' if is_edit and purchase.status == s else '' }}
@@ -171,7 +175,7 @@
 
 </form>
 
-{% if is_edit and purchase.status in ('Order Received in Warehouse', 'Partial Delivery') and purchase.items %}
+{% if is_edit and purchase.status in ('Order Signed', 'Partial Delivery', 'Order Received in Warehouse') and purchase.items %}
 <div class="mt-3 text-end">
   <a href="{{ url_for('purchases.receive', id=purchase.id) }}" class="btn btn-warning">
     <i class="bi bi-box-seam me-1"></i>קליטת פריטים במחסן
