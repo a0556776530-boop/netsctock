@@ -256,18 +256,24 @@
 <div class="card border-0 shadow-sm">
   <div class="card-body p-4">
     <div class="d-flex justify-content-between align-items-center">
+      {% if items_pending > 0 %}
       <div class="text-muted small">
         <i class="bi bi-info-circle me-1"></i>
         בקליטה זו תרשמנה <strong id="footerSessionCount" class="text-dark">0</strong> יחידות
         מ-<strong id="footerItemCount" class="text-dark">0</strong> פריטים
       </div>
+      {% else %}
+      <div></div>
+      {% endif %}
       <div class="d-flex gap-2">
-        <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">
-          ביטול
+        <a href="{{ url_for('purchases.list_purchases') }}?status=all" class="btn btn-outline-secondary">
+          {% if items_pending > 0 %}ביטול{% else %}חזור לרשימה{% endif %}
         </a>
+        {% if items_pending > 0 %}
         <button type="submit" class="btn btn-success fw-semibold px-5" id="saveBtn">
           <i class="bi bi-box-seam me-2"></i>שמור קליטה
         </button>
+        {% endif %}
       </div>
     </div>
   </div>
