@@ -357,18 +357,18 @@
     cb.indeterminate = (v > 0 && v < max);
   });
 
-  // Fill all — also checks all checkboxes
-  document.getElementById('btnFillAll').addEventListener('click', function () {
-    getInputs().forEach(function (inp) {
+  // Fill all — set each input to its max and fire native input event
+  document.getElementById('btnFillAll').addEventListener('click', function (e) {
+    e.preventDefault();
+    var inputs = getInputs();
+    if (inputs.length === 0) return;
+    inputs.forEach(function (inp) {
       var max = parseInt(inp.dataset.max, 10) || 0;
+      if (inp.value === String(max)) return; // already at max
       inp.value = max;
-      var row = inp.closest('tr');
-      if (row) {
-        var cb = row.querySelector('.item-arrived-cb');
-        if (cb) { cb.checked = true; cb.indeterminate = false; }
-      }
+      // Fire native input event so both recalc and checkbox-sync listeners trigger
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    recalc();
   });
 
   // Clamp on blur
