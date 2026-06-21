@@ -119,17 +119,17 @@
           <td class="small" style="padding:10px 16px;">{{ p.emf or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.requirement or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.order or '—' }}</td>
-          <td style="padding:10px 16px;">
+          <td style="padding:10px 16px; min-width:190px;">
             {% if current_user.can_edit %}
-            <div class="dropdown d-inline-block">
-              <span class="badge bg-{{ p.status_color }}-subtle text-{{ p.status_color }} border border-{{ p.status_color }}-subtle small status-badge"
-                    style="cursor:pointer; user-select:none;"
+            <div class="dropdown d-inline-block w-100">
+              <span class="badge bg-{{ p.status_color }}-subtle text-{{ p.status_color }} border border-{{ p.status_color }}-subtle status-badge d-flex align-items-center justify-content-between gap-2"
+                    style="cursor:pointer; user-select:none; font-size:.78rem; font-weight:600; padding:6px 10px; width:100%; min-width:160px; border-radius:8px;"
                     data-bs-toggle="dropdown" data-purchase-id="{{ p.id }}"
                     title="לחץ לשינוי סטטוס">
-                {{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}
-                <i class="bi bi-chevron-down ms-1" style="font-size:.6rem;"></i>
+                <span>{{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}</span>
+                <i class="bi bi-chevron-down" style="font-size:.65rem; opacity:.7; flex-shrink:0;"></i>
               </span>
-              <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:180px; font-size:.85rem;">
+              <ul class="dropdown-menu shadow" style="min-width:190px; font-size:.85rem;">
                 {% for s in manual_statuses %}
                 {% set skey = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
                 <li>
