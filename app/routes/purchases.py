@@ -262,7 +262,7 @@ def new_purchase():
 
     return render_template('purchases/form.html', purchase=None,
                            assets=assets, grouped_assets=grouped_assets,
-                           statuses=[s for s in STATUSES if s != 'בוטל'],
+                           statuses=[s for s in MANUAL_STATUSES if s != 'בוטל'],
                            currencies=CURRENCIES,
                            form_data=None, prefill_items=[])
 
