@@ -422,8 +422,8 @@ def receive(id):
         abort(403)
     purchase = get_or_404(Purchase, id)
 
-    if purchase.status not in ('Order Signed', 'Partial Delivery'):
-        flash('קליטת פריטים אפשרית רק לאחר חתימת ההזמנה.', 'warning')
+    if purchase.status not in ('Order Received in Warehouse', 'Partial Delivery'):
+        flash('קליטת פריטים אפשרית רק לאחר שהרכש עבר לסטטוס "נקלטה במחסן".', 'warning')
         return redirect(url_for('purchases.edit', id=id))
 
     if request.method == 'GET':
