@@ -290,6 +290,10 @@ def edit(id):
         return redirect(url_for('purchases.detail', id=id))
     assets_by_id = {str(a.id): a for a in assets}
 
+    if purchase.status in ('Order Received in Warehouse', 'בוטל'):
+        flash('לא ניתן לערוך הזמנה בסטטוס זה.', 'warning')
+        return redirect(url_for('purchases.detail', id=purchase.id))
+
     if request.method == 'POST':
         new_file = request.files.get('bom_file')
         bom_filename = purchase.bom_file
@@ -299,10 +303,8 @@ def edit(id):
                 bom_filename = saved
 
         old_status = purchase.status
-        # "Order Received in Warehouse" is fully locked — admin cannot edit a purchase
-        # in this state (form shows hidden input preserving the status, but we guard server-side too)
-        if old_status == 'Order Received in Warehouse':
-            flash('לא ניתן לערוך הזמנה שנקלטה במחסן.', 'warning')
+        if old_status in ('Order Received in Warehouse', 'בוטל'):
+            flash('לא ניתן לערוך הזמנה בסטטוס זה.', 'warning')
             return redirect(url_for('purchases.detail', id=purchase.id))
         status = request.form.get('status', purchase.status)
         if status not in STATUSES:

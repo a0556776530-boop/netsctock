@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-end gap-2 mb-3">
-  {% if current_user.can_edit %}
+  {% if current_user.can_edit and purchase.status not in ('Order Received in Warehouse', 'בוטל') %}
   <a href="{{ url_for('purchases.edit', id=purchase.id) }}" class="btn btn-sm btn-outline-secondary">
     <i class="bi bi-pencil me-1"></i>{{ t.btn_edit }}
   </a>
