@@ -473,7 +473,7 @@ def delete(id):
 @purchases_bp.route('/<id>/receive', methods=['GET', 'POST'])
 @login_required
 def receive(id):
-    if not current_user.can_edit:
+    if not (current_user.can_edit or current_user.is_warehouse):
         abort(403)
     purchase = get_or_404(Purchase, id)
 

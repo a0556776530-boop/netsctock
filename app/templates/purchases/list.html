@@ -170,14 +170,14 @@
                style="width:30px;height:30px;background:#fef9c3;color:#854d0e;border:none;">
               <i class="bi bi-pencil" style="font-size:.8rem;"></i>
             </a>
-            {% if p.status in ('Order Received in Warehouse', 'Partial Delivery') and p.items %}
+            {% endif %}
+            {% if (current_user.can_edit or current_user.is_warehouse) and p.status in ('Order Received in Warehouse', 'Partial Delivery') and p.items %}
             <a href="{{ url_for('purchases.receive', id=p.id) }}"
                class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
                style="width:30px;height:30px;background:#fef3c7;color:#92400e;border:none;"
                title="קליטת פריטים במחסן">
               <i class="bi bi-box-seam" style="font-size:.8rem;"></i>
             </a>
-            {% endif %}
             {% endif %}
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('purchases.delete', id=p.id) }}" class="d-inline"
