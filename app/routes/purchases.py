@@ -497,7 +497,8 @@ def receive(id):
     fully_done   = sum(1 for i in active_items if i.is_fully_received)
     any_received_total = sum(1 for i in active_items if (i.received_qty or 0) > 0)
 
-    if fully_done == total and total > 0:
+    fully_received_now = fully_done == total and total > 0
+    if fully_received_now:
         purchase.status = 'Order Received in Warehouse'
         if not purchase.received_at:
             purchase.received_at = datetime.utcnow()
@@ -511,4 +512,5 @@ def receive(id):
         flash('לא הוזנו כמויות לקליטה.', 'warning')
 
     purchase.save()
-    return redirect(url_for('purchases.list_purchases'))
+    redirect_filter = 'all' if fully_received_now else 'active'
+    return redirect(url_for('purchases.list_purchases') + f'?status={redirect_filter}')
