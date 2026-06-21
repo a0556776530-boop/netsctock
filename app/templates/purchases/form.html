@@ -78,6 +78,13 @@
 
         <div class="col-12 col-md-6">
           <label class="form-label fw-semibold">{{ t.purchase_col_status }}</label>
+          {% if is_edit and purchase.status == 'Partial Delivery' %}
+          <input type="hidden" name="status" value="Partial Delivery">
+          <div class="form-control bg-light d-flex align-items-center gap-2" style="max-width:fit-content; cursor:default;">
+            <span class="badge bg-warning text-dark">{{ t.get('purchase_status_partial_delivery', 'קליטה חלקית') }}</span>
+            <span class="small text-muted">נקבע אוטומטית</span>
+          </div>
+          {% else %}
           <select name="status" id="statusSelect" class="form-select">
             {% for s in statuses if s != 'Partial Delivery' %}
             {% set key = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
@@ -88,6 +95,7 @@
             </option>
             {% endfor %}
           </select>
+          {% endif %}
         </div>
 
         <div class="col-12 col-md-6">

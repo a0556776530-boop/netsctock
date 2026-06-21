@@ -113,11 +113,13 @@
             <tr>
               <th>{{ t.purchase_item_asset }}</th>
               <th class="text-center">{{ t.purchase_item_qty }}</th>
+              <th class="text-center">נקלט</th>
             </tr>
           </thead>
           <tbody>
             {% for item in purchase.items %}
             {% set a = item.safe_asset %}
+            {% set item_pct = ((item.received_qty / item.quantity * 100) | round(0) | int) if item.quantity and item.quantity > 0 else 0 %}
             <tr>
               <td class="small">
                 {% if a %}
@@ -132,10 +134,29 @@
                 {% endif %}
               </td>
               <td class="text-center small fw-semibold">{{ item.quantity }}</td>
+              <td class="text-center" style="min-width:110px;">
+                {% if item.is_fully_received %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle small">
+                  <i class="bi bi-check-lg me-1"></i>הושלם
+                </span>
+                {% else %}
+                <div class="d-flex flex-column align-items-center gap-1">
+                  <span class="small font-monospace fw-semibold
+                    {% if (item.received_qty or 0) > 0 %}text-warning{% else %}text-muted{% endif %}">
+                    {{ item.received_qty or 0 }} / {{ item.quantity }}
+                  </span>
+                  <div class="progress w-100" style="height:5px; border-radius:4px; max-width:80px;">
+                    <div class="progress-bar
+                      {% if item_pct == 100 %}bg-success{% elif item_pct > 0 %}bg-warning{% else %}bg-secondary{% endif %}"
+                      style="width:{{ item_pct }}%;"></div>
+                  </div>
+                </div>
+                {% endif %}
+              </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="2" class="text-center text-muted py-4">{{ t.purchase_no_items }}</td>
+              <td colspan="3" class="text-center text-muted py-4">{{ t.purchase_no_items }}</td>
             </tr>
             {% endfor %}
           </tbody>
