@@ -117,14 +117,6 @@ def save_settings():
     return jsonify({'ok': True})
 
 
-@main_bp.route('/shabbat')
-def shabbat_page():
-    from app.utils.shabbat import is_shabbat
-    if not is_shabbat():
-        return redirect(url_for('main.dashboard'))
-    return render_template('shabbat.html', shabbat_out='20:31')
-
-
 @main_bp.route('/')
 @login_required
 def dashboard():
