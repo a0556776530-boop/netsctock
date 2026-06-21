@@ -119,11 +119,19 @@
           <td class="small" style="padding:10px 16px;">{{ p.emf or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.requirement or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.order or '—' }}</td>
+          {% set STATUS_BG = {
+            'BOM Transferred':             '#475569',
+            'Requirement Created':         '#0284c7',
+            'Order Signed':                '#2563eb',
+            'Partial Delivery':            '#d97706',
+            'Order Received in Warehouse': '#16a34a',
+            'בוטל':                        '#dc2626',
+          } %}
           <td style="padding:10px 16px; min-width:190px;">
             {% if current_user.can_edit %}
             <div class="dropdown d-inline-block w-100">
-              <span class="status-badge d-flex align-items-center justify-content-between gap-2 bg-{{ p.status_color }}"
-                    style="cursor:pointer; user-select:none; font-size:.78rem; font-weight:600; padding:6px 12px; width:100%; min-width:160px; border-radius:8px; color:{% if p.status_color == 'warning' %}#1a1a1a{% else %}#fff{% endif %};"
+              <span class="status-badge d-flex align-items-center justify-content-between gap-2"
+                    style="cursor:pointer; user-select:none; font-size:.78rem; font-weight:600; padding:6px 12px; width:100%; min-width:160px; border-radius:8px; background:{{ STATUS_BG.get(p.status, '#475569') }}; color:#fff;"
                     data-bs-toggle="dropdown" data-purchase-id="{{ p.id }}"
                     title="לחץ לשינוי סטטוס">
                 <span>{{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}</span>
@@ -253,12 +261,12 @@
 
   // Color classes map
   var COLOR_MAP = {
-    'BOM Transferred':             'secondary',
-    'Requirement Created':         'info',
-    'Order Signed':                'primary',
-    'Partial Delivery':            'warning',
-    'Order Received in Warehouse': 'success',
-    'בוטל':                        'danger',
+    'BOM Transferred':             '#475569',
+    'Requirement Created':         '#0284c7',
+    'Order Signed':                '#2563eb',
+    'Partial Delivery':            '#d97706',
+    'Order Received in Warehouse': '#16a34a',
+    'בוטל':                        '#dc2626',
   };
 
   document.addEventListener('click', function (e) {
@@ -288,9 +296,8 @@
         '.status-badge[data-purchase-id="' + purchaseId + '"]');
       if (!badge) return;
 
-      var color = data.color;
-      var textColor = (color === 'warning') ? '#1a1a1a' : '#fff';
-      badge.className = 'status-badge d-flex align-items-center justify-content-between gap-2 bg-' + color;
+      var bgColor = COLOR_MAP[data.status] || '#475569';
+      badge.className = 'status-badge d-flex align-items-center justify-content-between gap-2';
       badge.style.cursor = 'pointer';
       badge.style.userSelect = 'none';
       badge.style.fontSize = '.78rem';
@@ -299,7 +306,8 @@
       badge.style.width = '100%';
       badge.style.minWidth = '160px';
       badge.style.borderRadius = '8px';
-      badge.style.color = textColor;
+      badge.style.background = bgColor;
+      badge.style.color = '#fff';
       badge.innerHTML = '<span>' + data.label + '</span><i class="bi bi-chevron-down" style="font-size:.65rem;opacity:.8;flex-shrink:0;"></i>';
       badge.dataset.purchaseId = purchaseId;
 
