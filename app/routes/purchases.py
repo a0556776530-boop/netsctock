@@ -195,7 +195,7 @@ def new_purchase():
         err = traceback.format_exc()
         current_app.logger.error('new_purchase _grouped_assets error:\n' + err)
         flash('Error loading assets: ' + err.splitlines()[-1], 'danger')
-        return redirect(url_for('purchases.list_purchases'))
+        return redirect(url_for('purchases.list_purchases') + '?status=all')
 
     assets_by_id = {str(a.id): a for a in assets}
 
@@ -253,7 +253,7 @@ def new_purchase():
             )
             p.save()
             flash(t.get('flash_purchase_created', 'Purchase created successfully.'), 'success')
-            return redirect(url_for('purchases.list_purchases'))
+            return redirect(url_for('purchases.list_purchases') + '?status=all')
 
         except Exception:
             err = traceback.format_exc()
@@ -452,7 +452,7 @@ def delete(id):
     # Route back to history if the purchase was in the history list
     if was_history:
         return redirect(url_for('purchases.purchase_history'))
-    return redirect(url_for('purchases.list_purchases'))
+    return redirect(url_for('purchases.list_purchases') + '?status=all')
 
 
 @purchases_bp.route('/<id>/receive', methods=['GET', 'POST'])
@@ -464,7 +464,7 @@ def receive(id):
 
     if purchase.status not in ('Order Signed', 'Partial Delivery', 'Order Received in Warehouse'):
         flash('קליטת פריטים אפשרית רק לאחר שההזמנה נחתמה.', 'warning')
-        return redirect(url_for('purchases.list_purchases'))
+        return redirect(url_for('purchases.list_purchases') + '?status=all')
 
     if request.method == 'GET':
         return render_template('purchases/receive.html', purchase=purchase)
@@ -512,5 +512,4 @@ def receive(id):
         flash('לא הוזנו כמויות לקליטה.', 'warning')
 
     purchase.save()
-    redirect_filter = 'all' if fully_received_now else 'active'
-    return redirect(url_for('purchases.list_purchases') + f'?status={redirect_filter}')
+    return redirect(url_for('purchases.list_purchases') + '?status=all')
