@@ -59,6 +59,7 @@
   }
   .pf-btn.active .pf-badge { background: rgba(255,255,255,.25); color: #fff; }
   .pf-btn.active:hover { filter: brightness(1.1); }
+  .row-faded td:not(.status-cell) { opacity: .65; }
 </style>
 
 {% set active_count   = purchases | selectattr('status','in',['BOM Transferred','Requirement Created','Order Signed','Partial Delivery']) | list | length %}
@@ -103,8 +104,8 @@
       </thead>
       <tbody>
         {% for p in purchases %}
-        <tr class="purchase-row" data-status="{{ p.status }}"
-            {% if p.status in ['Order Received in Warehouse','בוטל'] %}style="opacity:.75;"{% endif %}>
+        <tr class="purchase-row {% if p.status in ['Order Received in Warehouse','בוטל'] %}row-faded{% endif %}"
+            data-status="{{ p.status }}">
           <td class="fw-semibold" style="padding:10px 16px;">
             <a href="{{ url_for('purchases.detail', id=p.id) }}" class="text-decoration-none">{{ p.name }}</a>
           </td>
@@ -127,7 +128,7 @@
             'Order Received in Warehouse': '#16a34a',
             'בוטל':                        '#dc2626',
           } %}
-          <td style="padding:10px 16px; min-width:190px;">
+          <td class="status-cell" style="padding:10px 16px; min-width:190px;">
             {% if current_user.can_edit %}
             <div class="dropdown d-inline-block w-100">
               <span class="status-badge d-flex align-items-center justify-content-between gap-2"
