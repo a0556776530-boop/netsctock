@@ -312,19 +312,15 @@
       badge.innerHTML = '<span>' + data.label + '</span><i class="bi bi-chevron-down" style="font-size:.65rem;opacity:.8;flex-shrink:0;"></i>';
       badge.dataset.purchaseId = purchaseId;
 
-      // Update row data-status for filter to work
+      // Update row
       var tr = badge.closest('tr');
       if (tr) {
         tr.dataset.status = data.status;
-        // Dim finished rows
-        if (data.status === 'Order Received in Warehouse' || data.status === 'בוטל') {
-          tr.style.opacity = '.75';
-        } else {
-          tr.style.opacity = '';
-        }
+        var faded = (data.status === 'Order Received in Warehouse' || data.status === 'בוטל');
+        tr.classList.toggle('row-faded', faded);
       }
 
-      // Update the active/disabled state in the dropdown
+      // Update dropdown active/disabled state
       var allOptions = badge.closest('.dropdown').querySelectorAll('.status-option');
       allOptions.forEach(function (o) {
         var isNew = o.dataset.status === data.status;
