@@ -3,17 +3,13 @@
 {% block page_title %}{{ t.wh_history_title }}{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-  <span class="text-muted small" id="whCount">{{ estimates | length }} {{ t.wh_history_count }}</span>
-  <div class="position-relative ms-auto" style="width:260px;">
-    <i class="bi bi-search position-absolute top-50 translate-middle-y text-muted" style="right:10px;pointer-events:none;font-size:.85rem;"></i>
-    <input type="text" id="whSearch" class="form-control form-control-sm"
-           placeholder="חפש מספר הקצאה, שם, פרויקט…"
-           style="padding-right:32px;" dir="auto" autocomplete="off">
-  </div>
-</div>
 
-<div class="card border-0 shadow-sm">
+{# ── הקצאות שהושלמו ───────────────────────────────────────────────── #}
+<h6 class="fw-bold text-uppercase text-muted small mb-2" style="letter-spacing:.07em;">
+  <i class="bi bi-archive me-1"></i>הקצאות שהושלמו
+  <span class="badge bg-secondary ms-1">{{ estimates | length }}</span>
+</h6>
+<div class="card border-0 shadow-sm mb-4">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0">
       <thead class="table-light">
@@ -22,22 +18,19 @@
           <th>{{ t.col_requester }}</th>
           <th>{{ t.col_project }}</th>
           <th>{{ t.col_date }}</th>
-          <th>{{ t.col_valid_until }}</th>
           <th>{{ t.wh_col_completed_at }}</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for e in estimates %}
-        <tr class="wh-row"
-            data-q="{{ ((e.allocation_number or '') ~ ' ' ~ (e.task_name or '') ~ ' ' ~ (e.project_name or '')) | lower }}">
+        <tr>
           <td><span class="badge bg-success font-monospace">{{ e.allocation_number or '—' }}</span></td>
           <td class="fw-semibold">
             <a href="{{ url_for('estimates.detail', id=e.id) }}" class="text-decoration-none">{{ e.task_name }}</a>
           </td>
           <td class="small text-muted">{{ e.project_name or '—' }}</td>
           <td class="small">{{ e.created_date.strftime('%d %b %Y') }}</td>
-          <td class="small text-muted">{{ e.valid_until.strftime('%d %b %Y') }}</td>
           <td class="small text-success fw-semibold">
             {{ e.warehouse_completed_at.strftime('%d %b %Y %H:%M') if e.warehouse_completed_at else '—' }}
           </td>
@@ -49,9 +42,9 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="text-center text-muted py-5">
-            <i class="bi bi-clock-history fs-3 d-block mb-2 opacity-50"></i>
-            {{ t.wh_no_history }}
+          <td colspan="6" class="text-center text-muted py-4">
+            <i class="bi bi-archive fs-3 d-block mb-2 opacity-50"></i>
+            אין הקצאות שהושלמו
           </td>
         </tr>
         {% endfor %}
@@ -59,25 +52,56 @@
     </table>
   </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-(function(){
-  var inp   = document.getElementById('whSearch');
-  var count = document.getElementById('whCount');
-  var total = {{ estimates | length }};
-  if (!inp) return;
-  inp.addEventListener('input', function(){
-    var q = this.value.trim().toLowerCase();
-    var visible = 0;
-    document.querySelectorAll('.wh-row').forEach(function(r){
-      var show = !q || r.dataset.q.includes(q);
-      r.style.display = show ? '' : 'none';
-      if (show) visible++;
-    });
-    if (count) count.textContent = (q ? visible + ' / ' + total : total) + ' {{ t.wh_history_count }}';
-  });
-})();
-</script>
+{# ── רכשים שנקלטו ─────────────────────────────────────────────────── #}
+<h6 class="fw-bold text-uppercase text-muted small mb-2" style="letter-spacing:.07em;">
+  <i class="bi bi-box-seam me-1"></i>רכשים שנקלטו במחסן
+  <span class="badge bg-secondary ms-1">{{ purchases | length }}</span>
+</h6>
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>שם הרכש</th>
+          <th>EMF</th>
+          <th>מספר הזמנה</th>
+          <th>פריטים</th>
+          <th>תאריך קליטה</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in purchases %}
+        <tr>
+          <td class="fw-semibold">{{ p.name }}</td>
+          <td class="small text-muted">{{ p.emf or '—' }}</td>
+          <td class="small text-muted">{{ p.order or '—' }}</td>
+          <td class="text-center">
+            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+              {{ p.items | length }}
+            </span>
+          </td>
+          <td class="small text-success fw-semibold">
+            {{ p.received_at.strftime('%d %b %Y %H:%M') if p.received_at else '—' }}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('purchases.detail', id=p.id) }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            <i class="bi bi-box-seam fs-3 d-block mb-2 opacity-50"></i>
+            אין רכשים שנקלטו
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {% endblock %}

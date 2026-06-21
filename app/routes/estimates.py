@@ -490,10 +490,14 @@ def warehouse_complete(id):
 def warehouse_history():
     if not current_user.is_warehouse and not current_user.is_admin:
         abort(403)
+    from app.models.purchase import Purchase
     estimates = list(
         Estimate.objects(record_type__ne='estimate', warehouse_status='completed').order_by('-warehouse_completed_at')
     )
-    return render_template('estimates/warehouse_history.html', estimates=estimates)
+    purchases = list(
+        Purchase.objects(status='Order Received in Warehouse').order_by('-received_at')
+    )
+    return render_template('estimates/warehouse_history.html', estimates=estimates, purchases=purchases)
 
 
 @estimates_bp.route('/<id>/convert-to-allocation', methods=['POST'])
