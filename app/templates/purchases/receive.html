@@ -1,154 +1,337 @@
 {% extends 'base.html' %}
-{% block title %}קליטת פריטים — {{ purchase.name }}{% endblock %}
-{% block page_title %}קליטת פריטים{% endblock %}
+{% block title %}קליטת מחסן — {{ purchase.name }}{% endblock %}
+{% block page_title %}קליטת מחסן{% endblock %}
 
 {% block content %}
 {% set prog = purchase.delivery_progress %}
 {% set prog_received = prog[0] %}
 {% set prog_total    = prog[1] %}
 {% set prog_pct = ((prog_received / prog_total * 100) | round(0) | int) if prog_total > 0 else 0 %}
+{% set items_done    = purchase.items | selectattr('is_fully_received') | list | length %}
+{% set items_partial = purchase.items | selectattr('received_qty') | selectattr('is_fully_received', 'equalto', False) | list | length %}
+{% set items_pending = purchase.items | rejectattr('is_fully_received') | list | length %}
 
-<div class="row justify-content-center">
-<div class="col-12 col-xl-9">
+<style>
+  .rcv-table th { background: #1e293b; color: #fff; font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; padding:12px 14px; white-space:nowrap; }
+  .rcv-table td { padding:12px 14px; vertical-align:middle; }
+  .rcv-table tbody tr { border-bottom:1px solid #f1f5f9; transition:background .15s; }
+  .rcv-table tbody tr:hover { background:#f8fafc; }
+  .row-pending  { background:#fff; }
+  .row-partial  { background:#fffbeb; }
+  .row-done     { background:#f0fdf4; opacity:.8; }
 
-  {# ── כותרת + חזור ──────────────────────────────────────────────────────── #}
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h5 class="fw-bold mb-1">
-        <i class="bi bi-box-seam-fill text-warning me-2"></i>{{ purchase.name }}
-      </h5>
-      <span class="text-muted small">
-        {% if purchase.emf %}<span class="me-3"><i class="bi bi-hash me-1"></i>{{ purchase.emf }}</span>{% endif %}
-        {% if purchase.order %}<span><i class="bi bi-file-text me-1"></i>{{ purchase.order }}</span>{% endif %}
+  .qty-input {
+    width:90px; text-align:center; font-weight:700; font-size:1rem;
+    border:2px solid #cbd5e1; border-radius:8px; padding:6px 10px;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .qty-input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.15); outline:none; }
+  .qty-input:disabled { background:#f1f5f9; border-color:#e2e8f0; color:#94a3b8; }
+
+  .btn-fill-all-item {
+    font-size:.75rem; padding:4px 10px; border-radius:6px;
+    background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;
+    cursor:pointer; white-space:nowrap; transition:background .15s;
+  }
+  .btn-fill-all-item:hover { background:#dbeafe; }
+  .btn-fill-all-item:disabled { opacity:.4; cursor:default; }
+
+  .live-progress-bar { height:18px; border-radius:10px; background:#e2e8f0; overflow:hidden; }
+  .live-progress-fill { height:100%; border-radius:10px; transition:width .3s ease, background .3s ease; }
+
+  .stat-pill {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:5px 14px; border-radius:20px; font-size:.82rem; font-weight:600;
+  }
+</style>
+
+<form method="POST" action="{{ url_for('purchases.receive', id=purchase.id) }}" id="receiveForm">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+{# ══ HEADER ══════════════════════════════════════════════════════════════════ #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+
+      {# Info #}
+      <div>
+        <h5 class="fw-bold mb-1">
+          <i class="bi bi-box-seam-fill text-warning me-2"></i>{{ purchase.name }}
+        </h5>
+        <div class="d-flex flex-wrap gap-3 text-muted small mt-1">
+          {% if purchase.emf %}
+          <span><i class="bi bi-hash me-1"></i>{{ purchase.emf }}</span>
+          {% endif %}
+          {% if purchase.order %}
+          <span><i class="bi bi-file-text me-1"></i>{{ purchase.order }}</span>
+          {% endif %}
+          {% if purchase.requirement %}
+          <span><i class="bi bi-clipboard me-1"></i>{{ purchase.requirement }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Actions #}
+      <div class="d-flex gap-2 align-items-center">
+        <button type="button" id="btnFillAll" class="btn btn-primary fw-semibold">
+          <i class="bi bi-lightning-fill me-1"></i>קלוט הכל
+        </button>
+        <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-right me-1"></i>חזור
+        </a>
+      </div>
+
+    </div>
+
+    {# Stats pills #}
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <span class="stat-pill" style="background:#f1f5f9; color:#475569;">
+        <i class="bi bi-boxes"></i>
+        <span id="statTotal">{{ purchase.items | length }}</span> פריטים
+      </span>
+      <span class="stat-pill" style="background:#f0fdf4; color:#15803d;">
+        <i class="bi bi-check-circle-fill"></i>
+        <span id="statDone">{{ items_done }}</span> הושלמו
+      </span>
+      <span class="stat-pill" style="background:#fffbeb; color:#b45309;">
+        <i class="bi bi-hourglass-split"></i>
+        <span id="statPending">{{ items_pending }}</span> נותרו
+      </span>
+      <span class="stat-pill ms-auto" style="background:#eff6ff; color:#1d4ed8; font-size:.9rem;">
+        <i class="bi bi-box-arrow-in-down"></i>
+        בקליטה זו: <strong id="sessionCount">0</strong> יח'
       </span>
     </div>
-    <a href="{{ url_for('purchases.edit', id=purchase.id) }}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-arrow-right me-1"></i>חזור לרכש
-    </a>
-  </div>
 
-  {# ── סרגל התקדמות כולל ─────────────────────────────────────────────────── #}
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body p-4">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="fw-semibold">התקדמות כוללת</span>
-        <span class="fw-bold font-monospace">
-          {{ prog_received }} / {{ prog_total }} יח'
-          <span class="text-muted fw-normal small ms-1">({{ prog_pct }}%)</span>
+    {# Live progress bar #}
+    <div class="mt-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small fw-semibold text-muted">התקדמות כוללת (כולל קליטה זו)</span>
+        <span class="small fw-bold font-monospace" id="progressLabel">
+          {{ prog_received }} / {{ prog_total }} יח' ({{ prog_pct }}%)
         </span>
       </div>
-      <div class="progress" style="height:14px; border-radius:8px;">
-        <div class="progress-bar
-          {% if prog_pct == 100 %}bg-success
-          {% elif prog_pct > 0 %}bg-warning
-          {% else %}bg-secondary{% endif %}
-          progress-bar-striped progress-bar-animated"
-          role="progressbar"
-          style="width: {{ prog_pct }}%; border-radius:8px;"
-          aria-valuenow="{{ prog_pct }}" aria-valuemin="0" aria-valuemax="100">
+      <div class="live-progress-bar">
+        <div class="live-progress-fill" id="progressFill"
+             style="width:{{ prog_pct }}%; background:{% if prog_pct == 100 %}#16a34a{% elif prog_pct > 0 %}#d97706{% else %}#94a3b8{% endif %};">
         </div>
       </div>
-      {% if prog_pct == 100 %}
-      <div class="mt-2 small text-success fw-semibold">
-        <i class="bi bi-check-circle-fill me-1"></i>כל הפריטים נקלטו במחסן
-      </div>
-      {% endif %}
     </div>
   </div>
+</div>
 
-  {# ── טבלת פריטים + קליטה ───────────────────────────────────────────────── #}
-  <form method="POST" action="{{ url_for('purchases.receive', id=purchase.id) }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{# ══ TABLE ════════════════════════════════════════════════════════════════════ #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="table-responsive">
+    <table class="table rcv-table mb-0">
+      <thead>
+        <tr>
+          <th style="min-width:200px;">פריט</th>
+          <th class="text-center" style="width:80px;">הוזמן</th>
+          <th class="text-center" style="width:150px;">נקלט עד כה</th>
+          <th class="text-center" style="width:80px;">נותר</th>
+          <th class="text-center" style="width:200px;">קליטה עכשיו</th>
+          <th class="text-center" style="width:120px;">סטטוס</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in purchase.items %}
+        {% set a = item.safe_asset %}
+        {% if a %}
+        {% set item_pct = ((item.received_qty / item.quantity * 100) | round(0) | int) if item.quantity and item.quantity > 0 else 0 %}
+        {% if item.is_fully_received %}
+          {% set row_class = 'row-done' %}
+        {% elif (item.received_qty or 0) > 0 %}
+          {% set row_class = 'row-partial' %}
+        {% else %}
+          {% set row_class = 'row-pending' %}
+        {% endif %}
+        <tr class="{{ row_class }}" data-asset-id="{{ a.id }}"
+            data-already="{{ item.received_qty or 0 }}"
+            data-quantity="{{ item.quantity }}"
+            data-remaining="{{ item.remaining_qty }}">
 
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-transparent border-0 pt-3 pb-0">
-        <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing:.07em;">
-          <i class="bi bi-boxes me-1"></i>פריטי ההזמנה
-        </h6>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th style="padding:10px 16px;">פריט</th>
-                <th class="text-center" style="width:90px; padding:10px 16px;">הוזמן</th>
-                <th class="text-center" style="width:160px; padding:10px 16px;">התקבל עד כה</th>
-                <th class="text-center" style="width:160px; padding:10px 16px;">מגיע עכשיו</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in purchase.items %}
-              {% set a = item.safe_asset %}
-              {% if a %}
-              {% set item_pct = ((item.received_qty / item.quantity * 100) | round(0) | int) if item.quantity > 0 else 0 %}
-              <tr {% if item.is_fully_received %}style="opacity:.55;"{% endif %}>
-                <td style="padding:10px 16px;">
-                  <div class="small fw-semibold">{{ a.serial_number }}</div>
-                  {% if a.model %}<div class="x-small text-muted">{{ a.model }}</div>{% endif %}
-                </td>
-                <td class="text-center small font-monospace fw-semibold" style="padding:10px 16px;">
-                  {{ item.quantity }}
-                </td>
-                <td class="text-center" style="padding:10px 16px;">
-                  <div class="d-flex flex-column align-items-center gap-1">
-                    <span class="fw-semibold font-monospace small
-                      {% if item.is_fully_received %}text-success
-                      {% elif item.received_qty > 0 %}text-warning
-                      {% else %}text-muted{% endif %}">
-                      {{ item.received_qty or 0 }}
-                    </span>
-                    <div class="progress w-100" style="height:5px; border-radius:4px; max-width:100px;">
-                      <div class="progress-bar
-                        {% if item_pct == 100 %}bg-success{% elif item_pct > 0 %}bg-warning{% else %}bg-secondary{% endif %}"
-                        style="width:{{ item_pct }}%;"></div>
-                    </div>
-                  </div>
-                </td>
-                <td class="text-center" style="padding:10px 16px;">
-                  {% if item.is_fully_received %}
-                  <span class="badge bg-success-subtle text-success border border-success-subtle">
-                    <i class="bi bi-check-lg me-1"></i>הושלם
-                  </span>
-                  {% else %}
-                  <div class="d-flex align-items-center justify-content-center gap-2">
-                    <input type="number"
-                           name="received_now_{{ a.id }}"
-                           class="form-control form-control-sm text-center font-monospace fw-semibold"
-                           style="width:80px;"
-                           min="0" max="{{ item.remaining_qty }}"
-                           value="0"
-                           placeholder="0">
-                    <span class="x-small text-muted">/ {{ item.remaining_qty }}</span>
-                  </div>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endif %}
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+          {# פריט #}
+          <td>
+            <div class="fw-semibold">{{ a.serial_number }}</div>
+            {% if a.model %}<div class="text-muted small">{{ a.model }}</div>{% endif %}
+          </td>
 
+          {# הוזמן #}
+          <td class="text-center font-monospace fw-bold" style="font-size:1rem;">
+            {{ item.quantity }}
+          </td>
+
+          {# נקלט עד כה #}
+          <td class="text-center">
+            <div class="d-flex flex-column align-items-center gap-1">
+              <span class="font-monospace fw-semibold
+                {% if item.is_fully_received %}text-success
+                {% elif (item.received_qty or 0) > 0 %}text-warning
+                {% else %}text-muted{% endif %}">
+                {{ item.received_qty or 0 }}
+              </span>
+              <div class="progress w-100" style="height:5px; border-radius:4px; max-width:100px;">
+                <div class="progress-bar
+                  {% if item_pct == 100 %}bg-success
+                  {% elif item_pct > 0 %}bg-warning
+                  {% else %}bg-secondary{% endif %}"
+                  style="width:{{ item_pct }}%;"></div>
+              </div>
+            </div>
+          </td>
+
+          {# נותר #}
+          <td class="text-center font-monospace fw-semibold
+            {% if item.remaining_qty > 0 %}text-warning{% else %}text-success{% endif %}">
+            {{ item.remaining_qty }}
+          </td>
+
+          {# קליטה עכשיו #}
+          <td class="text-center">
+            {% if item.is_fully_received %}
+            <span class="text-muted small">—</span>
+            {% else %}
+            <div class="d-flex align-items-center justify-content-center gap-2">
+              <input type="number"
+                     name="received_now_{{ a.id }}"
+                     class="qty-input rcv-input"
+                     data-max="{{ item.remaining_qty }}"
+                     min="0" max="{{ item.remaining_qty }}"
+                     value="0"
+                     autocomplete="off">
+              <button type="button"
+                      class="btn-fill-all-item fill-item-btn"
+                      data-target="received_now_{{ a.id }}"
+                      data-max="{{ item.remaining_qty }}">
+                הכל
+              </button>
+            </div>
+            {% endif %}
+          </td>
+
+          {# סטטוס #}
+          <td class="text-center">
+            {% if item.is_fully_received %}
+            <span class="badge bg-success text-white" style="font-size:.8rem; padding:6px 10px;">
+              <i class="bi bi-check-lg me-1"></i>הושלם
+            </span>
+            {% elif (item.received_qty or 0) > 0 %}
+            <span class="badge text-dark" style="background:#fef3c7; font-size:.8rem; padding:6px 10px; border:1px solid #fcd34d;">
+              <i class="bi bi-hourglass-split me-1"></i>חלקי
+            </span>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-secondary" style="font-size:.8rem; padding:6px 10px;">
+              <i class="bi bi-circle me-1"></i>טרם נקלט
+            </span>
+            {% endif %}
+          </td>
+
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ══ FOOTER ══════════════════════════════════════════════════════════════════ #}
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-4">
     <div class="d-flex justify-content-between align-items-center">
-      <a href="{{ url_for('purchases.edit', id=purchase.id) }}" class="btn btn-outline-secondary">
-        ביטול
-      </a>
-      {% if prog_pct < 100 %}
-      <button type="submit" class="btn btn-warning fw-semibold px-4">
-        <i class="bi bi-box-seam me-2"></i>שמור קליטה
-      </button>
-      {% else %}
-      <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-success fw-semibold px-4">
-        <i class="bi bi-check-circle me-2"></i>חזור לרשימה
-      </a>
-      {% endif %}
+      <div class="text-muted small">
+        <i class="bi bi-info-circle me-1"></i>
+        בקליטה זו תרשמנה <strong id="footerSessionCount" class="text-dark">0</strong> יחידות
+        מ-<strong id="footerItemCount" class="text-dark">0</strong> פריטים
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">
+          ביטול
+        </a>
+        <button type="submit" class="btn btn-success fw-semibold px-5" id="saveBtn">
+          <i class="bi bi-box-seam me-2"></i>שמור קליטה
+        </button>
+      </div>
     </div>
-
-  </form>
-
+  </div>
 </div>
-</div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var alreadyReceived = {{ prog_received }};
+  var grandTotal      = {{ prog_total }};
+
+  function getInputs() {
+    return Array.from(document.querySelectorAll('.rcv-input'));
+  }
+
+  function recalc() {
+    var inputs = getInputs();
+    var sessionUnits = 0;
+    var sessionItems = 0;
+
+    inputs.forEach(function (inp) {
+      var v = parseInt(inp.value, 10) || 0;
+      var max = parseInt(inp.dataset.max, 10) || 0;
+      v = Math.max(0, Math.min(v, max));
+      if (inp.value !== String(v) && inp !== document.activeElement) inp.value = v;
+      if (v > 0) { sessionUnits += v; sessionItems++; }
+    });
+
+    // Progress
+    var newReceived = alreadyReceived + sessionUnits;
+    var pct = grandTotal > 0 ? Math.round(newReceived / grandTotal * 100) : 0;
+    pct = Math.min(pct, 100);
+
+    var fill = document.getElementById('progressFill');
+    fill.style.width = pct + '%';
+    fill.style.background = pct === 100 ? '#16a34a' : pct > 0 ? '#d97706' : '#94a3b8';
+
+    document.getElementById('progressLabel').textContent =
+      newReceived + ' / ' + grandTotal + ' יח\' (' + pct + '%)';
+
+    document.getElementById('sessionCount').textContent = sessionUnits;
+    document.getElementById('footerSessionCount').textContent = sessionUnits;
+    document.getElementById('footerItemCount').textContent = sessionItems;
+  }
+
+  // Live recalc on input
+  document.getElementById('receiveForm').addEventListener('input', function (e) {
+    if (e.target.classList.contains('rcv-input')) recalc();
+  });
+
+  // Fill single item
+  document.querySelectorAll('.fill-item-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var max = parseInt(this.dataset.max, 10) || 0;
+      var inp = document.querySelector('[name="' + this.dataset.target + '"]');
+      if (inp) { inp.value = max; recalc(); }
+    });
+  });
+
+  // Fill all
+  document.getElementById('btnFillAll').addEventListener('click', function () {
+    getInputs().forEach(function (inp) {
+      var max = parseInt(inp.dataset.max, 10) || 0;
+      inp.value = max;
+    });
+    recalc();
+  });
+
+  // Clamp on blur
+  document.getElementById('receiveForm').addEventListener('change', function (e) {
+    if (!e.target.classList.contains('rcv-input')) return;
+    var max = parseInt(e.target.dataset.max, 10) || 0;
+    var v = parseInt(e.target.value, 10) || 0;
+    e.target.value = Math.max(0, Math.min(v, max));
+    recalc();
+  });
+
+  recalc();
+})();
+</script>
 {% endblock %}
