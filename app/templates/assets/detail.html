@@ -112,6 +112,120 @@
 
 </div>
 
+{# ── הזמנות רכש ──────────────────────────────────────────────────────────── #}
+{% set STATUS_BG = {
+  'BOM Transferred':             '#475569',
+  'Requirement Created':         '#0284c7',
+  'Order Signed':                '#2563eb',
+  'Partial Delivery':            '#d97706',
+  'Order Received in Warehouse': '#16a34a',
+} %}
+<div class="card border-0 shadow-sm mt-3">
+  <div class="card-header bg-transparent border-0 pt-3 pb-0">
+    <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing:.07em;">
+      <i class="bi bi-box-seam me-1"></i>הזמנות רכש
+    </h6>
+  </div>
+  <div class="card-body pt-2">
+
+    {% if not open_purchases and not closed_purchases %}
+    <div class="text-muted small py-2">
+      <i class="bi bi-inbox me-1 opacity-50"></i>הפריט אינו מופיע בשום הזמנת רכש
+    </div>
+
+    {% else %}
+
+    {# ── פתוחות ── #}
+    {% if open_purchases %}
+    <div class="small fw-semibold text-muted mb-1 mt-1">
+      <i class="bi bi-clock me-1"></i>הזמנות פתוחות
+      <span class="badge bg-warning text-dark ms-1">{{ open_purchases | length }}</span>
+    </div>
+    <div class="table-responsive mb-3">
+      <table class="table table-sm table-hover align-middle mb-0" style="font-size:.82rem;">
+        <thead class="table-light">
+          <tr>
+            <th>שם הרכש</th>
+            <th class="text-center">סטטוס</th>
+            <th class="text-center">הוזמן</th>
+            <th class="text-center">נקלט</th>
+            <th class="text-center">נותר</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in open_purchases %}
+          {% set _skey = 'purchase_status_' ~ p.status.lower().replace(' ', '_') %}
+          {% for item in p.items %}{% if item.safe_asset and item.safe_asset.id == asset.id %}
+          <tr>
+            <td class="fw-semibold">{{ p.name }}</td>
+            <td class="text-center">
+              <span style="display:inline-block; font-size:.72rem; font-weight:600; padding:3px 9px; border-radius:6px; background:{{ STATUS_BG.get(p.status,'#475569') }}; color:#fff;">
+                {{ t[_skey] if _skey in t else p.status }}
+              </span>
+            </td>
+            <td class="text-center font-monospace">{{ item.quantity }}</td>
+            <td class="text-center font-monospace {% if item.received_qty %}text-warning{% else %}text-muted{% endif %}">
+              {{ item.received_qty or 0 }}
+            </td>
+            <td class="text-center font-monospace {% if item.remaining_qty > 0 %}text-danger fw-semibold{% else %}text-success{% endif %}">
+              {{ item.remaining_qty }}
+            </td>
+            <td class="text-end">
+              <a href="{{ url_for('purchases.detail', id=p.id) }}" class="btn btn-sm btn-outline-secondary py-0 px-2">
+                <i class="bi bi-eye" style="font-size:.75rem;"></i>
+              </a>
+            </td>
+          </tr>
+          {% endif %}{% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {# ── סגורות (נקלטו) ── #}
+    {% if closed_purchases %}
+    <div class="small fw-semibold text-muted mb-1">
+      <i class="bi bi-check-circle me-1 text-success"></i>הזמנות שנקלטו
+      <span class="badge bg-success ms-1">{{ closed_purchases | length }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0" style="font-size:.82rem;">
+        <thead class="table-light">
+          <tr>
+            <th>שם הרכש</th>
+            <th class="text-center">כמות שנקלטה</th>
+            <th class="text-center">תאריך קליטה</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in closed_purchases %}
+          {% for item in p.items %}{% if item.safe_asset and item.safe_asset.id == asset.id %}
+          <tr>
+            <td class="fw-semibold">{{ p.name }}</td>
+            <td class="text-center font-monospace text-success fw-semibold">{{ item.received_qty or item.quantity }}</td>
+            <td class="text-center text-muted">
+              {{ p.received_at.strftime('%d %b %Y') if p.received_at else '—' }}
+            </td>
+            <td class="text-end">
+              <a href="{{ url_for('purchases.detail', id=p.id) }}" class="btn btn-sm btn-outline-secondary py-0 px-2">
+                <i class="bi bi-eye" style="font-size:.75rem;"></i>
+              </a>
+            </td>
+          </tr>
+          {% endif %}{% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% endif %}
+  </div>
+</div>
+
 {% block scripts %}
 {% if asset.price_usd %}
 <script>

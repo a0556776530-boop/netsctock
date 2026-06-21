@@ -11,6 +11,7 @@ from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from collections import defaultdict
 
 from app.models.asset import Asset, AssetType, AssetEvent
+from app.models.purchase import Purchase, ACTIVE_STATUSES
 from app.models.site import Site
 from app.models.user import User
 from app.utils.events import log_event
@@ -268,10 +269,16 @@ def detail(id):
     retire_form = RetireForm(prefix='retire')
     localize_form(retire_form, t, submit_key='form_retire_asset')
 
+    all_purchases    = list(Purchase.objects(items__asset=asset))
+    open_purchases   = [p for p in all_purchases if p.status in ACTIVE_STATUSES]
+    closed_purchases = [p for p in all_purchases if p.status == 'Order Received in Warehouse']
+
     return render_template(
         'assets/detail.html',
         asset=asset, events=events,
         retire_form=retire_form,
+        open_purchases=open_purchases,
+        closed_purchases=closed_purchases,
     )
 
 
