@@ -120,9 +120,34 @@
           <td class="small" style="padding:10px 16px;">{{ p.requirement or '—' }}</td>
           <td class="small" style="padding:10px 16px;">{{ p.order or '—' }}</td>
           <td style="padding:10px 16px;">
+            {% if current_user.can_edit %}
+            <div class="dropdown d-inline-block">
+              <span class="badge bg-{{ p.status_color }}-subtle text-{{ p.status_color }} border border-{{ p.status_color }}-subtle small status-badge"
+                    style="cursor:pointer; user-select:none;"
+                    data-bs-toggle="dropdown" data-purchase-id="{{ p.id }}"
+                    title="לחץ לשינוי סטטוס">
+                {{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}
+                <i class="bi bi-chevron-down ms-1" style="font-size:.6rem;"></i>
+              </span>
+              <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:180px; font-size:.85rem;">
+                {% for s in manual_statuses %}
+                {% set skey = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
+                <li>
+                  <button class="dropdown-item status-option {% if s == p.status %}active{% endif %}"
+                          data-purchase-id="{{ p.id }}"
+                          data-status="{{ s }}"
+                          {% if s == p.status %}disabled{% endif %}>
+                    {{ t[skey] if skey in t else s }}
+                  </button>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% else %}
             <span class="badge bg-{{ p.status_color }}-subtle text-{{ p.status_color }} border border-{{ p.status_color }}-subtle small">
               {{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}
             </span>
+            {% endif %}
           </td>
           <td class="text-end text-nowrap" style="padding:10px 16px;">
             <a href="{{ url_for('purchases.detail', id=p.id) }}"
@@ -218,6 +243,89 @@
     b.style.background = '';
     b.style.color = '';
     b.style.borderColor = '';
+  });
+})();
+
+// ── Inline status change ─────────────────────────────────────────────────
+(function () {
+  var csrfToken = document.querySelector('meta[name="csrf-token"]') ?
+    document.querySelector('meta[name="csrf-token"]').content : '';
+
+  // Color classes map
+  var COLOR_MAP = {
+    'BOM Transferred':             'secondary',
+    'Requirement Created':         'info',
+    'Order Signed':                'primary',
+    'Partial Delivery':            'warning',
+    'Order Received in Warehouse': 'success',
+    'בוטל':                        'danger',
+  };
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.status-option');
+    if (!btn) return;
+    var purchaseId = btn.dataset.purchaseId;
+    var newStatus  = btn.dataset.status;
+    if (!purchaseId || !newStatus) return;
+
+    var form = new FormData();
+    form.append('status', newStatus);
+    form.append('csrf_token', csrfToken);
+
+    fetch('/purchases/' + purchaseId + '/quick-status', {
+      method: 'POST', body: form,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.ok) { alert(data.error || 'שגיאה'); return; }
+
+      // Update row data-status
+      var row = document.querySelector('.purchase-row[data-status]' +
+        '[data-status]');
+      // Find the row by the badge
+      var badge = document.querySelector(
+        '.status-badge[data-purchase-id="' + purchaseId + '"]');
+      if (!badge) return;
+
+      var color = data.color;
+      // Update badge appearance
+      badge.className = 'badge bg-' + color + '-subtle text-' + color +
+        ' border border-' + color + '-subtle small status-badge';
+      badge.querySelector('i') ?
+        (badge.innerHTML = data.label + ' <i class="bi bi-chevron-down ms-1" style="font-size:.6rem;"></i>') :
+        (badge.textContent = data.label);
+      badge.innerHTML = data.label + ' <i class="bi bi-chevron-down ms-1" style="font-size:.6rem;"></i>';
+      badge.dataset.purchaseId = purchaseId;
+
+      // Update row data-status for filter to work
+      var tr = badge.closest('tr');
+      if (tr) {
+        tr.dataset.status = data.status;
+        // Dim finished rows
+        if (data.status === 'Order Received in Warehouse' || data.status === 'בוטל') {
+          tr.style.opacity = '.75';
+        } else {
+          tr.style.opacity = '';
+        }
+      }
+
+      // Update the active/disabled state in the dropdown
+      var allOptions = badge.closest('.dropdown').querySelectorAll('.status-option');
+      allOptions.forEach(function (o) {
+        var isNew = o.dataset.status === data.status;
+        o.classList.toggle('active', isNew);
+        o.disabled = isNew;
+      });
+
+      // Update receive button visibility
+      var receivable = (data.status === 'Order Received in Warehouse' || data.status === 'Partial Delivery');
+      var receiveBtn = tr ? tr.querySelector('a[href*="/receive"]') : null;
+      if (receiveBtn) {
+        receiveBtn.style.display = receivable ? '' : 'none';
+      }
+    })
+    .catch(function () { alert('שגיאת רשת'); });
   });
 })();
 </script>

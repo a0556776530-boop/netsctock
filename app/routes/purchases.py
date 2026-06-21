@@ -3,11 +3,11 @@ import traceback
 from bson import ObjectId
 from datetime import datetime
 from flask import (Blueprint, render_template, redirect, url_for, flash,
-                   request, abort, g, current_app)
+                   request, abort, g, current_app, jsonify)
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
-from app.models.purchase import Purchase, PurchaseItem, STATUSES, ACTIVE_STATUSES, MANUAL_STATUSES, CURRENCIES
+from app.models.purchase import Purchase, PurchaseItem, STATUSES, ACTIVE_STATUSES, MANUAL_STATUSES, CURRENCIES, STATUS_COLORS
 from app.models.asset import Asset
 from app.utils.mongo_helpers import get_or_404
 
@@ -166,7 +166,7 @@ def list_purchases():
         current_app.logger.error('list_purchases error:\n' + err)
         flash('שגיאה בטעינת רכשים: ' + err.splitlines()[-1], 'danger')
         purchases = []
-    return render_template('purchases/list.html', purchases=purchases)
+    return render_template('purchases/list.html', purchases=purchases, manual_statuses=MANUAL_STATUSES)
 
 
 @purchases_bp.route('/history')
@@ -385,6 +385,61 @@ def edit(id):
                            assets=assets, grouped_assets=grouped_assets,
                            statuses=MANUAL_STATUSES, currencies=CURRENCIES,
                            ACTIVE_STATUSES=ACTIVE_STATUSES)
+
+
+@purchases_bp.route('/<id>/quick-status', methods=['POST'])
+@login_required
+def quick_status(id):
+    if not current_user.can_edit:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    purchase = get_or_404(Purchase, id)
+    new_status = request.form.get('status', '').strip()
+    if new_status not in MANUAL_STATUSES:
+        return jsonify({'ok': False, 'error': 'סטטוס לא חוקי'}), 400
+
+    old_status = purchase.status
+    _RECEIVED  = 'Order Received in Warehouse'
+    _CANCELLED = 'בוטל'
+
+    purchase.status = new_status
+
+    if old_status != _RECEIVED and new_status == _RECEIVED:
+        for item in purchase.items:
+            if item.safe_asset:
+                item.received_qty = item.quantity or 0
+        purchase.save()
+        guard = Purchase._get_collection().find_one_and_update(
+            {'_id': purchase.id, 'received_at': None},
+            {'$set': {'received_at': datetime.utcnow()}},
+        )
+        if guard is not None:
+            _sync_inventory_on_receipt(purchase)
+
+    elif old_status == _RECEIVED and new_status in ACTIVE_STATUSES:
+        Purchase._get_collection().update_one(
+            {'_id': purchase.id}, {'$unset': {'received_at': ''}}
+        )
+        purchase.save()
+        _sync_inventory_on_cancel(purchase)
+
+    elif old_status != _CANCELLED and new_status == _CANCELLED:
+        purchase.save()
+        if old_status == _RECEIVED:
+            Purchase._get_collection().update_one(
+                {'_id': purchase.id}, {'$unset': {'received_at': ''}}
+            )
+            _sync_inventory_on_cancel(purchase)
+
+    elif old_status == _CANCELLED and new_status in ACTIVE_STATUSES:
+        purchase.save()
+
+    else:
+        purchase.save()
+
+    t = getattr(g, 't', {})
+    key = 'purchase_status_' + new_status.lower().replace(' ', '_')
+    label = t.get(key, new_status)
+    return jsonify({'ok': True, 'status': new_status, 'color': STATUS_COLORS.get(new_status, 'secondary'), 'label': label})
 
 
 @purchases_bp.route('/<id>/delete', methods=['POST'])
