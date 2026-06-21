@@ -18,6 +18,10 @@
   .rcv-table tbody tr:hover { background:#f8fafc; }
   .row-pending  { background:#fff; }
   .row-partial  { background:#fffbeb; }
+
+  .arrived-cb { width:22px; height:22px; cursor:pointer; accent-color:#16a34a; }
+  .arrived-cb:disabled { cursor:default; }
+  .cb-cell { width:60px; text-align:center; }
   .row-done     { background:#f0fdf4; opacity:.8; }
 
   .qty-input {
@@ -127,6 +131,7 @@
       <thead>
         <tr>
           <th style="min-width:200px;">פריט</th>
+          <th class="cb-cell">הגיע</th>
           <th class="text-center" style="width:80px;">הוזמן</th>
           <th class="text-center" style="width:150px;">נקלט עד כה</th>
           <th class="text-center" style="width:80px;">נותר</th>
@@ -150,6 +155,18 @@
             data-already="{{ item.received_qty or 0 }}"
             data-quantity="{{ item.quantity }}"
             data-remaining="{{ item.remaining_qty }}">
+
+          {# הגיע — checkbox #}
+          <td class="cb-cell">
+            {% if item.is_fully_received %}
+            <input type="checkbox" class="arrived-cb" checked disabled title="הושלם">
+            {% else %}
+            <input type="checkbox" class="arrived-cb item-arrived-cb"
+                   data-input="received_now_{{ a.id }}"
+                   data-max="{{ item.remaining_qty }}"
+                   title="סמן שהגיע">
+            {% endif %}
+          </td>
 
           {# פריט #}
           <td>
@@ -313,11 +330,43 @@
     });
   });
 
-  // Fill all
+  // Checkbox "הגיע" — fill / clear linked input
+  document.querySelectorAll('.item-arrived-cb').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      var inp = document.querySelector('[name="' + this.dataset.input + '"]');
+      if (!inp) return;
+      if (this.checked) {
+        inp.value = parseInt(this.dataset.max, 10) || 0;
+      } else {
+        inp.value = 0;
+      }
+      recalc();
+    });
+  });
+
+  // When input changes manually, sync checkbox state
+  document.getElementById('receiveForm').addEventListener('input', function (e) {
+    if (!e.target.classList.contains('rcv-input')) return;
+    var row = e.target.closest('tr');
+    if (!row) return;
+    var cb = row.querySelector('.item-arrived-cb');
+    if (!cb) return;
+    var v = parseInt(e.target.value, 10) || 0;
+    var max = parseInt(e.target.dataset.max, 10) || 0;
+    cb.checked = (v > 0 && v >= max);
+    cb.indeterminate = (v > 0 && v < max);
+  });
+
+  // Fill all — also checks all checkboxes
   document.getElementById('btnFillAll').addEventListener('click', function () {
     getInputs().forEach(function (inp) {
       var max = parseInt(inp.dataset.max, 10) || 0;
       inp.value = max;
+      var row = inp.closest('tr');
+      if (row) {
+        var cb = row.querySelector('.item-arrived-cb');
+        if (cb) { cb.checked = true; cb.indeterminate = false; }
+      }
     });
     recalc();
   });
