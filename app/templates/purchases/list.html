@@ -288,7 +288,7 @@
     .then(function (r) { return r.json(); })
     .then(function (data) {
       if (!data.ok) { alert(data.error || 'שגיאה'); return; }
-      window.location.reload();
+      window.location.href = window.location.pathname + '?status=all';
     })
     .catch(function () { alert('שגיאת רשת'); });
   });
