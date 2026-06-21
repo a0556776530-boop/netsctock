@@ -471,4 +471,4 @@ def receive(id):
         flash('לא הוזנו כמויות לקליטה.', 'warning')
 
     purchase.save()
-    return redirect(url_for('purchases.receive', id=id))
+    return redirect(url_for('purchases.list_purchases'))
