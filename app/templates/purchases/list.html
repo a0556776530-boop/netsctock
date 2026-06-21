@@ -137,7 +137,7 @@
                 <span>{{ t['purchase_status_' ~ p.status.lower().replace(' ', '_')] if ('purchase_status_' ~ p.status.lower().replace(' ', '_')) in t else p.status }}</span>
                 <i class="bi bi-chevron-down" style="font-size:.65rem; opacity:.8; flex-shrink:0;"></i>
               </span>
-              <ul class="dropdown-menu shadow" style="min-width:190px; font-size:.85rem;">
+              <ul class="dropdown-menu shadow" style="min-width:190px; font-size:.85rem; background:#fff; border:1px solid #e2e8f0; z-index:9999;">
                 {% for s in manual_statuses %}
                 {% set skey = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
                 <li>
