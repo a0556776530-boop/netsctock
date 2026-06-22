@@ -53,6 +53,10 @@ def new_task():
         abort(403)
     t    = getattr(g, 't', {})
     form = TaskForm()
+    form.status.choices = [
+        ('in_progress', t.get('task_status_in_progress', 'In Progress')),
+        ('done',        t.get('task_status_done', 'Done')),
+    ]
 
     if form.validate_on_submit():
         task = Task(
@@ -62,10 +66,11 @@ def new_task():
             notes=(form.notes.data or '').strip() or None,
         )
         task.save()
-        flash('Task created successfully.', 'success')
+        flash(t.get('flash_task_created', 'Task created successfully.'), 'success')
         return redirect(url_for('tasks.list_tasks'))
 
-    return render_template('tasks/form.html', form=form, task=None, title='New Task')
+    return render_template('tasks/form.html', form=form, task=None,
+                           title=t.get('form_title_new_task', 'New Task'))
 
 
 @tasks_bp.route('/<id>/edit', methods=['GET', 'POST'])
@@ -73,8 +78,13 @@ def new_task():
 def edit(id):
     if not current_user.can_edit:
         abort(403)
+    t    = getattr(g, 't', {})
     task = get_or_404(Task, id)
     form = TaskForm()
+    form.status.choices = [
+        ('in_progress', t.get('task_status_in_progress', 'In Progress')),
+        ('done',        t.get('task_status_done', 'Done')),
+    ]
 
     if request.method == 'GET':
         form.title.data         = task.title
@@ -88,10 +98,11 @@ def edit(id):
         task.status        = form.status.data
         task.notes         = (form.notes.data or '').strip() or None
         task.save()
-        flash('Task updated successfully.', 'success')
+        flash(t.get('flash_task_updated', 'Task updated successfully.'), 'success')
         return redirect(url_for('tasks.list_tasks'))
 
-    return render_template('tasks/form.html', form=form, task=task, title='Edit Task')
+    return render_template('tasks/form.html', form=form, task=task,
+                           title=t.get('form_title_edit_task', 'Edit Task'))
 
 
 @tasks_bp.route('/<id>/done', methods=['POST'])

@@ -330,6 +330,9 @@ TRANSLATIONS = {
         'form_task_title': 'Task Title',
         'form_related_asset': 'Related Asset',
         'form_save_task': 'Save Task',
+        'ph_task_title': 'e.g. Replace SFP in rack 3',
+        'ph_assignee_name': 'e.g. John Smith',
+        'ph_notes_optional': 'Optional details…',
         # Task status choices
         'task_status_pending': 'Pending',
         'task_status_in_progress': 'In Progress',
@@ -1036,6 +1039,9 @@ TRANSLATIONS = {
         'form_task_title': 'כותרת המשימה',
         'form_related_asset': 'ציוד קשור',
         'form_save_task': 'שמור משימה',
+        'ph_task_title': 'לדוגמה: החלפת SFP ב-Rack 3',
+        'ph_assignee_name': 'לדוגמה: ישראל ישראלי',
+        'ph_notes_optional': 'פרטים נוספים...',
         # Task status choices
         'task_status_pending': 'ממתין',
         'task_status_in_progress': 'בביצוע',

@@ -12,42 +12,42 @@
 
           <!-- Title -->
           <div class="mb-3">
-            {{ form.title.label(class="form-label fw-semibold") }}
+            <label class="form-label fw-semibold">{{ t.form_task_title }}</label>
             {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""),
-                          placeholder="e.g. Replace SFP in rack 3") }}
+                          placeholder=t.get('ph_task_title','e.g. Replace SFP in rack 3')) }}
             {% for e in form.title.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
           </div>
 
           <div class="row g-3">
             <!-- Assigned to (free text) -->
             <div class="col-md-6">
-              {{ form.assignee_name.label(class="form-label fw-semibold") }}
-              {{ form.assignee_name(class="form-control", placeholder="e.g. John Smith") }}
+              <label class="form-label fw-semibold">{{ t.form_assigned_to }}</label>
+              {{ form.assignee_name(class="form-control", placeholder=t.get('ph_assignee_name','e.g. John Smith')) }}
             </div>
 
             <!-- Status -->
             <div class="col-md-6">
-              {{ form.status.label(class="form-label fw-semibold") }}
+              <label class="form-label fw-semibold">{{ t.form_status }}</label>
               {{ form.status(class="form-select") }}
             </div>
 
             <!-- Notes -->
             <div class="col-12">
-              {{ form.notes.label(class="form-label fw-semibold") }}
-              {{ form.notes(class="form-control", rows=3, placeholder="Optional details…") }}
+              <label class="form-label fw-semibold">{{ t.form_notes }}</label>
+              {{ form.notes(class="form-control", rows=3, placeholder=t.get('ph_notes_optional','Optional details…')) }}
             </div>
           </div>
 
           <hr class="my-4">
           <div class="d-flex gap-2">
-            {{ form.submit(class="btn btn-primary") }}
+            <button type="submit" class="btn btn-primary">{{ t.form_save_task }}</button>
             <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary">{{ t.cancel }}</a>
             {% if task and current_user.is_admin %}
             <form method="POST" action="{{ url_for('tasks.delete', id=task.id) }}" class="ms-auto"
-                  onsubmit="return confirm('Delete this task?')">
+                  onsubmit="return confirm('{{ t.confirm_delete_task }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-outline-danger btn-sm">
-                <i class="bi bi-trash me-1"></i>Delete
+                <i class="bi bi-trash me-1"></i>{{ t.action_delete }}
               </button>
             </form>
             {% endif %}
