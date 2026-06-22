@@ -323,6 +323,7 @@
 
   /* ── Open room ──────────────────────────────────────────────────────────── */
   function openRoom(roomKey) {
+    _unlockAudio(); // unlock on any room open (user gesture context)
     // Leave previous room so stale broadcasts stop arriving
     if (_socket && S.socketReady && S.room && S.room !== roomKey) {
       _socket.emit('chat_leave', { room: S.room });
@@ -837,6 +838,7 @@
 
   /* ── Send ───────────────────────────────────────────────────────────────── */
   function sendMessage() {
+    _unlockAudio(); // ensure audio context is ready
     // If recording — blue send button / Enter sends the recording
     if (_vRecording) { stopVoiceRecord(); return; }
     if (!EL.inputField || !S.room) return;
