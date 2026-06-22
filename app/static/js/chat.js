@@ -1512,17 +1512,21 @@
   }
 
   function _doPlayPing(ctx) {
-    var osc  = ctx.createOscillator();
-    var gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.35);
+    // WhatsApp-style 3-note ascending chime
+    var t = ctx.currentTime;
+    [[659, 0, 0.22], [880, 0.13, 0.22], [1319, 0.26, 0.32]].forEach(function(n) {
+      var osc  = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(n[0], t + n[1]);
+      gain.gain.setValueAtTime(0, t + n[1]);
+      gain.gain.linearRampToValueAtTime(0.45, t + n[1] + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + n[1] + n[2]);
+      osc.start(t + n[1]);
+      osc.stop(t + n[1] + n[2]);
+    });
   }
 
   function playPing() {
