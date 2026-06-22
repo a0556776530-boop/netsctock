@@ -34,22 +34,23 @@ def emit_chat_notify(sender_id, sender_name, text, room_key, room_name):
         'room':      room_key,
         'room_name': room_name,
     }
+    ns = '/'
     if room_key.startswith('pm_'):
         parts    = room_key[3:].split('_')            # ['<uid1>', '<uid2>']
         other_id = parts[1] if parts[0] == sender_id else parts[0]
-        socketio.emit('chat_notify', payload, to='notif_' + other_id)
+        socketio.emit('chat_notify', payload, to='notif_' + other_id, namespace=ns)
     elif room_key.startswith('grp_'):
         grp = ChatGroup.objects(id=room_key[4:]).first()
         if grp:
             for mid in grp.member_ids:
                 if mid != sender_id:
-                    socketio.emit('chat_notify', payload, to='notif_' + mid)
+                    socketio.emit('chat_notify', payload, to='notif_' + mid, namespace=ns)
     else:
         # 'group' or ch_* — broadcast to every user except sender
         for u in User.objects.only('id'):
             uid = str(u.id)
             if uid != sender_id:
-                socketio.emit('chat_notify', payload, to='notif_' + uid)
+                socketio.emit('chat_notify', payload, to='notif_' + uid, namespace=ns)
 
 
 # ── Connection ────────────────────────────────────────────────────────────────
@@ -170,15 +171,6 @@ def on_chat_send(data):
             '_iso':    ts.isoformat(),
         }, to=sid)
 
-    # Notify recipients who may be on other pages (non-blocking)
-    _rname = uname if room_key.startswith('pm_') else (
-        'כולם' if room_key == 'group' else room_key
-    )
-    if room_key.startswith('grp_'):
-        grp_obj = ChatGroup.objects(id=room_key[4:]).first()
-        _rname  = grp_obj.name if grp_obj else room_key
-    emit_chat_notify(uid, uname, text, room_key, _rname)
-
     # 2. Persist asynchronously — does not block the WebSocket response
     def _persist():
         try:
@@ -204,6 +196,23 @@ def on_chat_send(data):
             traceback.print_exc()
 
     threading.Thread(target=_persist, daemon=True).start()
+
+    # Notify recipients on other pages — run in a thread so socketio.emit()
+    # calls don't contend with the socket handler's internal lock
+    _rname = uname if room_key.startswith('pm_') else (
+        'כולם' if room_key == 'group' else room_key
+    )
+    if room_key.startswith('grp_'):
+        grp_obj = ChatGroup.objects(id=room_key[4:]).first()
+        _rname  = grp_obj.name if grp_obj else room_key
+
+    def _notify():
+        try:
+            emit_chat_notify(uid, uname, text, room_key, _rname)
+        except Exception:
+            pass
+
+    threading.Thread(target=_notify, daemon=True).start()
 
 
 # ── Typing indicator ──────────────────────────────────────────────────────────
