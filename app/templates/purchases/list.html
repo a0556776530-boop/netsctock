@@ -232,7 +232,7 @@
       </div>
       <div class="modal-footer justify-content-between">
         <button type="button" id="btnVerifyAll" class="btn btn-outline-primary btn-sm">
-          <i class="bi bi-check-all me-1"></i>{{ t.get('btn_verify_all','סמן הכל') }}
+          <i class="bi bi-check-lg me-1"></i>{{ t.get('btn_verify_all','סמן הכל') }}
         </button>
         <div class="d-flex gap-2">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t.get('btn_cancel','ביטול') }}</button>
@@ -410,18 +410,27 @@
 
   function renderItems(items) {
     var rows = items.map(function (item) {
-      var done = item.is_fully_received;
-      var pct  = item.quantity > 0 ? Math.round(item.received_qty / item.quantity * 100) : 0;
+      var done      = item.is_fully_received;
+      var remaining = item.quantity - item.received_qty;
+      var pct       = item.quantity > 0 ? Math.round(item.received_qty / item.quantity * 100) : 0;
+      var cbHtml = done
+        ? '<input type="checkbox" class="verify-cb form-check-input" checked disabled style="width:20px;height:20px;accent-color:#16a34a;">'
+        : '<input type="checkbox" class="verify-cb form-check-input" data-asset-id="' + item.asset_id + '" data-remaining="' + remaining + '" style="width:20px;height:20px;accent-color:#16a34a;">';
+      var qtyHtml = done
+        ? '<span class="text-muted small">—</span>'
+        : '<div class="d-flex align-items-center gap-1 justify-content-center">' +
+            '<input type="number" class="verify-qty-input form-control form-control-sm text-center font-monospace fw-bold" ' +
+              'data-asset-id="' + item.asset_id + '" ' +
+              'min="1" max="' + remaining + '" value="' + remaining + '" ' +
+              'style="width:70px;" disabled>' +
+            '<span class="text-muted small">/ ' + remaining + '</span>' +
+          '</div>';
       return '<tr>' +
-        '<td class="text-center" style="width:50px;">' +
-          (done
-            ? '<input type="checkbox" class="verify-cb form-check-input" checked disabled style="width:20px;height:20px;accent-color:#16a34a;" title="כבר נקלט">'
-            : '<input type="checkbox" class="verify-cb form-check-input" data-asset-id="' + item.asset_id + '" style="width:20px;height:20px;accent-color:#16a34a;">') +
-        '</td>' +
+        '<td class="text-center" style="width:44px;">' + cbHtml + '</td>' +
         '<td><div class="fw-semibold small">' + item.serial_number + '</div>' +
           (item.model ? '<div class="text-muted" style="font-size:.75rem;">' + item.model + '</div>' : '') +
         '</td>' +
-        '<td class="text-center font-monospace fw-bold">' + item.quantity + '</td>' +
+        '<td class="text-center">' + qtyHtml + '</td>' +
         '<td class="text-center">' +
           '<span class="font-monospace small ' + (done ? 'text-success' : item.received_qty > 0 ? 'text-warning' : 'text-muted') + '">' +
             item.received_qty + ' / ' + item.quantity +
@@ -443,33 +452,53 @@
     document.getElementById('verifyModalBody').innerHTML =
       '<table class="table table-sm align-middle mb-0">' +
         '<thead class="table-dark"><tr>' +
-          '<th style="width:50px;"></th>' +
+          '<th style="width:44px;"></th>' +
           '<th>{{ t.get("purchase_item_asset","פריט") }}</th>' +
-          '<th class="text-center">{{ t.get("purchase_item_qty","כמות") }}</th>' +
-          '<th class="text-center">{{ t.get("asset_po_col_received","התקבל") }}</th>' +
+          '<th class="text-center">{{ t.get("col_receive_now","קליטה עכשיו") }}</th>' +
+          '<th class="text-center">{{ t.get("asset_po_col_received","התקבל עד כה") }}</th>' +
           '<th class="text-center">{{ t.get("purchase_col_status","סטטוס") }}</th>' +
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
       '</table>';
+
+    // enable/disable qty input based on checkbox
+    document.getElementById('verifyModalBody').addEventListener('change', function (e) {
+      var cb = e.target.closest('.verify-cb:not(:disabled)');
+      if (!cb) return;
+      var assetId = cb.dataset.assetId;
+      var inp = document.querySelector('.verify-qty-input[data-asset-id="' + assetId + '"]');
+      if (!inp) return;
+      inp.disabled = !cb.checked;
+      if (cb.checked) inp.focus();
+    });
   }
 
   // סמן הכל
   document.getElementById('btnVerifyAll').addEventListener('click', function () {
     document.querySelectorAll('#verifyModalBody .verify-cb:not(:disabled)').forEach(function (cb) {
       cb.checked = true;
+      var assetId = cb.dataset.assetId;
+      var inp = document.querySelector('.verify-qty-input[data-asset-id="' + assetId + '"]');
+      if (inp) inp.disabled = false;
     });
   });
 
   // אשר קליטה
   document.getElementById('btnVerifySubmit').addEventListener('click', function () {
     if (!currentPurchaseId) return;
-    var checkedIds = Array.from(
+    var checkedCbs = Array.from(
       document.querySelectorAll('#verifyModalBody .verify-cb:not(:disabled):checked')
-    ).map(function (cb) { return cb.dataset.assetId; });
+    );
 
     var form = new FormData();
     form.append('csrf_token', csrfToken);
-    checkedIds.forEach(function (id) { form.append('verified_ids[]', id); });
+    checkedCbs.forEach(function (cb) {
+      var assetId = cb.dataset.assetId;
+      form.append('verified_ids[]', assetId);
+      var inp = document.querySelector('.verify-qty-input[data-asset-id="' + assetId + '"]');
+      var qty = inp ? (parseInt(inp.value, 10) || parseInt(inp.max, 10)) : parseInt(cb.dataset.remaining, 10);
+      form.append('qty_' + assetId, qty);
+    });
 
     var btn = document.getElementById('btnVerifySubmit');
     btn.disabled = true;

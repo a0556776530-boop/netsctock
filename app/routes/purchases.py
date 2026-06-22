@@ -505,10 +505,15 @@ def verify(id):
             continue
         asset_id_str = str(a.id)
         if asset_id_str in verified_ids and not item.is_fully_received:
-            delta = (item.quantity or 0) - (item.received_qty or 0)
-            if delta > 0:
-                delta_map[asset_id_str] = delta
-                item.received_qty = item.quantity
+            remaining = (item.quantity or 0) - (item.received_qty or 0)
+            try:
+                qty = int(request.form.get('qty_' + asset_id_str, remaining))
+            except (ValueError, TypeError):
+                qty = remaining
+            qty = max(0, min(qty, remaining))
+            if qty > 0:
+                delta_map[asset_id_str] = qty
+                item.received_qty = (item.received_qty or 0) + qty
 
     if delta_map:
         _sync_inventory_delta(delta_map)
