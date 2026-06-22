@@ -93,7 +93,7 @@
                 {% if asset and asset.quantity is not none %}{{ asset.quantity }}{% else %}0{% endif %}
               </div>
               <div class="form-text text-muted" style="font-size:.75rem;">
-                <i class="bi bi-info-circle me-1"></i>מתעדכן דרך ייבוא CSV בלבד
+                <i class="bi bi-info-circle me-1"></i>{{ t.get('qty_csv_only_hint','Updated via CSV import only') }}
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}קליטת מחסן — {{ purchase.name }}{% endblock %}
-{% block page_title %}קליטת מחסן{% endblock %}
+{% block title %}{{ t.get('wh_receive_page_title','Warehouse Receive') }} — {{ purchase.name }}{% endblock %}
+{% block page_title %}{{ t.get('wh_receive_page_title','Warehouse Receive') }}{% endblock %}
 
 {% block content %}
 {% set prog = purchase.delivery_progress %}
@@ -78,10 +78,10 @@
       {# Actions #}
       <div class="d-flex gap-2 align-items-center">
         <button type="button" id="btnFillAll" class="btn btn-primary fw-semibold">
-          <i class="bi bi-lightning-fill me-1"></i>קלוט הכל
+          <i class="bi bi-lightning-fill me-1"></i>{{ t.get('btn_receive_all','Receive All') }}
         </button>
         <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">
-          <i class="bi bi-arrow-right me-1"></i>חזור
+          <i class="bi bi-arrow-right me-1"></i>{{ t.btn_back }}
         </a>
       </div>
 
@@ -91,28 +91,28 @@
     <div class="d-flex flex-wrap gap-2 mt-3">
       <span class="stat-pill" style="background:#f1f5f9; color:#475569;">
         <i class="bi bi-boxes"></i>
-        <span id="statTotal">{{ purchase.items | length }}</span> פריטים
+        <span id="statTotal">{{ purchase.items | length }}</span> {{ t.get('receive_stat_items','items') }}
       </span>
       <span class="stat-pill" style="background:#f0fdf4; color:#15803d;">
         <i class="bi bi-check-circle-fill"></i>
-        <span id="statDone">{{ items_done }}</span> הושלמו
+        <span id="statDone">{{ items_done }}</span> {{ t.get('receive_stat_completed','completed') }}
       </span>
       <span class="stat-pill" style="background:#fffbeb; color:#b45309;">
         <i class="bi bi-hourglass-split"></i>
-        <span id="statPending">{{ items_pending }}</span> נותרו
+        <span id="statPending">{{ items_pending }}</span> {{ t.get('receive_stat_remaining','remaining') }}
       </span>
       <span class="stat-pill ms-auto" style="background:#eff6ff; color:#1d4ed8; font-size:.9rem;">
         <i class="bi bi-box-arrow-in-down"></i>
-        בקליטה זו: <strong id="sessionCount">0</strong> יח'
+        {{ t.get('receive_session_label','In this receive:') }} <strong id="sessionCount">0</strong> {{ t.get('receive_units_short','units') }}
       </span>
     </div>
 
     {# Live progress bar #}
     <div class="mt-3">
       <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="small fw-semibold text-muted">התקדמות כוללת (כולל קליטה זו)</span>
+        <span class="small fw-semibold text-muted">{{ t.get('receive_progress_caption','Overall progress (including this receive)') }}</span>
         <span class="small fw-bold font-monospace" id="progressLabel">
-          {{ prog_received }} / {{ prog_total }} יח' ({{ prog_pct }}%)
+          {{ prog_received }} / {{ prog_total }} {{ t.get('receive_units_short','units') }} ({{ prog_pct }}%)
         </span>
       </div>
       <div class="live-progress-bar">
@@ -130,13 +130,13 @@
     <table class="table rcv-table mb-0">
       <thead>
         <tr>
-          <th style="min-width:200px;">פריט</th>
-          <th class="cb-cell">הגיע</th>
-          <th class="text-center" style="width:80px;">הוזמן</th>
-          <th class="text-center" style="width:150px;">נקלט עד כה</th>
-          <th class="text-center" style="width:80px;">נותר</th>
-          <th class="text-center" style="width:200px;">קליטה עכשיו</th>
-          <th class="text-center" style="width:120px;">סטטוס</th>
+          <th style="min-width:200px;">{{ t.get('col_item','Item') }}</th>
+          <th class="cb-cell">{{ t.get('col_arrived','Arrived') }}</th>
+          <th class="text-center" style="width:80px;">{{ t.get('asset_po_col_ordered','Ordered') }}</th>
+          <th class="text-center" style="width:150px;">{{ t.get('col_received_so_far','Received So Far') }}</th>
+          <th class="text-center" style="width:80px;">{{ t.get('asset_po_col_remaining','Remaining') }}</th>
+          <th class="text-center" style="width:200px;">{{ t.get('col_receive_now','Receive Now') }}</th>
+          <th class="text-center" style="width:120px;">{{ t.get('purchase_col_status','Status') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -156,30 +156,30 @@
             data-quantity="{{ item.quantity }}"
             data-remaining="{{ item.remaining_qty }}">
 
-          {# הגיע — checkbox #}
+          {# Arrived checkbox #}
           <td class="cb-cell">
             {% if item.is_fully_received %}
-            <input type="checkbox" class="arrived-cb" checked disabled title="הושלם">
+            <input type="checkbox" class="arrived-cb" checked disabled title="{{ t.get('tooltip_item_completed','Completed') }}">
             {% else %}
             <input type="checkbox" class="arrived-cb item-arrived-cb"
                    data-input="received_now_{{ a.id }}"
                    data-max="{{ item.remaining_qty }}"
-                   title="סמן שהגיע">
+                   title="{{ t.get('tooltip_mark_arrived','Mark as arrived') }}">
             {% endif %}
           </td>
 
-          {# פריט #}
+          {# Item #}
           <td>
             <div class="fw-semibold">{{ a.serial_number }}</div>
             {% if a.model %}<div class="text-muted small">{{ a.model }}</div>{% endif %}
           </td>
 
-          {# הוזמן #}
+          {# Ordered #}
           <td class="text-center font-monospace fw-bold" style="font-size:1rem;">
             {{ item.quantity }}
           </td>
 
-          {# נקלט עד כה #}
+          {# Received so far #}
           <td class="text-center">
             <div class="d-flex flex-column align-items-center gap-1">
               <span class="font-monospace fw-semibold
@@ -198,13 +198,13 @@
             </div>
           </td>
 
-          {# נותר #}
+          {# Remaining #}
           <td class="text-center font-monospace fw-semibold
             {% if item.remaining_qty > 0 %}text-warning{% else %}text-success{% endif %}">
             {{ item.remaining_qty }}
           </td>
 
-          {# קליטה עכשיו #}
+          {# Receive now #}
           <td class="text-center">
             {% if item.is_fully_received %}
             <span class="text-muted small">—</span>
@@ -221,25 +221,25 @@
                       class="btn-fill-all-item fill-item-btn"
                       data-target="received_now_{{ a.id }}"
                       data-max="{{ item.remaining_qty }}">
-                הכל
+                {{ t.get('filter_all','All') }}
               </button>
             </div>
             {% endif %}
           </td>
 
-          {# סטטוס #}
+          {# Status #}
           <td class="text-center">
             {% if item.is_fully_received %}
             <span class="badge bg-success text-white" style="font-size:.8rem; padding:6px 10px;">
-              <i class="bi bi-check-lg me-1"></i>הושלם
+              <i class="bi bi-check-lg me-1"></i>{{ t.get('status_lbl_completed','Completed') }}
             </span>
             {% elif (item.received_qty or 0) > 0 %}
             <span class="badge text-dark" style="background:#fef3c7; font-size:.8rem; padding:6px 10px; border:1px solid #fcd34d;">
-              <i class="bi bi-hourglass-split me-1"></i>חלקי
+              <i class="bi bi-hourglass-split me-1"></i>{{ t.get('status_lbl_partial','Partial') }}
             </span>
             {% else %}
             <span class="badge bg-secondary-subtle text-secondary" style="font-size:.8rem; padding:6px 10px;">
-              <i class="bi bi-circle me-1"></i>טרם נקלט
+              <i class="bi bi-circle me-1"></i>{{ t.get('status_lbl_not_received','Not yet received') }}
             </span>
             {% endif %}
           </td>
@@ -259,19 +259,19 @@
       {% if items_pending > 0 %}
       <div class="text-muted small">
         <i class="bi bi-info-circle me-1"></i>
-        בקליטה זו תרשמנה <strong id="footerSessionCount" class="text-dark">0</strong> יחידות
-        מ-<strong id="footerItemCount" class="text-dark">0</strong> פריטים
+        {{ t.get('receive_footer_session', 'In this receipt:') }} <strong id="footerSessionCount" class="text-dark">0</strong> {{ t.get('receive_footer_units', 'units') }}
+        {{ t.get('receive_footer_from', 'from') }}<strong id="footerItemCount" class="text-dark">0</strong> {{ t.get('receive_footer_items', 'items') }}
       </div>
       {% else %}
       <div></div>
       {% endif %}
       <div class="d-flex gap-2">
         <a href="{{ url_for('purchases.list_purchases') }}?status=all" class="btn btn-outline-secondary">
-          {% if items_pending > 0 %}ביטול{% else %}חזור לרשימה{% endif %}
+          {% if items_pending > 0 %}{{ t.get('btn_cancel', 'Cancel') }}{% else %}{{ t.get('btn_back_to_list', 'Back to List') }}{% endif %}
         </a>
         {% if items_pending > 0 %}
         <button type="submit" class="btn btn-success fw-semibold px-5" id="saveBtn">
-          <i class="bi bi-box-seam me-2"></i>שמור קליטה
+          <i class="bi bi-box-seam me-2"></i>{{ t.get('btn_save_receipt', 'Save Receipt') }}
         </button>
         {% endif %}
       </div>
@@ -287,6 +287,7 @@
 (function () {
   var alreadyReceived = {{ prog_received }};
   var grandTotal      = {{ prog_total }};
+  var unitsLabel      = '{{ t.get("receive_units_short","units") }}';
 
   function getInputs() {
     return Array.from(document.querySelectorAll('.rcv-input'));
@@ -315,7 +316,7 @@
     fill.style.background = pct === 100 ? '#16a34a' : pct > 0 ? '#d97706' : '#94a3b8';
 
     document.getElementById('progressLabel').textContent =
-      newReceived + ' / ' + grandTotal + ' יח\' (' + pct + '%)';
+      newReceived + ' / ' + grandTotal + ' ' + unitsLabel + ' (' + pct + '%)';
 
     document.getElementById('sessionCount').textContent = sessionUnits;
     document.getElementById('footerSessionCount').textContent = sessionUnits;
@@ -336,7 +337,7 @@
     });
   });
 
-  // Checkbox "הגיע" — fill / clear linked input
+  // Checkbox arrived — fill / clear linked input
   document.querySelectorAll('.item-arrived-cb').forEach(function (cb) {
     cb.addEventListener('change', function () {
       var inp = document.querySelector('[name="' + this.dataset.input + '"]');
@@ -370,9 +371,8 @@
     if (inputs.length === 0) return;
     inputs.forEach(function (inp) {
       var max = parseInt(inp.dataset.max, 10) || 0;
-      if (inp.value === String(max)) return; // already at max
+      if (inp.value === String(max)) return;
       inp.value = max;
-      // Fire native input event so both recalc and checkbox-sync listeners trigger
       inp.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });

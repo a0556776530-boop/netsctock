@@ -168,9 +168,9 @@
             <td class="text-muted fw-semibold" style="width:45%">{{ t.form_status }}</td>
             <td>
               {% if estimate.status == 'withdrawn' %}
-              <span class="badge bg-secondary">נמשך · Withdrawn</span>
+              <span class="badge bg-secondary">{{ t.get('status_withdrawn','Withdrawn') }}</span>
               {% else %}
-              <span class="badge bg-success">ממתין · Pending</span>
+              <span class="badge bg-success">{{ t.get('status_pending_wh','Pending') }}</span>
               {% endif %}
             </td>
           </tr>

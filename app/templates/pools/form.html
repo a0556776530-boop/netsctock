@@ -30,11 +30,11 @@
             <div class="col-8">
               {{ form.total_amount.label(class='form-label fw-semibold') }}
               <input type="text" id="amountDisplay" class="form-control{{ ' is-invalid' if form.total_amount.errors else '' }}"
-                     placeholder="לדוגמה: 50,000 או -10,000" autocomplete="off" dir="ltr">
+                     placeholder="{{ t.get('pool_amount_placeholder','e.g. 50,000 or -10,000') }}" autocomplete="off" dir="ltr">
               <input type="hidden" name="total_amount" id="amountHidden"
                      value="{{ form.total_amount.data or '' }}">
               <div class="form-text text-muted" style="font-size:.75rem;">
-                ניתן להזין ערך שלילי (מינוס) לפול גירעון
+                {{ t.get('pool_negative_hint','A negative value (minus) can be entered for a deficit pool') }}
               </div>
               {% for e in form.total_amount.errors %}
               <div class="invalid-feedback">{{ e }}</div>

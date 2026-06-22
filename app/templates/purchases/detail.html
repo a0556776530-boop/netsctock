@@ -11,7 +11,7 @@
   {% endif %}
   {% if current_user.is_admin %}
   <form method="POST" action="{{ url_for('purchases.delete', id=purchase.id) }}" class="d-inline"
-        onsubmit="return confirm('{% if purchase.status == 'Order Received in Warehouse' %}⚠️ הרכש נקלט במחסן!\n\nמחיקה תפחית את הכמויות מהמלאי אוטומטית.\n\nלמחוק?{% else %}{{ t.confirm_delete_purchase }}{% endif %}')">
+        onsubmit="return confirm('{% if purchase.status == 'Order Received in Warehouse' %}{{ t.get('confirm_delete_received_purchase','⚠️ Order received in warehouse!\n\nDeletion will automatically reduce stock quantities.\n\nDelete?') }}{% else %}{{ t.confirm_delete_purchase }}{% endif %}')">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-sm btn-outline-danger">
       <i class="bi bi-trash3 me-1"></i>{{ t.action_delete }}
@@ -113,7 +113,7 @@
             <tr>
               <th>{{ t.purchase_item_asset }}</th>
               <th class="text-center">{{ t.purchase_item_qty }}</th>
-              <th class="text-center">נקלט</th>
+              <th class="text-center">{{ t.get('asset_po_col_received','Received') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -130,14 +130,14 @@
                 <div class="text-muted x-small">{{ a.model }}</div>
                 {% endif %}
                 {% else %}
-                <span class="text-muted fst-italic">[נמחק]</span>
+                <span class="text-muted fst-italic">{{ t.get('lbl_deleted_item','[Deleted]') }}</span>
                 {% endif %}
               </td>
               <td class="text-center small fw-semibold">{{ item.quantity }}</td>
               <td class="text-center" style="min-width:110px;">
                 {% if item.is_fully_received %}
                 <span class="badge bg-success-subtle text-success border border-success-subtle small">
-                  <i class="bi bi-check-lg me-1"></i>הושלם
+                  <i class="bi bi-check-lg me-1"></i>{{ t.get('status_lbl_completed','Completed') }}
                 </span>
                 {% else %}
                 <div class="d-flex flex-column align-items-center gap-1">

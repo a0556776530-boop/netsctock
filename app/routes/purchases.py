@@ -291,7 +291,7 @@ def edit(id):
     assets_by_id = {str(a.id): a for a in assets}
 
     if purchase.status in ('Order Received in Warehouse', 'בוטל'):
-        flash('לא ניתן לערוך הזמנה בסטטוס זה.', 'warning')
+        flash(t.get('flash_purchase_edit_locked', 'Cannot edit an order in this status.'), 'warning')
         return redirect(url_for('purchases.detail', id=purchase.id))
 
     if request.method == 'POST':
@@ -304,7 +304,7 @@ def edit(id):
 
         old_status = purchase.status
         if old_status in ('Order Received in Warehouse', 'בוטל'):
-            flash('לא ניתן לערוך הזמנה בסטטוס זה.', 'warning')
+            flash(t.get('flash_purchase_edit_locked', 'Cannot edit an order in this status.'), 'warning')
             return redirect(url_for('purchases.detail', id=purchase.id))
         status = request.form.get('status', purchase.status)
         if status not in STATUSES:
@@ -394,11 +394,12 @@ def quick_status(id):
     old_status = purchase.status
     _RECEIVED  = 'Order Received in Warehouse'
     _CANCELLED = 'בוטל'
+    t = getattr(g, 't', {})
 
     # "Order Received in Warehouse" is a warehouse-only terminal status — admin cannot
     # change FROM it either. Use delete or a dedicated admin action to correct mistakes.
     if old_status == _RECEIVED:
-        return jsonify({'ok': False, 'error': 'לא ניתן לשנות סטטוס של הזמנה שנקלטה במחסן'}), 400
+        return jsonify({'ok': False, 'error': t.get('flash_purchase_status_locked', 'Cannot change the status of a received order.')}), 400
 
     purchase.status = new_status
 
@@ -423,7 +424,6 @@ def quick_status(id):
     else:
         purchase.save()
 
-    t = getattr(g, 't', {})
     key = 'purchase_status_' + new_status.lower().replace(' ', '_')
     label = t.get(key, new_status)
     return jsonify({'ok': True, 'status': new_status, 'color': STATUS_COLORS.get(new_status, 'secondary'), 'label': label})
@@ -462,10 +462,11 @@ def delete(id):
 def receive(id):
     if not (current_user.can_edit or current_user.is_warehouse):
         abort(403)
+    t = getattr(g, 't', {})
     purchase = get_or_404(Purchase, id)
 
     if purchase.status not in ('Order Signed', 'Partial Delivery', 'Order Received in Warehouse'):
-        flash('קליטת פריטים אפשרית רק לאחר שההזמנה נחתמה.', 'warning')
+        flash(t.get('flash_purchase_receive_early', 'Items can only be received after the order is signed.'), 'warning')
         return redirect(url_for('purchases.list_purchases') + '?status=all')
 
     if request.method == 'GET':
@@ -504,14 +505,14 @@ def receive(id):
         purchase.status = 'Order Received in Warehouse'
         if not purchase.received_at:
             purchase.received_at = datetime.utcnow()
-        flash('כל הפריטים נקלטו — ההזמנה הושלמה!', 'success')
+        flash(t.get('flash_all_items_received', 'All items received — order completed!'), 'success')
     elif any_received_total > 0:
         purchase.status = 'Partial Delivery'
         received_units = sum(i.received_qty or 0 for i in active_items)
         total_units    = sum(i.quantity or 0 for i in active_items)
-        flash(f'קליטה עודכנה — {received_units} מתוך {total_units} יח\' נקלטו.', 'info')
+        flash(t.get('flash_partial_receipt', 'Receipt updated — {received} of {total} units received.').format(received=received_units, total=total_units), 'info')
     elif not any_received:
-        flash('לא הוזנו כמויות לקליטה.', 'warning')
+        flash(t.get('flash_no_quantities_entered', 'No quantities were entered.'), 'warning')
 
     purchase.save()
     return redirect(url_for('purchases.list_purchases') + '?status=all')

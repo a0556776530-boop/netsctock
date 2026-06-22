@@ -136,7 +136,7 @@
               <span class="status-badge d-flex align-items-center justify-content-between gap-2"
                     style="cursor:pointer; user-select:none; font-size:.78rem; font-weight:600; padding:6px 12px; width:100%; min-width:160px; border-radius:8px; background:{{ STATUS_BG.get(p.status, '#475569') }}; color:#fff;"
                     data-bs-toggle="dropdown" data-purchase-id="{{ p.id }}"
-                    title="לחץ לשינוי סטטוס">
+                    title="{{ t.get('tooltip_click_status','Click to change status') }}">
                 <span>{{ _slabel }}</span>
                 <i class="bi bi-chevron-down" style="font-size:.65rem; opacity:.8; flex-shrink:0;"></i>
               </span>
@@ -159,7 +159,7 @@
             <span style="display:inline-flex; align-items:center; font-size:.78rem; font-weight:600; padding:6px 12px; border-radius:8px; background:{{ STATUS_BG.get(p.status, '#475569') }}; color:#fff; min-width:160px;">
               {{ _slabel }}
               {% if p.status == 'Order Received in Warehouse' %}
-              <i class="bi bi-lock-fill ms-auto" style="font-size:.65rem; opacity:.7;" title="נקבע ע"י המחסנאי"></i>
+              <i class="bi bi-lock-fill ms-auto" style="font-size:.65rem; opacity:.7;" title="{{ t.get('purchase_status_locked_title', 'Set by warehouse') }}"></i>
               {% endif %}
             </span>
             {% endif %}
@@ -181,13 +181,13 @@
             <a href="{{ url_for('purchases.receive', id=p.id) }}"
                class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
                style="width:30px;height:30px;background:#fef3c7;color:#92400e;border:none;"
-               title="קליטת פריטים במחסן">
+               title="{{ t.get('tooltip_receive_items_btn','Receive items in warehouse') }}">
               <i class="bi bi-box-seam" style="font-size:.8rem;"></i>
             </a>
             {% endif %}
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('purchases.delete', id=p.id) }}" class="d-inline"
-                  onsubmit="return confirm('{% if p.status == 'Order Received in Warehouse' %}⚠️ הרכש נקלט במחסן!\n\nמחיקה תפחית את הכמויות מהמלאי אוטומטית.\n\nלמחוק?{% else %}{{ t.confirm_delete_purchase }}{% endif %}')">
+                  onsubmit="return confirm('{% if p.status == 'Order Received in Warehouse' %}{{ t.get('confirm_delete_received_purchase','⚠️ Order received in warehouse!\n\nDeletion will automatically reduce stock quantities.\n\nDelete?') }}{% else %}{{ t.confirm_delete_purchase }}{% endif %}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit"
                       class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
@@ -293,10 +293,10 @@
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      if (!data.ok) { alert(data.error || 'שגיאה'); return; }
+      if (!data.ok) { alert(data.error || '{{ t.get("js_error","Error") }}'); return; }
       window.location.href = window.location.pathname + '?status=all';
     })
-    .catch(function () { alert('שגיאת רשת'); });
+    .catch(function () { alert('{{ t.get("js_network_error","Network error") }}'); });
   });
 })();
 </script>

@@ -522,9 +522,11 @@
 (function () {
   // ── Translation strings ───────────────────────────────────────────────────
   window._t = {
-    saving:    '{{ t.saving }}',
-    saved:     '{{ t.saved_ok }}',
-    saveFailed:'{{ t.save_failed }}'
+    saving:       '{{ t.saving }}',
+    saved:        '{{ t.saved_ok }}',
+    saveFailed:   '{{ t.save_failed }}',
+    openOrders:   '{{ t.get("asset_po_open_badge", "open orders") }}',
+    closedOrders: '{{ t.get("asset_po_closed_badge", "received") }}'
   };
 
   // ── Pricing constants (overridden by server settings) ──────────────────────
@@ -894,13 +896,13 @@
       if ((d.open_orders || 0) > 0) {
         var b = document.createElement('span');
         b.style.cssText = 'font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:5px;background:#fef3c7;color:#92400e;';
-        b.textContent = '📦 ' + d.open_orders + ' הזמנות פתוחות';
+        b.textContent = '📦 ' + d.open_orders + ' ' + window._t.openOrders;
         ordersEl.appendChild(b);
       }
       if ((d.closed_orders || 0) > 0) {
         var b2 = document.createElement('span');
         b2.style.cssText = 'font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:5px;background:#dcfce7;color:#15803d;';
-        b2.textContent = '✓ ' + d.closed_orders + ' נקלטו';
+        b2.textContent = '✓ ' + d.closed_orders + ' ' + window._t.closedOrders;
         ordersEl.appendChild(b2);
       }
       ordersEl.style.display = (d.open_orders || d.closed_orders) ? 'flex' : 'none';

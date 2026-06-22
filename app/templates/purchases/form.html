@@ -86,7 +86,7 @@
             <span class="badge" style="background:{{ _locked_status_colors[purchase.status] }}; color:#fff;">
               {{ t[_locked_status_key] if _locked_status_key in t else purchase.status }}
             </span>
-            <span class="small text-muted">נקבע אוטומטית ע"י המחסנאי</span>
+            <span class="small text-muted">{{ t.get('purchase_status_set_by_warehouse', 'Set automatically by warehouse') }}</span>
           </div>
           {% else %}
           <select name="status" id="statusSelect" class="form-select">
@@ -178,7 +178,7 @@
 {% if is_edit and purchase.status in ('Order Signed', 'Partial Delivery', 'Order Received in Warehouse') and purchase.items %}
 <div class="mt-3 text-end">
   <a href="{{ url_for('purchases.receive', id=purchase.id) }}" class="btn btn-warning">
-    <i class="bi bi-box-seam me-1"></i>קליטת פריטים במחסן
+    <i class="bi bi-box-seam me-1"></i>{{ t.get('btn_receive_items','Receive Items in Warehouse') }}
   </a>
 </div>
 {% endif %}
@@ -364,18 +364,18 @@
       var newStatus = statusSel.value;
 
       if (newStatus === 'בוטל') {
-        var msg = '⚠️ האם לבטל את ההזמנה?\n\nפעולה זו תסיר את הכמויות מעמודת ברכש.';
+        var msg = '{{ t.get("confirm_cancel_order","⚠️ Cancel this order?\\n\\nThis will remove quantities from the On Order column.") }}';
         {% if purchase and purchase.status == 'Order Received in Warehouse' %}
-        msg = '⚠️ ההזמנה כבר נקלטה במחסן!\n\nביטול יפחית את הכמויות מהמלאי. להמשיך?';
+        msg = '{{ t.get("confirm_cancel_received_order","⚠️ Order already received in warehouse!\\n\\nCancelling will reduce stock quantities. Continue?") }}';
         {% endif %}
         if (!confirm(msg)) { e.preventDefault(); }
 
       } else if (origStatus === 'Order Received in Warehouse' && newStatus !== 'Order Received in Warehouse' && newStatus !== 'בוטל') {
-        if (!confirm('⚠️ ההזמנה כבר נקלטה במחסן!\n\nשינוי הסטטוס יפחית את הכמויות מהמלאי (ביטול קליטה בטעות).\n\nלהמשיך?')) {
+        if (!confirm('{{ t.get("confirm_status_change_received","⚠️ Order already received in warehouse!\\n\\nChanging status will reduce stock quantities.\\n\\nContinue?") }}')) {
           e.preventDefault();
         }
       } else if (origStatus === 'בוטל' && newStatus !== 'בוטל') {
-        if (!confirm('האם להפעיל מחדש את ההזמנה?\n\nהכמויות יחזרו לעמודת ברכש אוטומטית.')) {
+        if (!confirm('{{ t.get("confirm_reactivate_order","Reactivate this order?\\n\\nQuantities will be added back to the On Order column automatically.") }}')) {
           e.preventDefault();
         }
       }

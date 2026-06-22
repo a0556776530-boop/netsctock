@@ -123,14 +123,14 @@
 <div class="card border-0 shadow-sm mt-3">
   <div class="card-header bg-transparent border-0 pt-3 pb-0">
     <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing:.07em;">
-      <i class="bi bi-box-seam me-1"></i>הזמנות רכש
+      <i class="bi bi-box-seam me-1"></i>{{ t.get('asset_purchase_orders_title', 'Purchase Orders') }}
     </h6>
   </div>
   <div class="card-body pt-2">
 
     {% if not open_purchases and not closed_purchases %}
     <div class="text-muted small py-2">
-      <i class="bi bi-inbox me-1 opacity-50"></i>הפריט אינו מופיע בשום הזמנת רכש
+      <i class="bi bi-inbox me-1 opacity-50"></i>{{ t.get('asset_purchase_orders_none', 'This item does not appear in any purchase order.') }}
     </div>
 
     {% else %}
@@ -138,18 +138,18 @@
     {# ── פתוחות ── #}
     {% if open_purchases %}
     <div class="small fw-semibold text-muted mb-1 mt-1">
-      <i class="bi bi-clock me-1"></i>הזמנות פתוחות
+      <i class="bi bi-clock me-1"></i>{{ t.get('asset_purchase_orders_open', 'Open Orders') }}
       <span class="badge bg-warning text-dark ms-1">{{ open_purchases | length }}</span>
     </div>
     <div class="table-responsive mb-3">
       <table class="table table-sm table-hover align-middle mb-0" style="font-size:.82rem;">
         <thead class="table-light">
           <tr>
-            <th>שם הרכש</th>
-            <th class="text-center">סטטוס</th>
-            <th class="text-center">הוזמן</th>
-            <th class="text-center">נקלט</th>
-            <th class="text-center">נותר</th>
+            <th>{{ t.get('asset_po_col_name', 'Purchase Name') }}</th>
+            <th class="text-center">{{ t.col_status }}</th>
+            <th class="text-center">{{ t.get('asset_po_col_ordered', 'Ordered') }}</th>
+            <th class="text-center">{{ t.get('asset_po_col_received', 'Received') }}</th>
+            <th class="text-center">{{ t.get('asset_po_col_remaining', 'Remaining') }}</th>
             <th></th>
           </tr>
         </thead>
@@ -187,16 +187,16 @@
     {# ── סגורות (נקלטו) ── #}
     {% if closed_purchases %}
     <div class="small fw-semibold text-muted mb-1">
-      <i class="bi bi-check-circle me-1 text-success"></i>הזמנות שנקלטו
+      <i class="bi bi-check-circle me-1 text-success"></i>{{ t.get('asset_purchase_orders_closed', 'Received Orders') }}
       <span class="badge bg-success ms-1">{{ closed_purchases | length }}</span>
     </div>
     <div class="table-responsive">
       <table class="table table-sm table-hover align-middle mb-0" style="font-size:.82rem;">
         <thead class="table-light">
           <tr>
-            <th>שם הרכש</th>
-            <th class="text-center">כמות שנקלטה</th>
-            <th class="text-center">תאריך קליטה</th>
+            <th>{{ t.get('asset_po_col_name', 'Purchase Name') }}</th>
+            <th class="text-center">{{ t.get('asset_po_col_received_qty', 'Received Qty') }}</th>
+            <th class="text-center">{{ t.get('asset_po_col_receipt_date', 'Receipt Date') }}</th>
             <th></th>
           </tr>
         </thead>
