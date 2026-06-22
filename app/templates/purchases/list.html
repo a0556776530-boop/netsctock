@@ -381,7 +381,7 @@
     document.querySelector('meta[name="csrf-token"]').content : '';
   var currentPurchaseId = null;
 
-  var verifyModal = new bootstrap.Modal(document.getElementById('verifyModal'));
+  var verifyModal = null;
 
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('.verify-btn');
@@ -391,6 +391,7 @@
     document.getElementById('verifyPurchaseName').textContent = '';
     document.getElementById('verifyModalBody').innerHTML =
       '<div class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm me-2"></div>{{ t.get("loading","טוען...") }}</div>';
+    if (!verifyModal) verifyModal = new bootstrap.Modal(document.getElementById('verifyModal'));
     verifyModal.show();
 
     fetch('/purchases/' + currentPurchaseId + '/items-json', {
