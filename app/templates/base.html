@@ -20,6 +20,10 @@
   {% block extra_head %}{% endblock %}
   {% if current_user.is_authenticated %}
   <script>window.APP_ME_ID = {{ current_user.id | string | tojson }};</script>
+  <!-- Socket.IO: needed for chat + real-time notifications on all pages -->
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"
+          integrity="sha384-+VwDOdFqfVKjmkLJBEJCwnaBMVA9DjhqNF7SnhqfZpWYbWbxsrPMl7QvjW5EBxV"
+          crossorigin="anonymous"></script>
   {% endif %}
 </head>
 <body>
@@ -317,26 +321,19 @@ setInterval(function() {
   })();
 
   // ── Real-time socket notification (non-chat pages only) ──────────────────────
-  if (!window.location.pathname.startsWith('/chat') && window.APP_ME_ID) {
-    var _s = document.createElement('script');
-    _s.src         = 'https://cdn.socket.io/4.6.1/socket.io.min.js';
-    _s.integrity   = 'sha384-+VwDOdFqfVKjmkLJBEJCwnaBMVA9DjhqNF7SnhqfZpWYbWbxsrPMl7QvjW5EBxV';
-    _s.crossOrigin = 'anonymous';
-    _s.onload = function() {
-      // Lightweight connection — only for receiving notifications
-      var _ns = io({ transports: ['websocket', 'polling'], reconnectionAttempts: 5 });
-      _ns.on('chat_notify', function(d) {
-        showChatToast(d);
-        // Also bump the nav badge immediately
-        var badge = document.getElementById('chatUnreadBadge');
-        if (badge) {
-          var cur = parseInt(badge.textContent, 10) || 0;
-          badge.textContent = cur + 1;
-          badge.classList.remove('d-none');
-        }
-      });
-    };
-    document.head.appendChild(_s);
+  // socket.io is loaded in base.html <head> for all authenticated users,
+  // so io() is available here without dynamic loading.
+  if (!window.location.pathname.startsWith('/chat') && window.APP_ME_ID && typeof io !== 'undefined') {
+    var _ns = io({ transports: ['websocket', 'polling'], reconnectionAttempts: 5 });
+    _ns.on('chat_notify', function(d) {
+      showChatToast(d);
+      var badge = document.getElementById('chatUnreadBadge');
+      if (badge) {
+        var cur = parseInt(badge.textContent, 10) || 0;
+        badge.textContent = cur + 1;
+        badge.classList.remove('d-none');
+      }
+    });
   }
 
 })();
