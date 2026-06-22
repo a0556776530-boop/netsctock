@@ -150,17 +150,21 @@
               data-you="{{ 'true' if u.id == current_user.id else 'false' }}"
               data-lastlogin="{{ u.last_login.strftime('%d %b') if u.last_login else '' }}">
             <div class="position-relative flex-shrink-0">
-              <div class="rounded-circle bg-secondary bg-opacity-15 text-secondary d-flex align-items-center justify-content-center fw-semibold"
-                   style="width:32px;height:32px;font-size:.8rem;">{{ (u.name or '?')[0]|upper }}</div>
+              {% if u.role == 'super_admin' %}
+              <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
+              {% elif u.role == 'admin' %}
+              <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
+              {% elif u.role == 'warehouse' %}
+              <div class="role-avatar-sm role-tech"><i class="bi bi-box-seam-fill"></i></div>
+              {% else %}
+              <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
+              {% endif %}
               <span class="status-dot position-absolute bottom-0 end-0 rounded-circle border border-2 border-white"
                     style="width:10px;height:10px;background:#d1d5db;"></span>
             </div>
             <div class="flex-grow-1 overflow-hidden">
               <div class="small fw-semibold text-truncate">
                 {{ u.name }}
-                {% if u.id == current_user.id %}
-                <span class="badge bg-secondary bg-opacity-15 text-secondary ms-1" style="font-size:.65rem;">{{ t.you_badge }}</span>
-                {% endif %}
               </div>
               <div class="x-small text-muted">
                 <span class="opacity-75">
@@ -242,8 +246,7 @@
             <div class="d-flex justify-content-between small mb-1">
               <span class="font-monospace fw-semibold text-truncate">{{ row.asset.serial_number }}</span>
               <span class="text-muted flex-shrink-0 ms-2">
-                <span class="badge bg-primary bg-opacity-15 text-primary">{{ row.committed }} {{ t.col_committed }}</span>
-                / {{ row.asset.quantity or 0 }} {{ t.col_stock_qty }}
+                {{ row.committed }} {{ t.col_committed }} / {{ row.asset.quantity or 0 }} {{ t.col_stock_qty }}
               </span>
             </div>
 
