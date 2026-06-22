@@ -347,6 +347,17 @@ def api_send():
         other = User.objects(id=receiver_id).only('last_seen').first()
         if other:
             recv_online = _is_online(other)
+
+    # Push real-time notification to recipients on other pages
+    from app.routes.chat_socket import emit_chat_notify
+    _rname = current_user.name if room_key.startswith('pm_') else (
+        'כולם' if room_key == 'group' else room_key
+    )
+    if room_key.startswith('grp_'):
+        grp_obj = ChatGroup.objects(id=room_key[4:]).first()
+        _rname  = grp_obj.name if grp_obj else room_key
+    emit_chat_notify(str(current_user.id), current_user.name, text, room_key, _rname)
+
     return jsonify(ok=True, message=msg.to_dict(receiver_online=recv_online))
 
 

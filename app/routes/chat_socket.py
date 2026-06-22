@@ -20,12 +20,46 @@ from app.models.user         import User
 from app.routes.chat         import _can_access_room, _is_online, _ONLINE_MINS
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def emit_chat_notify(sender_id, sender_name, text, room_key, room_name):
+    """Push a chat_notify event to every recipient's personal notification room.
+
+    Each authenticated socket session joins 'notif_<user_id>' on connect so
+    notifications reach the user regardless of which page they're on.
+    """
+    payload = {
+        'sender':    sender_name,
+        'text':      (text or '')[:80],
+        'room':      room_key,
+        'room_name': room_name,
+    }
+    if room_key.startswith('pm_'):
+        parts    = room_key[3:].split('_')            # ['<uid1>', '<uid2>']
+        other_id = parts[1] if parts[0] == sender_id else parts[0]
+        socketio.emit('chat_notify', payload, to='notif_' + other_id)
+    elif room_key.startswith('grp_'):
+        grp = ChatGroup.objects(id=room_key[4:]).first()
+        if grp:
+            for mid in grp.member_ids:
+                if mid != sender_id:
+                    socketio.emit('chat_notify', payload, to='notif_' + mid)
+    else:
+        # 'group' or ch_* — broadcast to every user except sender
+        for u in User.objects.only('id'):
+            uid = str(u.id)
+            if uid != sender_id:
+                socketio.emit('chat_notify', payload, to='notif_' + uid)
+
+
 # ── Connection ────────────────────────────────────────────────────────────────
 
 @socketio.on('connect')
 def on_connect():
     if not current_user.is_authenticated:
-        return False   # refuse unauthenticated socket connections
+        return False
+    # Every session joins a personal room so targeted notifications always land
+    join_room('notif_' + str(current_user.id))
 
 
 @socketio.on('disconnect')
@@ -135,6 +169,15 @@ def on_chat_send(data):
             'real_id': str(msg_id),
             '_iso':    ts.isoformat(),
         }, to=sid)
+
+    # Notify recipients who may be on other pages (non-blocking)
+    _rname = uname if room_key.startswith('pm_') else (
+        'כולם' if room_key == 'group' else room_key
+    )
+    if room_key.startswith('grp_'):
+        grp_obj = ChatGroup.objects(id=room_key[4:]).first()
+        _rname  = grp_obj.name if grp_obj else room_key
+    emit_chat_notify(uid, uname, text, room_key, _rname)
 
     # 2. Persist asynchronously — does not block the WebSocket response
     def _persist():
