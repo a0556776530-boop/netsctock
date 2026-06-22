@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 class User(UserMixin, me.Document):
-    meta = {'collection': 'users', 'strict': False, 'indexes': ['-last_seen', 'email', 'role']}
+    meta = {'collection': 'users', 'strict': False, 'indexes': ['-last_seen', 'role']}
 
     name           = me.StringField(max_length=100, required=True)
     password_hash  = me.StringField(max_length=255, required=True)
