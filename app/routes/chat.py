@@ -153,7 +153,7 @@ def api_conversations():
         for doc in ChatMessage._get_collection().aggregate(pipeline):
             last_msgs[doc['_id']] = doc
 
-    # Single aggregation: unread DM counts for current user
+    # Unread DM counts for current user
     unread_map = {}
     if dm_keys:
         for doc in ChatMessage._get_collection().aggregate([
@@ -161,6 +161,21 @@ def api_conversations():
             {'$group': {'_id': '$room', 'count': {'$sum': 1}}},
         ]):
             unread_map[doc['_id']] = doc['count']
+
+    # Unread group/channel counts — messages not yet in readers list
+    group_unread_map = {}
+    non_dm_keys = ch_keys + grp_keys
+    if non_dm_keys:
+        for doc in ChatMessage._get_collection().aggregate([
+            {'$match': {
+                'room': {'$in': non_dm_keys},
+                'user_id': {'$ne': me_id},
+                'deleted': {'$ne': True},
+                'readers': {'$nin': [me_id]},
+            }},
+            {'$group': {'_id': '$room', 'count': {'$sum': 1}}},
+        ]):
+            group_unread_map[doc['_id']] = doc['count']
 
     def _last(rk):
         doc = last_msgs.get(rk)
@@ -176,14 +191,16 @@ def api_conversations():
     # 1. Everyone channel
     msg, ts, iso = _last('group')
     result.append({'type': 'channel', 'room': 'group', 'name': 'כולם', 'icon': 'bi-people',
-                   'last_msg': msg, 'last_ts': ts, 'last_iso': iso, 'unread': 0, 'online': None,
+                   'last_msg': msg, 'last_ts': ts, 'last_iso': iso,
+                   'unread': group_unread_map.get('group', 0), 'online': None,
                    'pinned': 'group' in pinned, 'favorite': 'group' in favorites})
 
     # 2. Channels
     for ch in _CHANNELS:
         msg, ts, iso = _last(ch['key'])
         result.append({'type': 'channel', 'room': ch['key'], 'name': ch['name'], 'icon': ch['icon'],
-                       'last_msg': msg, 'last_ts': ts, 'last_iso': iso, 'unread': 0, 'online': None,
+                       'last_msg': msg, 'last_ts': ts, 'last_iso': iso,
+                       'unread': group_unread_map.get(ch['key'], 0), 'online': None,
                        'pinned': ch['key'] in pinned, 'favorite': ch['key'] in favorites})
 
     # 3. Groups
@@ -191,7 +208,8 @@ def api_conversations():
         rk = grp.room_key
         msg, ts, iso = _last(rk)
         result.append({'type': 'group', 'room': rk, 'name': grp.name, 'icon': 'bi-people-fill',
-                       'last_msg': msg, 'last_ts': ts, 'last_iso': iso, 'unread': 0, 'online': None,
+                       'last_msg': msg, 'last_ts': ts, 'last_iso': iso,
+                       'unread': group_unread_map.get(rk, 0), 'online': None,
                        'pinned': rk in pinned, 'favorite': rk in favorites})
 
     # 4. Direct messages

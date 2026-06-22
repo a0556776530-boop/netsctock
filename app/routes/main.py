@@ -42,10 +42,22 @@ def ping():
 @login_required
 def unread_count():
     from app.models.chat_message import ChatMessage
-    count = ChatMessage.objects(
-        receiver_id=str(current_user.id), read=False
-    ).count()
-    return jsonify({'count': count})
+    me_id = str(current_user.id)
+    # DM unreads
+    dm = ChatMessage.objects(receiver_id=me_id, read=False).count()
+    # Group/channel unreads (messages not yet in readers)
+    pipeline = [
+        {'$match': {
+            'user_id': {'$ne': me_id},
+            'deleted': {'$ne': True},
+            'readers': {'$nin': [me_id]},
+            'receiver_id': {'$in': [None, '']},
+        }},
+        {'$count': 'total'},
+    ]
+    res = list(ChatMessage._get_collection().aggregate(pipeline))
+    group = res[0]['total'] if res else 0
+    return jsonify({'count': dm + group})
 
 
 @main_bp.route('/api/user-activity')
