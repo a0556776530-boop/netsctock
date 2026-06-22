@@ -66,7 +66,7 @@ def room():
 @login_required
 def app():
     me_id  = str(current_user.id)
-    users  = [u for u in User.objects.order_by('name') if str(u.id) != me_id]
+    users  = [u for u in User.objects.only('id', 'name').order_by('name') if str(u.id) != me_id]
     groups = list(ChatGroup.objects(member_ids=me_id).order_by('name'))
     return render_template(
         'chat/app.html',
@@ -85,7 +85,7 @@ def groups():
         abort(403)
     me_id     = str(current_user.id)
     all_groups = list(ChatGroup.objects.order_by('name'))
-    all_users  = [u for u in User.objects.order_by('name') if str(u.id) != me_id]
+    all_users  = [u for u in User.objects.only('id', 'name').order_by('name') if str(u.id) != me_id]
     return render_template('chat/groups.html', groups=all_groups, all_users=all_users)
 
 
@@ -132,7 +132,7 @@ def api_conversations():
     favorites = list(me_obj.favorite_rooms or [])
 
     # --- Build the full list of room keys we need last-messages for ---
-    all_users   = [u for u in User.objects.order_by('name') if str(u.id) != me_id]
+    all_users   = [u for u in User.objects.only('id', 'name').order_by('name') if str(u.id) != me_id]
     my_groups   = list(ChatGroup.objects(member_ids=me_id).order_by('name'))
     dm_keys     = [_private_room(me_id, str(u.id)) for u in all_users]
     grp_keys    = [g.room_key for g in my_groups]

@@ -241,7 +241,7 @@ def dashboard():
     # ── Users activity ───────────────────────────────────────────────────────
     now_utc = datetime.utcnow()
     all_users = []
-    for u in User.objects.order_by('-last_seen'):
+    for u in User.objects.only('id', 'name', 'last_seen', 'role', 'last_login').order_by('-last_seen'):
         if u.last_seen:
             diff = (now_utc - u.last_seen).total_seconds()
             if diff < 300:

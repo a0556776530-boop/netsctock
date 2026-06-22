@@ -14,3 +14,4 @@ Flask-Limiter==3.9.0
 geoip2==4.8.0
 maxminddb==2.6.2
 tzdata
+Flask-Caching==2.3.0

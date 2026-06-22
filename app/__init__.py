@@ -17,6 +17,8 @@ csrf          = CSRFProtect()
 socketio      = SocketIO()
 limiter       = Limiter(key_func=get_remote_address, default_limits=[])
 
+from .utils.cache import cache
+
 # Expose db as the mongoengine module so models can do `from app import db`
 # and call db.Document, db.StringField, etc.
 db = me
@@ -33,6 +35,7 @@ def create_app(config_class=Config):
     bcrypt.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)
+    cache.init_app(app, config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 60})
 
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'

@@ -17,6 +17,7 @@ from app.models.user import User
 from app.utils.events import log_event
 from app.utils.translations import localize_form
 from app.utils.mongo_helpers import get_or_404
+from app.utils.cache import cache
 
 assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
 
@@ -27,18 +28,21 @@ CATEGORY_ORDER = [
 CATEGORY_LABELS = {c: c for c in CATEGORY_ORDER}
 
 
+@cache.memoize(timeout=60)
 def _site_choices():
-    return [('', '— None —')] + [(str(s.id), s.name) for s in Site.objects.order_by('name')]
+    return [('', '— None —')] + [(str(s.id), s.name) for s in Site.objects.only('id', 'name').order_by('name')]
 
 
+@cache.memoize(timeout=60)
 def _user_choices():
-    return [('', '— None —')] + [(str(u.id), u.name) for u in User.objects.order_by('name')]
+    return [('', '— None —')] + [(str(u.id), u.name) for u in User.objects.only('id', 'name').order_by('name')]
 
 
+@cache.memoize(timeout=60)
 def _type_choices():
     return [
         (str(t.id), f'{t.name} ({t.category})' if t.category else t.name)
-        for t in AssetType.objects.order_by('category', 'name')
+        for t in AssetType.objects.only('id', 'name', 'category').order_by('category', 'name')
     ]
 
 
@@ -75,7 +79,7 @@ class AssignForm(FlaskForm):
     submit         = SubmitField('Confirm Assignment')
 
     def populate_choices(self):
-        self.assigned_to_id.choices = [(str(u.id), u.name) for u in User.objects.order_by('name')]
+        self.assigned_to_id.choices = [(uid, uname) for uid, uname in _user_choices() if uid]
         self.to_site_id.choices     = _site_choices()
 
 
@@ -85,7 +89,7 @@ class MoveForm(FlaskForm):
     submit     = SubmitField('Confirm Move')
 
     def populate_choices(self):
-        self.to_site_id.choices = [(str(s.id), s.name) for s in Site.objects.order_by('name')]
+        self.to_site_id.choices = [(sid, sname) for sid, sname in _site_choices() if sid]
 
 
 class ReturnForm(FlaskForm):
