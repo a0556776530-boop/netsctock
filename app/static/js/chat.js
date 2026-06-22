@@ -243,12 +243,14 @@
       return !q || c.name.toLowerCase().includes(q);
     });
 
-    var pinned   = convs.filter(function(c){ return S.pinned.includes(c.room); });
-    var favs     = convs.filter(function(c){ return S.favorites.includes(c.room) && !S.pinned.includes(c.room); });
+    function byLastTs(a, b) { return (b.last_iso || b.last_ts || '').localeCompare(a.last_iso || a.last_ts || ''); }
+
+    var pinned   = convs.filter(function(c){ return S.pinned.includes(c.room); }).sort(byLastTs);
+    var favs     = convs.filter(function(c){ return S.favorites.includes(c.room) && !S.pinned.includes(c.room); }).sort(byLastTs);
     // "כולם" is the only channel — shown standalone at top, no section header
     var everyone = convs.filter(function(c){ return c.type === 'channel' && c.room === 'group' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); });
-    var groups   = convs.filter(function(c){ return c.type === 'group' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); });
-    var dms      = convs.filter(function(c){ return c.type === 'dm' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); });
+    var groups   = convs.filter(function(c){ return c.type === 'group' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); }).sort(byLastTs);
+    var dms      = convs.filter(function(c){ return c.type === 'dm' && !S.pinned.includes(c.room) && !S.favorites.includes(c.room); }).sort(byLastTs);
 
     var html = '';
 
@@ -490,7 +492,8 @@
       conv.last_msg = (text || '').slice(0, 60);
       if (iso) {
         var d = new Date(iso);
-        conv.last_ts = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        conv.last_ts  = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        conv.last_iso = iso;
       }
       if (isUnread) conv.unread = (conv.unread || 0) + 1;
     }

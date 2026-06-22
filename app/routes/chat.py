@@ -165,40 +165,42 @@ def api_conversations():
     def _last(rk):
         doc = last_msgs.get(rk)
         if not doc or doc.get('deleted'):
-            return '', ''
+            return '', '', ''
         ts = doc['timestamp']
-        return (doc.get('text') or '')[:60], ts.strftime('%H:%M') if ts else ''
+        display = ts.strftime('%H:%M') if ts else ''
+        iso     = ts.isoformat() if ts else ''
+        return (doc.get('text') or '')[:60], display, iso
 
     result = []
 
     # 1. Everyone channel
-    msg, ts = _last('group')
+    msg, ts, iso = _last('group')
     result.append({'type': 'channel', 'room': 'group', 'name': 'כולם', 'icon': 'bi-people',
-                   'last_msg': msg, 'last_ts': ts, 'unread': 0, 'online': None,
+                   'last_msg': msg, 'last_ts': ts, 'last_iso': iso, 'unread': 0, 'online': None,
                    'pinned': 'group' in pinned, 'favorite': 'group' in favorites})
 
     # 2. Channels
     for ch in _CHANNELS:
-        msg, ts = _last(ch['key'])
+        msg, ts, iso = _last(ch['key'])
         result.append({'type': 'channel', 'room': ch['key'], 'name': ch['name'], 'icon': ch['icon'],
-                       'last_msg': msg, 'last_ts': ts, 'unread': 0, 'online': None,
+                       'last_msg': msg, 'last_ts': ts, 'last_iso': iso, 'unread': 0, 'online': None,
                        'pinned': ch['key'] in pinned, 'favorite': ch['key'] in favorites})
 
     # 3. Groups
     for grp in my_groups:
         rk = grp.room_key
-        msg, ts = _last(rk)
+        msg, ts, iso = _last(rk)
         result.append({'type': 'group', 'room': rk, 'name': grp.name, 'icon': 'bi-people-fill',
-                       'last_msg': msg, 'last_ts': ts, 'unread': 0, 'online': None,
+                       'last_msg': msg, 'last_ts': ts, 'last_iso': iso, 'unread': 0, 'online': None,
                        'pinned': rk in pinned, 'favorite': rk in favorites})
 
     # 4. Direct messages
     for u in all_users:
         rk = _private_room(me_id, str(u.id))
-        msg, ts = _last(rk)
+        msg, ts, iso = _last(rk)
         result.append({'type': 'dm', 'room': rk, 'name': u.name, 'role': u.role,
                        'user_id': str(u.id), 'icon': None,
-                       'last_msg': msg, 'last_ts': ts,
+                       'last_msg': msg, 'last_ts': ts, 'last_iso': iso,
                        'unread': unread_map.get(rk, 0),
                        'online': _is_online(u),
                        'pinned': rk in pinned, 'favorite': rk in favorites})
