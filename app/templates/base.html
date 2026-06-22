@@ -36,17 +36,11 @@
 
     <ul class="nav nav-pills flex-column gap-1 flex-grow-1">
       {% if current_user.is_warehouse %}
-      {# ── Warehouse: allocations + purchases + history ── #}
+      {# ── Warehouse: allocations only ── #}
       <li class="nav-item">
         <a href="{{ url_for('estimates.list_estimates') }}"
            class="nav-link text-white {% if request.endpoint == 'estimates.list_estimates' %}active{% endif %}">
           <i class="bi bi-archive me-2"></i>{{ t.nav_allocations }}
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{{ url_for('purchases.list_purchases') }}"
-           class="nav-link text-white {% if request.blueprint == 'purchases' %}active{% endif %}">
-          <i class="bi bi-box-seam me-2"></i>{{ t.nav_receiving }}
         </a>
       </li>
       <li class="nav-item ps-2">

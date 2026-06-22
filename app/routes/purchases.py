@@ -161,6 +161,8 @@ _HISTORY_STATUSES = ['Order Received in Warehouse', 'בוטל']
 @purchases_bp.route('/')
 @login_required
 def list_purchases():
+    if current_user.is_warehouse:
+        abort(403)
     try:
         purchases = list(Purchase.objects.order_by('-created_at'))
     except Exception:
@@ -174,6 +176,8 @@ def list_purchases():
 @purchases_bp.route('/history')
 @login_required
 def purchase_history():
+    if current_user.is_warehouse:
+        abort(403)
     try:
         purchases = list(Purchase.objects(status__in=_HISTORY_STATUSES).order_by('-created_at'))
     except Exception:
