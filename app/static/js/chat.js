@@ -1496,56 +1496,60 @@
 
   /* ── Feature 5: Sound notifications ────────────────────────────────────── */
 
-  // Single shared AudioContext — browsers block new contexts without a user gesture.
-  // We create it lazily on the first user interaction and reuse it forever.
-  var _audioCtx = null;
+  var _notifEl = null;
 
-  function _getAudioCtx() {
-    if (!_audioCtx) {
-      try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  // Build a WAV notification chime entirely in JS — no external file needed.
+  function _buildNotifWav() {
+    var rate = 22050, dur = 0.58;
+    var n = Math.floor(rate * dur);
+    var buf = new ArrayBuffer(44 + n * 2);
+    var dv  = new DataView(buf);
+    var ws  = function(o, s) { for (var i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+    ws(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true);
+    ws(8, 'WAVE'); ws(12, 'fmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true);
+    dv.setUint16(32, 2, true);   dv.setUint16(34, 16, true);
+    ws(36, 'data'); dv.setUint32(40, n * 2, true);
+    // Three-note ascending chime: E5 → A5 → E6
+    var notes = [{f:659,s:0,e:0.22},{f:880,s:0.13,e:0.38},{f:1319,s:0.26,e:0.58}];
+    for (var i = 0; i < n; i++) {
+      var t = i / rate, v = 0;
+      notes.forEach(function(no) {
+        if (t >= no.s && t < no.e)
+          v += 0.38 * Math.exp(-(t - no.s) * 9) * Math.sin(2 * Math.PI * no.f * t);
+      });
+      dv.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, v * 32767)), true);
     }
-    return _audioCtx;
+    var bytes = new Uint8Array(buf), str = '';
+    for (var j = 0; j < bytes.length; j++) str += String.fromCharCode(bytes[j]);
+    return 'data:audio/wav;base64,' + btoa(str);
   }
 
-  // Call once on any user gesture to unlock the context (browser policy)
+  // Called on first user gesture — creates Audio element and "unlocks" it.
   function _unlockAudio() {
-    var ctx = _getAudioCtx();
-    if (ctx && ctx.state === 'suspended') ctx.resume();
-  }
-
-  function _doPlayPing(ctx) {
-    // WhatsApp-style 3-note ascending chime
-    var t = ctx.currentTime;
-    [[659, 0, 0.22], [880, 0.13, 0.22], [1319, 0.26, 0.32]].forEach(function(n) {
-      var osc  = ctx.createOscillator();
-      var gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(n[0], t + n[1]);
-      gain.gain.setValueAtTime(0, t + n[1]);
-      gain.gain.linearRampToValueAtTime(0.45, t + n[1] + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + n[1] + n[2]);
-      osc.start(t + n[1]);
-      osc.stop(t + n[1] + n[2]);
-    });
+    if (_notifEl) return;
+    try {
+      _notifEl = new Audio(_buildNotifWav());
+      _notifEl.volume = 0.9;
+      // Play silently to satisfy browser autoplay policy
+      _notifEl.volume = 0.001;
+      _notifEl.play().catch(function(){});
+      setTimeout(function() { if (_notifEl) _notifEl.volume = 0.9; }, 200);
+    } catch(e) {}
   }
 
   function playPing() {
     if (S.soundMuted) return;
+    if (!_notifEl) return;
     try {
-      var ctx = _getAudioCtx();
-      if (!ctx) return;
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(function() { _doPlayPing(ctx); });
-      } else {
-        _doPlayPing(ctx);
-      }
+      _notifEl.currentTime = 0;
+      _notifEl.play().catch(function(){});
     } catch(e) {}
   }
 
   function toggleSound() {
-    _unlockAudio();   // first toggle also unlocks the context
+    _unlockAudio();
     S.soundMuted = !S.soundMuted;
     localStorage.setItem('chat-sound-muted', S.soundMuted ? '1' : '0');
     updateSoundBtn();
