@@ -162,20 +162,7 @@ def api_conversations():
         ]):
             unread_map[doc['_id']] = doc['count']
 
-    # Unread group/channel counts — messages not yet in readers list
-    group_unread_map = {}
-    non_dm_keys = ch_keys + grp_keys
-    if non_dm_keys:
-        for doc in ChatMessage._get_collection().aggregate([
-            {'$match': {
-                'room': {'$in': non_dm_keys},
-                'user_id': {'$ne': me_id},
-                'deleted': {'$ne': True},
-                'readers': {'$nin': [me_id]},
-            }},
-            {'$group': {'_id': '$room', 'count': {'$sum': 1}}},
-        ]):
-            group_unread_map[doc['_id']] = doc['count']
+    group_unread_map = {}  # group unread tracking requires last_read timestamps — not yet implemented
 
     def _last(rk):
         doc = last_msgs.get(rk)
