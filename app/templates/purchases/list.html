@@ -132,19 +132,20 @@
             {% set _skey = 'purchase_status_' ~ p.status.lower().replace(' ', '_') %}
             {% set _slabel = t[_skey] if _skey in t else p.status %}
             {% if current_user.can_edit and p.status != 'Order Received in Warehouse' %}
-            <div class="dropdown d-inline-block w-100">
+            <div class="d-inline-block w-100">
               <span class="status-badge d-flex align-items-center justify-content-between gap-2"
                     style="cursor:pointer; user-select:none; font-size:.78rem; font-weight:600; padding:6px 12px; width:100%; min-width:160px; border-radius:8px; background:{{ STATUS_BG.get(p.status, '#475569') }}; color:#fff;"
-                    data-bs-toggle="dropdown" data-bs-strategy="fixed" data-purchase-id="{{ p.id }}"
+                    data-status-toggle data-purchase-id="{{ p.id }}"
                     title="{{ t.get('tooltip_click_status','Click to change status') }}">
                 <span>{{ _slabel }}</span>
                 <i class="bi bi-chevron-down" style="font-size:.65rem; opacity:.8; flex-shrink:0;"></i>
               </span>
-              <ul class="dropdown-menu shadow" style="min-width:190px; font-size:.85rem; background:#fff; border:1px solid #e2e8f0; z-index:9999;">
+              <ul class="status-menu-ul" style="display:none; list-style:none; margin:0; padding:4px 0; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,.12); font-size:.85rem; min-width:190px;">
                 {% for s in manual_statuses %}
                 {% set skey = 'purchase_status_' ~ s.lower().replace(' ', '_') %}
                 <li>
-                  <button class="dropdown-item status-option {% if s == p.status %}active{% endif %}"
+                  <button class="status-option w-100 text-start border-0 bg-transparent px-3 py-2 {% if s == p.status %}fw-bold{% endif %}"
+                          style="cursor:pointer; transition:background .12s; {% if s == p.status %}background:#f1f5f9;{% endif %}"
                           data-purchase-id="{{ p.id }}"
                           data-status="{{ s }}"
                           {% if s == p.status %}disabled{% endif %}>
@@ -266,22 +267,63 @@
   var csrfToken = document.querySelector('meta[name="csrf-token"]') ?
     document.querySelector('meta[name="csrf-token"]').content : '';
 
-  // Color classes map
-  var COLOR_MAP = {
-    'BOM Transferred':             '#475569',
-    'Requirement Created':         '#0284c7',
-    'Order Signed':                '#2563eb',
-    'Partial Delivery':            '#d97706',
-    'Order Received in Warehouse': '#16a34a',
-    'בוטל':                        '#dc2626',
-  };
+  // ── Status dropdown portal ────────────────────────────────────────────────
+  // Moves the <ul> to <body> on open so it's never clipped by overflow:auto.
+  var _openMenu = null;
+  var _openParent = null;
 
+  function closeStatusMenu() {
+    if (_openMenu) {
+      _openMenu.style.display = 'none';
+      if (_openParent) _openParent.appendChild(_openMenu);
+      _openMenu = null;
+      _openParent = null;
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    var toggle = e.target.closest('[data-status-toggle]');
+    var inMenu = e.target.closest('.status-menu-ul');
+
+    if (toggle) {
+      e.stopPropagation();
+      var menu = toggle.parentElement.querySelector('.status-menu-ul');
+      if (!menu) return;
+      if (_openMenu === menu) { closeStatusMenu(); return; }
+      closeStatusMenu();
+
+      // Portal: move menu to body so no overflow can clip it
+      _openParent = menu.parentElement;
+      document.body.appendChild(menu);
+
+      var rect = toggle.getBoundingClientRect();
+      Object.assign(menu.style, {
+        display:   'block',
+        position:  'fixed',
+        top:       (rect.bottom + 4) + 'px',
+        left:      rect.left + 'px',
+        minWidth:  rect.width + 'px',
+        zIndex:    '999999'
+      });
+      _openMenu = menu;
+
+    } else if (!inMenu) {
+      closeStatusMenu();
+    }
+  });
+
+  window.addEventListener('scroll', closeStatusMenu, true);
+  window.addEventListener('resize', closeStatusMenu);
+
+  // ── Quick-status AJAX ─────────────────────────────────────────────────────
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('.status-option');
     if (!btn) return;
     var purchaseId = btn.dataset.purchaseId;
     var newStatus  = btn.dataset.status;
     if (!purchaseId || !newStatus) return;
+
+    closeStatusMenu();
 
     var form = new FormData();
     form.append('status', newStatus);
