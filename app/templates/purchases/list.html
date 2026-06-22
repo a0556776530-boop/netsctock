@@ -179,12 +179,13 @@
             </a>
             {% endif %}
             {% if current_user.can_edit and p.status in ('Order Signed', 'Partial Delivery') and p.items %}
-            <a href="{{ url_for('purchases.receive', id=p.id) }}"
-               class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+            <button type="button"
+               class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center verify-btn"
                style="width:30px;height:30px;background:#fef3c7;color:#92400e;border:none;"
-               title="{{ t.get('tooltip_receive_items_btn','Receive items in warehouse') }}">
-              <i class="bi bi-box-seam" style="font-size:.8rem;"></i>
-            </a>
+               data-purchase-id="{{ p.id }}"
+               title="{{ t.get('tooltip_receive_items_btn','אימות קליטת פריטים') }}">
+              <i class="bi bi-clipboard2-check" style="font-size:.8rem;"></i>
+            </button>
             {% endif %}
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('purchases.delete', id=p.id) }}" class="d-inline"
@@ -209,6 +210,38 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+</div>
+
+{# ── Verify Items Modal ──────────────────────────────────────────────────── #}
+<div class="modal fade" id="verifyModal" tabindex="-1" aria-labelledby="verifyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#1e293b; color:#fff;">
+        <h5 class="modal-title fw-bold" id="verifyModalLabel">
+          <i class="bi bi-clipboard2-check me-2"></i>
+          {{ t.get('verify_modal_title','אימות קליטת פריטים') }} — <span id="verifyPurchaseName"></span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" id="verifyModalBody">
+        <div class="text-center py-5 text-muted" id="verifyLoadingState">
+          <div class="spinner-border spinner-border-sm me-2"></div>
+          {{ t.get('loading','טוען...') }}
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" id="btnVerifyAll" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-check-all me-1"></i>{{ t.get('btn_verify_all','סמן הכל') }}
+        </button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t.get('btn_cancel','ביטול') }}</button>
+          <button type="button" id="btnVerifySubmit" class="btn btn-success fw-semibold px-4">
+            <i class="bi bi-box-seam me-1"></i>{{ t.get('btn_verify_submit','אשר קליטה') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -339,6 +372,125 @@
       window.location.href = window.location.pathname + '?status=all';
     })
     .catch(function () { alert('{{ t.get("js_network_error","Network error") }}'); });
+  });
+})();
+
+// ── Verify Items Modal ────────────────────────────────────────────────────
+(function () {
+  var csrfToken = document.querySelector('meta[name="csrf-token"]') ?
+    document.querySelector('meta[name="csrf-token"]').content : '';
+  var currentPurchaseId = null;
+
+  var verifyModal = new bootstrap.Modal(document.getElementById('verifyModal'));
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.verify-btn');
+    if (!btn) return;
+
+    currentPurchaseId = btn.dataset.purchaseId;
+    document.getElementById('verifyPurchaseName').textContent = '';
+    document.getElementById('verifyModalBody').innerHTML =
+      '<div class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm me-2"></div>{{ t.get("loading","טוען...") }}</div>';
+    verifyModal.show();
+
+    fetch('/purchases/' + currentPurchaseId + '/items-json', {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.ok) { document.getElementById('verifyModalBody').innerHTML = '<p class="text-danger p-3">' + (data.error || 'שגיאה') + '</p>'; return; }
+      document.getElementById('verifyPurchaseName').textContent = data.name;
+      renderItems(data.items);
+    })
+    .catch(function () {
+      document.getElementById('verifyModalBody').innerHTML = '<p class="text-danger p-3">{{ t.get("js_network_error","Network error") }}</p>';
+    });
+  });
+
+  function renderItems(items) {
+    var rows = items.map(function (item) {
+      var done = item.is_fully_received;
+      var pct  = item.quantity > 0 ? Math.round(item.received_qty / item.quantity * 100) : 0;
+      return '<tr>' +
+        '<td class="text-center" style="width:50px;">' +
+          (done
+            ? '<input type="checkbox" class="verify-cb form-check-input" checked disabled style="width:20px;height:20px;accent-color:#16a34a;" title="כבר נקלט">'
+            : '<input type="checkbox" class="verify-cb form-check-input" data-asset-id="' + item.asset_id + '" style="width:20px;height:20px;accent-color:#16a34a;">') +
+        '</td>' +
+        '<td><div class="fw-semibold small">' + item.serial_number + '</div>' +
+          (item.model ? '<div class="text-muted" style="font-size:.75rem;">' + item.model + '</div>' : '') +
+        '</td>' +
+        '<td class="text-center font-monospace fw-bold">' + item.quantity + '</td>' +
+        '<td class="text-center">' +
+          '<span class="font-monospace small ' + (done ? 'text-success' : item.received_qty > 0 ? 'text-warning' : 'text-muted') + '">' +
+            item.received_qty + ' / ' + item.quantity +
+          '</span>' +
+          '<div class="progress mt-1" style="height:4px;max-width:80px;margin:0 auto;">' +
+            '<div class="progress-bar ' + (pct===100?'bg-success':pct>0?'bg-warning':'bg-secondary') + '" style="width:' + pct + '%;"></div>' +
+          '</div>' +
+        '</td>' +
+        '<td class="text-center">' +
+          (done
+            ? '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.75rem;">הושלם</span>'
+            : (item.received_qty > 0
+                ? '<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-size:.75rem;">חלקי</span>'
+                : '<span class="badge bg-secondary-subtle text-secondary" style="font-size:.75rem;">ממתין</span>')) +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    document.getElementById('verifyModalBody').innerHTML =
+      '<table class="table table-sm align-middle mb-0">' +
+        '<thead class="table-dark"><tr>' +
+          '<th style="width:50px;"></th>' +
+          '<th>{{ t.get("purchase_item_asset","פריט") }}</th>' +
+          '<th class="text-center">{{ t.get("purchase_item_qty","כמות") }}</th>' +
+          '<th class="text-center">{{ t.get("asset_po_col_received","התקבל") }}</th>' +
+          '<th class="text-center">{{ t.get("purchase_col_status","סטטוס") }}</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>';
+  }
+
+  // סמן הכל
+  document.getElementById('btnVerifyAll').addEventListener('click', function () {
+    document.querySelectorAll('#verifyModalBody .verify-cb:not(:disabled)').forEach(function (cb) {
+      cb.checked = true;
+    });
+  });
+
+  // אשר קליטה
+  document.getElementById('btnVerifySubmit').addEventListener('click', function () {
+    if (!currentPurchaseId) return;
+    var checkedIds = Array.from(
+      document.querySelectorAll('#verifyModalBody .verify-cb:not(:disabled):checked')
+    ).map(function (cb) { return cb.dataset.assetId; });
+
+    var form = new FormData();
+    form.append('csrf_token', csrfToken);
+    checkedIds.forEach(function (id) { form.append('verified_ids[]', id); });
+
+    var btn = document.getElementById('btnVerifySubmit');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>שומר...';
+
+    fetch('/purchases/' + currentPurchaseId + '/verify', {
+      method: 'POST', body: form,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-box-seam me-1"></i>{{ t.get("btn_verify_submit","אשר קליטה") }}';
+      if (!data.ok) { alert(data.error || 'שגיאה'); return; }
+      verifyModal.hide();
+      window.location.href = window.location.pathname + '?status=all';
+    })
+    .catch(function () {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-box-seam me-1"></i>{{ t.get("btn_verify_submit","אשר קליטה") }}';
+      alert('{{ t.get("js_network_error","Network error") }}');
+    });
   });
 })();
 </script>

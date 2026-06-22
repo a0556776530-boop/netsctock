@@ -463,6 +463,81 @@ def delete(id):
     return redirect(url_for('purchases.list_purchases') + '?status=all')
 
 
+@purchases_bp.route('/<id>/items-json')
+@login_required
+def items_json(id):
+    if not current_user.can_edit:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    purchase = get_or_404(Purchase, id)
+    items = []
+    for item in purchase.items:
+        a = item.safe_asset
+        if not a:
+            continue
+        items.append({
+            'asset_id':        str(a.id),
+            'serial_number':   a.serial_number or '',
+            'model':           a.model or '',
+            'quantity':        item.quantity or 0,
+            'received_qty':    item.received_qty or 0,
+            'is_fully_received': item.is_fully_received,
+        })
+    return jsonify({'ok': True, 'name': purchase.name, 'items': items})
+
+
+@purchases_bp.route('/<id>/verify', methods=['POST'])
+@login_required
+def verify(id):
+    if not current_user.can_edit:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    t = getattr(g, 't', {})
+    purchase = get_or_404(Purchase, id)
+
+    if purchase.status not in ('Order Signed', 'Partial Delivery'):
+        return jsonify({'ok': False, 'error': t.get('flash_purchase_receive_early', 'לא ניתן לקלוט בסטטוס זה')}), 400
+
+    verified_ids = set(request.form.getlist('verified_ids[]'))
+
+    delta_map = {}
+    for item in purchase.items:
+        a = item.safe_asset
+        if not a:
+            continue
+        asset_id_str = str(a.id)
+        if asset_id_str in verified_ids and not item.is_fully_received:
+            delta = (item.quantity or 0) - (item.received_qty or 0)
+            if delta > 0:
+                delta_map[asset_id_str] = delta
+                item.received_qty = item.quantity
+
+    if delta_map:
+        _sync_inventory_delta(delta_map)
+
+    active_items = [i for i in purchase.items if i.safe_asset]
+    total      = len(active_items)
+    fully_done = sum(1 for i in active_items if i.is_fully_received)
+
+    if fully_done == total and total > 0:
+        purchase.status = 'Order Received in Warehouse'
+        if not purchase.received_at:
+            purchase.received_at = datetime.utcnow()
+    elif fully_done > 0:
+        purchase.status = 'Partial Delivery'
+
+    purchase.save()
+
+    skey  = 'purchase_status_' + purchase.status.lower().replace(' ', '_')
+    label = t.get(skey, purchase.status)
+    return jsonify({
+        'ok':        True,
+        'status':    purchase.status,
+        'color':     STATUS_COLORS.get(purchase.status, 'secondary'),
+        'label':     label,
+        'fully_done': fully_done,
+        'total':     total,
+    })
+
+
 @purchases_bp.route('/<id>/receive', methods=['GET', 'POST'])
 @login_required
 def receive(id):
