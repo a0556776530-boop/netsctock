@@ -135,7 +135,7 @@
             <div class="dropdown d-inline-block w-100">
               <span class="status-badge d-flex align-items-center justify-content-between gap-2"
                     style="cursor:pointer; user-select:none; font-size:.78rem; font-weight:600; padding:6px 12px; width:100%; min-width:160px; border-radius:8px; background:{{ STATUS_BG.get(p.status, '#475569') }}; color:#fff;"
-                    data-bs-toggle="dropdown" data-purchase-id="{{ p.id }}"
+                    data-bs-toggle="dropdown" data-bs-strategy="fixed" data-purchase-id="{{ p.id }}"
                     title="{{ t.get('tooltip_click_status','Click to change status') }}">
                 <span>{{ _slabel }}</span>
                 <i class="bi bi-chevron-down" style="font-size:.65rem; opacity:.8; flex-shrink:0;"></i>
