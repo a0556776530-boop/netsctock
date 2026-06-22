@@ -115,6 +115,7 @@
         </a>
       </li>
       {% endif %}
+      {% if not current_user.is_warehouse %}
       <li class="nav-item">
         <a href="{{ url_for('chat.app') }}"
            class="nav-link text-white {% if request.blueprint == 'chat' %}active{% endif %} d-flex align-items-center justify-content-between">
@@ -122,6 +123,7 @@
           <span id="chatUnreadBadge" class="badge bg-danger rounded-pill d-none" style="font-size:.65rem;"></span>
         </a>
       </li>
+      {% endif %}
       {% if current_user.is_admin %}
       <li class="nav-item mt-2">
         <span class="nav-link text-secondary small text-uppercase px-2">{{ t.nav_admin_label }}</span>
