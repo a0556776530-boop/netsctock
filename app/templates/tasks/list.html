@@ -54,9 +54,7 @@
           </td>
           <td class="small">{{ task.assignee_name or '—' }}</td>
           <td>
-            <span class="badge bg-{{ task.status_color }} bg-opacity-15 text-{{ task.status_color }} border border-{{ task.status_color }} border-opacity-25">
-              {{ task.status_label }}
-            </span>
+            <span class="small text-{{ task.status_color }}">{{ task.status_label }}</span>
           </td>
           <td class="text-end text-nowrap">
             {% if current_user.can_edit %}
