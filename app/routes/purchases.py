@@ -518,15 +518,16 @@ def verify(id):
     if delta_map:
         _sync_inventory_delta(delta_map)
 
-    active_items = [i for i in purchase.items if i.safe_asset]
-    total      = len(active_items)
-    fully_done = sum(1 for i in active_items if i.is_fully_received)
+    active_items  = [i for i in purchase.items if i.safe_asset]
+    total         = len(active_items)
+    fully_done    = sum(1 for i in active_items if i.is_fully_received)
+    any_received  = sum(1 for i in active_items if (i.received_qty or 0) > 0)
 
     if fully_done == total and total > 0:
         purchase.status = 'Order Received in Warehouse'
         if not purchase.received_at:
             purchase.received_at = datetime.utcnow()
-    elif fully_done > 0:
+    elif any_received > 0:
         purchase.status = 'Partial Delivery'
 
     purchase.save()
