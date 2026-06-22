@@ -338,6 +338,7 @@
       S.roomName   = conv.name;
       S.roomType   = conv.type;
       S.receiverId = conv.type === 'dm' ? (conv.user_id || '') : '';
+      conv.unread  = 0; // optimistic clear — badge disappears immediately
     }
 
     // Update URL
@@ -352,6 +353,7 @@
 
     // Mark as read immediately (DMs + groups/channels)
     apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
+    renderSidebar(); // reflect the optimistic unread=0 immediately
 
     closeSearch();
     renderChatWindow();
