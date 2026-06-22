@@ -422,7 +422,7 @@
             '<input type="number" class="verify-qty-input form-control form-control-sm text-center font-monospace fw-bold" ' +
               'data-asset-id="' + item.asset_id + '" ' +
               'min="1" max="' + remaining + '" value="' + remaining + '" ' +
-              'style="width:70px;" disabled>' +
+              'style="width:70px;">' +
             '<span class="text-muted small">/ ' + remaining + '</span>' +
           '</div>';
       return '<tr>' +
@@ -461,16 +461,6 @@
         '<tbody>' + rows + '</tbody>' +
       '</table>';
 
-    // enable/disable qty input based on checkbox
-    document.getElementById('verifyModalBody').addEventListener('change', function (e) {
-      var cb = e.target.closest('.verify-cb:not(:disabled)');
-      if (!cb) return;
-      var assetId = cb.dataset.assetId;
-      var inp = document.querySelector('.verify-qty-input[data-asset-id="' + assetId + '"]');
-      if (!inp) return;
-      inp.disabled = !cb.checked;
-      if (cb.checked) inp.focus();
-    });
   }
 
   // סמן הכל
@@ -496,7 +486,8 @@
       var assetId = cb.dataset.assetId;
       form.append('verified_ids[]', assetId);
       var inp = document.querySelector('.verify-qty-input[data-asset-id="' + assetId + '"]');
-      var qty = inp ? (parseInt(inp.value, 10) || parseInt(inp.max, 10)) : parseInt(cb.dataset.remaining, 10);
+      var remaining = parseInt(cb.dataset.remaining, 10) || 0;
+      var qty = inp ? Math.max(1, Math.min(parseInt(inp.value, 10) || remaining, remaining)) : remaining;
       form.append('qty_' + assetId, qty);
     });
 
