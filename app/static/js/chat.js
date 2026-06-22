@@ -315,7 +315,7 @@
         '<div class="chat-conv-preview">' + _esc(c.last_msg || '') + '</div>' +
       '</div>' +
       '<div class="chat-conv-meta">' +
-        '<div class="chat-conv-time">' + _esc(c.last_ts || '') + '</div>' +
+        '<div class="chat-conv-time">' + _esc(fmtLocalTime(c.last_iso) || c.last_ts || '') + '</div>' +
         unread +
       '</div>' +
     '</div>';
@@ -491,9 +491,8 @@
     if (conv) {
       conv.last_msg = (text || '').slice(0, 60);
       if (iso) {
-        var d = new Date(iso);
-        conv.last_ts  = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
         conv.last_iso = iso;
+        conv.last_ts  = fmtLocalTime(iso);
       }
       if (isUnread) conv.unread = (conv.unread || 0) + 1;
     }
@@ -1591,6 +1590,12 @@
   }
 
   /* ── Helpers ────────────────────────────────────────────────────────────── */
+  function fmtLocalTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+
   function roleAvatar(role, size) {
     var cls = 'role-viewer', icon = 'bi-eye-fill';
     if (role === 'super_admin') { cls = 'role-super'; icon = 'bi-shield-fill-check'; }
