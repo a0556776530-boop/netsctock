@@ -243,15 +243,54 @@ setInterval(function() {
   if (!document.hidden) fetch('/api/ping');
 }, 30000);
 
-// Unread badge — poll every 30s (light query, not on every page load)
-(function updateUnread() {
-  fetch('/api/unread-count').then(function(r){ return r.json(); }).then(function(d){
-    var badge = document.getElementById('chatUnreadBadge');
-    if (!badge) return;
-    if (d.count > 0) { badge.textContent = d.count; badge.classList.remove('d-none'); }
-    else { badge.classList.add('d-none'); }
-  }).catch(function(){});
-  setTimeout(updateUnread, 30000);
+// Unread badge + new-message toast when off the chat page
+(function() {
+  var _prev = null;
+
+  function showChatToast(count) {
+    var existing = document.getElementById('_chatNewMsgToast');
+    if (existing) existing.remove();
+    var t = document.createElement('a');
+    t.id   = '_chatNewMsgToast';
+    t.href = '/chat/app';
+    t.innerHTML =
+      '<i class="bi bi-chat-dots-fill me-2" style="font-size:1.1rem;"></i>' +
+      '<span>הודעה חדשה בצ\'אט' + (count > 1 ? ' (' + count + ')' : '') + '</span>' +
+      '<span style="margin-right:auto;font-size:1.1rem;opacity:.7;">&#8594;</span>';
+    Object.assign(t.style, {
+      position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
+      zIndex:'9999', display:'flex', alignItems:'center', gap:'8px',
+      background:'#25d366', color:'#fff', fontWeight:'600',
+      padding:'12px 22px', borderRadius:'28px', textDecoration:'none',
+      boxShadow:'0 4px 18px rgba(0,0,0,.28)', cursor:'pointer',
+      animation:'_chatToastIn .25s ease', whiteSpace:'nowrap',
+    });
+    if (!document.getElementById('_chatToastKf')) {
+      var s = document.createElement('style');
+      s.id = '_chatToastKf';
+      s.textContent = '@keyframes _chatToastIn{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+      document.head.appendChild(s);
+    }
+    document.body.appendChild(t);
+    setTimeout(function(){ if (t.parentNode) t.remove(); }, 6000);
+  }
+
+  function updateUnread() {
+    fetch('/api/unread-count').then(function(r){ return r.json(); }).then(function(d){
+      var badge = document.getElementById('chatUnreadBadge');
+      if (badge) {
+        if (d.count > 0) { badge.textContent = d.count; badge.classList.remove('d-none'); }
+        else { badge.classList.add('d-none'); }
+      }
+      var onChat = window.location.pathname.startsWith('/chat');
+      if (!onChat && _prev !== null && d.count > _prev) {
+        showChatToast(d.count);
+      }
+      _prev = d.count;
+    }).catch(function(){});
+    setTimeout(updateUnread, 15000);
+  }
+  updateUnread();
 })();
 </script>
 <script>
