@@ -36,18 +36,24 @@
 
     <ul class="nav nav-pills flex-column gap-1 flex-grow-1">
       {% if current_user.is_warehouse %}
-      {# ── Warehouse: allocations only ── #}
+      {# ── Warehouse: allocations, history, chat ── #}
       <li class="nav-item">
         <a href="{{ url_for('estimates.list_estimates') }}"
            class="nav-link text-white {% if request.endpoint == 'estimates.list_estimates' %}active{% endif %}">
           <i class="bi bi-archive me-2"></i>{{ t.nav_allocations }}
         </a>
       </li>
-      <li class="nav-item ps-2">
+      <li class="nav-item">
         <a href="{{ url_for('estimates.warehouse_history') }}"
-           class="nav-link text-white {% if request.endpoint == 'estimates.warehouse_history' %}active{% endif %}"
-           style="font-size:.9em; opacity:.85;">
+           class="nav-link text-white {% if request.endpoint == 'estimates.warehouse_history' %}active{% endif %}">
           <i class="bi bi-clock-history me-2"></i>{{ t.nav_wh_history }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('chat.app') }}"
+           class="nav-link text-white {% if request.blueprint == 'chat' %}active{% endif %} d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-chat-dots me-2"></i>{{ t.nav_chat }}</span>
+          <span id="chatUnreadBadge" class="badge bg-danger rounded-pill d-none" style="font-size:.65rem;"></span>
         </a>
       </li>
       {% else %}
