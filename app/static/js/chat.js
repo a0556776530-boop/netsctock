@@ -181,7 +181,7 @@
     // pollConversations updates sidebar (last message preview, unread counts).
     // pollMessages kept as safety net for when socket is disconnected.
     setInterval(function() { if (!S.socketReady) pollMessages(); }, 3000);
-    setInterval(pollConversations, 20000);
+    setInterval(pollConversations, 60000);
 
     // Init WebSocket connection
     initSocket();
@@ -1052,12 +1052,13 @@
   function onTyping() {
     if (!S.room) return;
     clearTimeout(S.typingTimer);
-    if (_socket && S.socketReady) {
-      _socket.emit('chat_typing', { room: S.room });
-    } else {
-      apiPost('/chat/api/typing', {room: S.room}).catch(function(){});
-    }
-    S.typingTimer = setTimeout(function(){}, 3000);
+    S.typingTimer = setTimeout(function() {
+      if (_socket && S.socketReady) {
+        _socket.emit('chat_typing', { room: S.room });
+      } else {
+        apiPost('/chat/api/typing', {room: S.room}).catch(function(){});
+      }
+    }, 500);
   }
 
   /* ── Toast ──────────────────────────────────────────────────────────────── */

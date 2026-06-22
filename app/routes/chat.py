@@ -15,7 +15,7 @@ from app.models.user         import User
 
 chat_bp = Blueprint('chat', __name__, url_prefix='/chat')
 
-_MAX_HISTORY  = 100
+_MAX_HISTORY  = 40
 _MAX_FILE_B   = 5 * 1024 * 1024   # 5 MB (raised for voice messages)
 _ONLINE_MINS  = 3
 _REACTIONS    = ['👍', '❤️', '🔥', '✅', '😂', '😮']

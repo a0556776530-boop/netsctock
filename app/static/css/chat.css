@@ -18,8 +18,8 @@
   --chat-active-bar:   #0d6efd;
   --chat-text:         #111b21;
   --chat-text-muted:   #667781;
-  --chat-bubble-out:   #d9fdd3;
-  --chat-bubble-out-t: #111b21;
+  --chat-bubble-out:   #dbeafe;
+  --chat-bubble-out-t: #1e3a8a;
   --chat-bubble-in:    #ffffff;
   --chat-bubble-in-t:  #111b21;
   --chat-bubble-del:   #f8f9fa;
@@ -71,21 +71,13 @@
   position: relative;
 }
 
-/* ── Glassmorphism background ────────────────────────────────────────────── */
+/* ── Background ──────────────────────────────────────────────────────────── */
 #chatApp {
-  background:
-    radial-gradient(at 15% 40%, rgba(120,119,198,.18) 0%, transparent 55%),
-    radial-gradient(at 85% 15%, rgba(59,130,246,.15)  0%, transparent 55%),
-    radial-gradient(at 55% 85%, rgba(168,85,247,.10)  0%, transparent 55%),
-    var(--chat-bg);
+  background: var(--chat-bg);
 }
 
 [data-chat-theme="dark"] #chatApp {
-  background:
-    radial-gradient(at 15% 40%, rgba(0,168,132,.10)  0%, transparent 55%),
-    radial-gradient(at 85% 15%, rgba(59,130,246,.10) 0%, transparent 55%),
-    radial-gradient(at 55% 85%, rgba(168,85,247,.07) 0%, transparent 55%),
-    var(--chat-bg);
+  background: var(--chat-bg);
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
@@ -101,13 +93,10 @@
   transition: width .2s ease, min-width .2s ease, max-width .2s ease;
   overflow: hidden;
   flex-shrink: 0;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  background: rgba(255,255,255,.92) !important;
 }
 
 [data-chat-theme="dark"] #chatSidebar {
-  background: rgba(17,27,33,.93) !important;
+  background: var(--chat-sidebar-bg);
 }
 
 /* Sidebar — smooth transition */
