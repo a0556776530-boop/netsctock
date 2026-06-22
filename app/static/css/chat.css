@@ -69,6 +69,7 @@
   overflow: hidden;
   border-top: 1px solid var(--chat-divider);
   position: relative;
+  direction: ltr; /* keep sidebar-left regardless of page RTL */
 }
 
 /* ── Background ──────────────────────────────────────────────────────────── */

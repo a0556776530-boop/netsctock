@@ -350,10 +350,8 @@
       _socket.emit('chat_join', { room: roomKey });
     }
 
-    // Mark as read immediately
-    if (roomKey.startsWith('pm_')) {
-      apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
-    }
+    // Mark as read immediately (DMs + groups/channels)
+    apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
 
     closeSearch();
     renderChatWindow();

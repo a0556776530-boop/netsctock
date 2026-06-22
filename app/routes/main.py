@@ -42,10 +42,28 @@ def ping():
 @login_required
 def unread_count():
     from app.models.chat_message import ChatMessage
-    count = ChatMessage.objects(
-        receiver_id=str(current_user.id), read=False
-    ).count()
-    return jsonify({'count': count})
+    from app.models.chat_last_read import ChatLastRead
+    from app.models.chat_group import ChatGroup
+    me_id = str(current_user.id)
+
+    dm_count = ChatMessage.objects(receiver_id=me_id, read=False).count()
+
+    my_groups = list(ChatGroup.objects(member_ids=me_id).only('id'))
+    grp_keys  = ['grp_' + str(g.id) for g in my_groups] + ['group']
+    last_read_docs = {
+        d.room: d.last_read_at
+        for d in ChatLastRead.objects(user_id=me_id, room__in=grp_keys)
+    }
+    group_count = 0
+    for rk in grp_keys:
+        lr = last_read_docs.get(rk)
+        if lr is not None:
+            group_count += ChatMessage._get_collection().count_documents({
+                'room': rk, 'user_id': {'$ne': me_id},
+                'deleted': {'$ne': True}, 'timestamp': {'$gt': lr},
+            })
+
+    return jsonify({'count': dm_count + group_count})
 
 
 @main_bp.route('/api/user-activity')

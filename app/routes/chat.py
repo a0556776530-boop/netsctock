@@ -162,7 +162,26 @@ def api_conversations():
         ]):
             unread_map[doc['_id']] = doc['count']
 
-    group_unread_map = {}  # group unread tracking requires last_read timestamps — not yet implemented
+    # Group/channel unread counts via last_read_at timestamps
+    # ch_keys already includes 'group'; grp_keys are grp_<id> rooms
+    from app.models.chat_last_read import ChatLastRead
+    group_keys = grp_keys + ch_keys  # ch_keys already contains 'group'
+    last_read_docs = {
+        d.room: d.last_read_at
+        for d in ChatLastRead.objects(user_id=me_id, room__in=group_keys)
+    }
+    group_unread_map = {}
+    for rk in group_keys:
+        lr = last_read_docs.get(rk)
+        if lr is None:
+            group_unread_map[rk] = 0
+        else:
+            group_unread_map[rk] = ChatMessage._get_collection().count_documents({
+                'room': rk,
+                'user_id': {'$ne': me_id},
+                'deleted': {'$ne': True},
+                'timestamp': {'$gt': lr},
+            })
 
     def _last(rk):
         doc = last_msgs.get(rk)
@@ -448,6 +467,7 @@ def api_delete(msg_id):
 @chat_bp.route('/api/read', methods=['POST'])
 @login_required
 def api_read():
+    from app.models.chat_last_read import ChatLastRead
     data     = request.get_json(force=True) or {}
     room_key = data.get('room', '')
     uid      = str(current_user.id)
@@ -455,6 +475,11 @@ def api_read():
         ChatMessage.objects(
             room=room_key, receiver_id=uid, read=False
         ).update(set__read=True, add_to_set__readers=uid)
+    elif room_key:
+        ChatLastRead.objects(user_id=uid, room=room_key).update_one(
+            set__last_read_at=datetime.utcnow(),
+            upsert=True,
+        )
     return jsonify(ok=True)
 
 
