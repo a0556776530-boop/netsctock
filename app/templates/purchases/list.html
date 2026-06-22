@@ -220,7 +220,7 @@
       <div class="modal-header" style="background:#1e293b; color:#fff;">
         <h5 class="modal-title fw-bold" id="verifyModalLabel">
           <i class="bi bi-clipboard2-check me-2"></i>
-          {{ t.get('verify_modal_title','אימות קליטת פריטים') }} — <span id="verifyPurchaseName"></span>
+          {{ t.get('verify_modal_title','Item Receipt Verification') }}
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -232,12 +232,12 @@
       </div>
       <div class="modal-footer justify-content-between">
         <button type="button" id="btnVerifyAll" class="btn btn-outline-primary btn-sm">
-          <i class="bi bi-check-lg me-1"></i>{{ t.get('btn_verify_all','סמן הכל') }}
+          <i class="bi bi-check-lg me-1"></i>{{ t.get('btn_verify_all','Select All') }}
         </button>
         <div class="d-flex gap-2">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t.get('btn_cancel','ביטול') }}</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t.get('btn_cancel','Cancel') }}</button>
           <button type="button" id="btnVerifySubmit" class="btn btn-success fw-semibold px-4">
-            <i class="bi bi-box-seam me-1"></i>{{ t.get('btn_verify_submit','אשר קליטה') }}
+            <i class="bi bi-box-seam me-1"></i>{{ t.get('btn_verify_submit','Confirm Receipt') }}
           </button>
         </div>
       </div>
@@ -441,10 +441,10 @@
         '</td>' +
         '<td class="text-center">' +
           (done
-            ? '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.75rem;">הושלם</span>'
+            ? '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.75rem;">Completed</span>'
             : (item.received_qty > 0
-                ? '<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-size:.75rem;">חלקי</span>'
-                : '<span class="badge bg-secondary-subtle text-secondary" style="font-size:.75rem;">ממתין</span>')) +
+                ? '<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-size:.75rem;">Partial</span>'
+                : '<span class="badge bg-secondary-subtle text-secondary" style="font-size:.75rem;">Pending</span>')) +
         '</td>' +
       '</tr>';
     }).join('');
@@ -453,10 +453,10 @@
       '<table class="table table-sm align-middle mb-0">' +
         '<thead class="table-dark"><tr>' +
           '<th style="width:44px;"></th>' +
-          '<th>{{ t.get("purchase_item_asset","פריט") }}</th>' +
-          '<th class="text-center">{{ t.get("col_receive_now","קליטה עכשיו") }}</th>' +
-          '<th class="text-center">{{ t.get("asset_po_col_received","התקבל עד כה") }}</th>' +
-          '<th class="text-center">{{ t.get("purchase_col_status","סטטוס") }}</th>' +
+          '<th>{{ t.get("purchase_item_asset","Item") }}</th>' +
+          '<th class="text-center">{{ t.get("col_receive_now","Receive Now") }}</th>' +
+          '<th class="text-center">{{ t.get("asset_po_col_received","Received So Far") }}</th>' +
+          '<th class="text-center">{{ t.get("purchase_col_status","Status") }}</th>' +
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
       '</table>';
@@ -502,14 +502,14 @@
     .then(function (r) { return r.json(); })
     .then(function (data) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-box-seam me-1"></i>{{ t.get("btn_verify_submit","אשר קליטה") }}';
+      btn.innerHTML = '<i class="bi bi-box-seam me-1"></i>{{ t.get("btn_verify_submit","Confirm Receipt") }}';
       if (!data.ok) { alert(data.error || 'שגיאה'); return; }
       verifyModal.hide();
       window.location.href = window.location.pathname + '?status=all';
     })
     .catch(function () {
       btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-box-seam me-1"></i>{{ t.get("btn_verify_submit","אשר קליטה") }}';
+      btn.innerHTML = '<i class="bi bi-box-seam me-1"></i>{{ t.get("btn_verify_submit","Confirm Receipt") }}';
       alert('{{ t.get("js_network_error","Network error") }}');
     });
   });
