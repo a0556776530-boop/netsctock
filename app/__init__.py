@@ -101,6 +101,7 @@ def create_app(config_class=Config):
         ping_timeout=20,
         ping_interval=10,
         allow_upgrades=False,
+        transports=['polling'],
     )
 
     from datetime import datetime
