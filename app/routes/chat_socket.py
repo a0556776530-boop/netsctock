@@ -80,24 +80,27 @@ def on_connect():
         pass
     # Track connection count
     _ONLINE_COUNTS[uid] = _ONLINE_COUNTS.get(uid, 0) + 1
-    # State 1 → State 2: notify each DM sender individually via their personal notif room.
-    # Emitting to notif_<sender_id> guarantees delivery regardless of which room they have open.
-    try:
-        for doc in ChatMessage._get_collection().aggregate([
-            {'$match': {'receiver_id': uid, 'read': False}},
-            {'$group': {'_id': {'room': '$room', 'sender': '$user_id'}}},
-        ]):
-            room_key  = doc['_id']['room']
-            sender_id = doc['_id']['sender']
-            if room_key and room_key.startswith('pm_') and sender_id:
-                socketio.emit(
-                    'chat_delivered',
-                    {'room': room_key, 'recipient_id': uid},
-                    to='notif_' + sender_id,
-                    namespace='/',
-                )
-    except Exception:
-        pass
+    # State 1 → State 2: run in background task — calling socketio.emit() directly
+    # inside a socket handler causes eventlet lock contention and slows the server.
+    def _deliver(recipient_uid):
+        try:
+            for doc in ChatMessage._get_collection().aggregate([
+                {'$match': {'receiver_id': recipient_uid, 'read': False}},
+                {'$group': {'_id': {'room': '$room', 'sender': '$user_id'}}},
+            ]):
+                room_key  = doc['_id']['room']
+                sender_id = doc['_id']['sender']
+                if room_key and room_key.startswith('pm_') and sender_id:
+                    socketio.emit(
+                        'chat_delivered',
+                        {'room': room_key, 'recipient_id': recipient_uid},
+                        to='notif_' + sender_id,
+                        namespace='/',
+                    )
+        except Exception:
+            pass
+
+    socketio.start_background_task(_deliver, uid)
 
 
 @socketio.on('disconnect')
