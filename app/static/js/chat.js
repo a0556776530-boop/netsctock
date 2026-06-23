@@ -315,7 +315,7 @@
     // WebSocket handles real-time messages — no pollMessages needed.
     // pollConversations updates sidebar (last message preview, unread counts).
     // pollMessages kept as safety net for when socket is disconnected.
-    setInterval(function() { if (!S.socketReady) pollMessages(); }, 3000);
+    setInterval(function() { if (!S.socketReady) pollMessages(); }, 15000);
     setInterval(pollConversations, 60000);
 
     // Init WebSocket connection

@@ -39,9 +39,20 @@ class User(UserMixin, me.Document):
         return self.role == 'warehouse'
 
 
+_user_cache: dict = {}  # {user_id: (User, timestamp)}
+
+
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        return User.objects(id=user_id).first()
+        from datetime import datetime as _dt
+        now = _dt.utcnow()
+        cached = _user_cache.get(user_id)
+        if cached and (now - cached[1]).total_seconds() < 10:
+            return cached[0]
+        user = User.objects(id=user_id).first()
+        if user:
+            _user_cache[user_id] = (user, now)
+        return user
     except Exception:
         return None

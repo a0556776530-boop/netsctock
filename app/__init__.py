@@ -44,14 +44,23 @@ def create_app(config_class=Config):
     from flask_login import user_loaded_from_cookie
     from flask import request as _flask_req
 
+    _cookie_login_seen: dict = {}  # uid -> last recorded timestamp
+
     @user_loaded_from_cookie.connect_via(app)
     def _on_cookie_login(sender, user):
         try:
+            from datetime import datetime as _dt
+            uid = str(user.id)
+            now = _dt.utcnow()
+            last = _cookie_login_seen.get(uid)
+            if last and (now - last).total_seconds() < 300:
+                return  # skip DB query — recorded within last 5 min
+            _cookie_login_seen[uid] = now
             from .utils.login_recorder import record_login, get_ip
             record_login(
                 user_name=user.name,
                 user_role=user.role,
-                user_id=str(user.id),
+                user_id=uid,
                 ip=get_ip(_flask_req),
                 ua=_flask_req.headers.get('User-Agent', ''),
                 success=True,
