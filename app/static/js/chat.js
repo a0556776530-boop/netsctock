@@ -333,6 +333,17 @@
         S.conversations = d.conversations || [];
         S.pinned        = d.pinned        || [];
         S.favorites     = d.favorites     || [];
+        // Fix race: openRoom() may have run before conversations loaded (URL param).
+        // If a room is already open but roomType wasn't set, update it now and reload messages.
+        if (S.room && !S.roomType) {
+          var _cur = S.conversations.find(function(c){ return c.room === S.room; });
+          if (_cur) {
+            S.roomType   = _cur.type;
+            S.receiverId = _cur.type === 'dm' ? (_cur.user_id || '') : '';
+            // Re-render messages so checkmarks appear with correct room context
+            if (!S.loading) loadMessages();
+          }
+        }
         renderSidebar();
       }).catch(function(){});
   }
@@ -742,9 +753,8 @@
     var editedHTML = (msg.edited && !msg.deleted) ? '<span class="chat-edited-label">ערוך</span>' : '';
 
     var checks = '';
-    if (isMe && !msg.deleted && S.roomType === 'dm') {
-      // msg.read = true when recipient has opened the chat (set server-side)
-      // msg.readers.length > 1 = same thing, from DB readers array
+    var _isDM = (msg.room || S.room || '').startsWith('pm_');
+    if (isMe && !msg.deleted && _isDM) {
       var seen      = msg.read === true || (msg.readers && msg.readers.length > 1);
       var delivered = !seen && msg.receiver_online;
       var cls  = seen ? ' seen' : (delivered ? ' delivered' : '');
