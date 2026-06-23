@@ -49,12 +49,14 @@
 
     _socket.on('connect', function () {
       S.socketReady = true;
+      console.log('[CHAT] socket connected, room=', S.room);
       // Re-join current room on connect / reconnect, then send chat_seen for DMs
       if (S.room) _joinAndSeen(S.room);
     });
 
     _socket.on('disconnect', function () {
       S.socketReady = false;
+      console.log('[CHAT] socket disconnected');
     });
 
     // New message broadcast from server
@@ -127,6 +129,7 @@
 
     // State 1 → State 2: recipient came online — upgrade single gray to double gray
     _socket.on('chat_delivered', function(data) {
+      console.log('[CHAT] chat_delivered', data.room, 'S.room=', S.room);
       if (!EL.messagesArea || data.room !== S.room) return;
       $$('.chat-msg-row.out .chat-check', EL.messagesArea).forEach(function(el) {
         if (!el.classList.contains('seen')) {
@@ -139,6 +142,7 @@
 
     // State 2/3 → State 3: recipient opened this room — upgrade all to blue
     _socket.on('chat_read', function(data) {
+      console.log('[CHAT] chat_read', data.room, 'reader=', data.reader_id, 'S.room=', S.room, 'S.me=', S.me);
       if (!EL.messagesArea || data.room !== S.room || data.reader_id === S.me) return;
       $$('.chat-msg-row.out .chat-check', EL.messagesArea).forEach(function(el) {
         el.className = 'chat-check seen';
@@ -171,7 +175,11 @@
   // WebSocket frames are ordered on the same connection: chat_join is always
   // processed by the server before chat_seen, so emitting them back-to-back is safe.
   function _joinAndSeen(roomKey) {
-    if (!_socket || !S.socketReady || !roomKey) return;
+    if (!_socket || !S.socketReady || !roomKey) {
+      console.log('[CHAT] _joinAndSeen SKIPPED', roomKey, 'ready=', S.socketReady);
+      return;
+    }
+    console.log('[CHAT] _joinAndSeen', roomKey);
     _socket.emit('chat_join', { room: roomKey });
     if (roomKey.startsWith('pm_')) {
       _socket.emit('chat_seen', { room: roomKey });

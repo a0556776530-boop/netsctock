@@ -124,10 +124,13 @@ def on_chat_seen(data):
     room_key = (data.get('room') or '').strip()
     if not room_key.startswith('pm_'):
         return
-    # Mark unread messages as read
-    ChatMessage.objects(
-        room=room_key, receiver_id=uid, read=False
-    ).update(set__read=True, add_to_set__readers=uid)
+    # Mark unread messages as read — wrapped so emit always fires even on DB error
+    try:
+        ChatMessage.objects(
+            room=room_key, receiver_id=uid, read=False
+        ).update(set__read=True, add_to_set__readers=uid)
+    except Exception:
+        import traceback; traceback.print_exc()
     # Emit to the room — sender receives this and turns their checkmarks blue
     emit('chat_read', {'room': room_key, 'reader_id': uid}, to=room_key)
 
