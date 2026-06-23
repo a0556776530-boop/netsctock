@@ -41,7 +41,7 @@
     if (typeof io === 'undefined') return;  // socket.io not loaded
 
     _socket = io({
-      transports: ['websocket', 'polling'],  // prefer WebSocket, fall back to polling
+      transports: ['polling', 'websocket'],  // polling first — more stable on Render
       reconnection:      true,
       reconnectionDelay: 1000,
       reconnectionAttempts: Infinity,
@@ -49,14 +49,14 @@
 
     _socket.on('connect', function () {
       S.socketReady = true;
-      console.log('[CHAT] socket connected, room=', S.room);
+      console.log('[CHAT] socket connected, room=', S.room, 'transport=', _socket.io.engine.transport.name);
       // Re-join current room on connect / reconnect, then send chat_seen for DMs
       if (S.room) _joinAndSeen(S.room);
     });
 
-    _socket.on('disconnect', function () {
+    _socket.on('disconnect', function (reason) {
       S.socketReady = false;
-      console.log('[CHAT] socket disconnected');
+      console.log('[CHAT] socket disconnected, reason=', reason);
     });
 
     // New message broadcast from server
