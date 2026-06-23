@@ -249,17 +249,12 @@ def api_messages():
         if not grp or not grp.is_member(current_user.id):
             return jsonify(messages=[])
 
-    # For DMs: derive receiver_id from room key if not supplied, then check socket presence
+    # For DMs: look up the other user's online status once
     recv_online = False
-    if room_key.startswith('pm_'):
-        if not receiver_id:
-            parts = room_key[3:].split('_')
-            uid_me = str(current_user.id)
-            if len(parts) == 2:
-                receiver_id = parts[1] if parts[0] == uid_me else parts[0]
-        if receiver_id:
-            from app.routes.chat_socket import is_socket_connected
-            recv_online = is_socket_connected(receiver_id)
+    if room_key.startswith('pm_') and receiver_id:
+        other = User.objects(id=receiver_id).only('last_seen').first()
+        if other:
+            recv_online = _is_online(other)
 
     def _to_d(m):
         # receiver_online only relevant for messages sent by current user
@@ -490,12 +485,14 @@ def api_read():
     room_key = data.get('room', '')
     uid      = str(current_user.id)
     if room_key.startswith('pm_'):
-        # Mark read in DB only — tick update is handled by chat_seen socket event.
-        # socketio.emit from HTTP context is unreliable (eventlet); the socket path
-        # (on_chat_seen) is the authoritative real-time path.
         ChatMessage.objects(
             room=room_key, receiver_id=uid, read=False
         ).update(set__read=True, add_to_set__readers=uid)
+        # Always notify — even if 0 messages updated, sender's existing
+        # checkmarks may still need updating (e.g. page reload after read)
+        from app import socketio
+        socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
+                      to=room_key, namespace='/')
     elif room_key:
         ChatLastRead.objects(user_id=uid, room=room_key).update_one(
             set__last_read_at=datetime.utcnow(),
