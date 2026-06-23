@@ -168,18 +168,13 @@
   var $$ = function(sel, ctx) { return Array.from((ctx||document).querySelectorAll(sel)); };
 
   /* ── Socket helpers ─────────────────────────────────────────────────────── */
-  // Emit chat_join then — for DM rooms only — wait for server's chat_joined ACK
-  // before emitting chat_seen. This serialization prevents chat_read from being
-  // broadcast to a room the recipient hasn't actually joined yet (Bug 3 fix).
+  // WebSocket frames are ordered on the same connection: chat_join is always
+  // processed by the server before chat_seen, so emitting them back-to-back is safe.
   function _joinAndSeen(roomKey) {
     if (!_socket || !S.socketReady || !roomKey) return;
     _socket.emit('chat_join', { room: roomKey });
     if (roomKey.startsWith('pm_')) {
-      _socket.once('chat_joined', function(data) {
-        if (data.room === roomKey && S.room === roomKey) {
-          _socket.emit('chat_seen', { room: roomKey });
-        }
-      });
+      _socket.emit('chat_seen', { room: roomKey });
     }
   }
 
