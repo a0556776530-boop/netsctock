@@ -42,8 +42,9 @@
 
     _socket = io({
       transports: ['polling'],
-      reconnection:      true,
-      reconnectionDelay: 1000,
+      reconnection:         true,
+      reconnectionDelay:    3000,
+      reconnectionDelayMax: 15000,
       reconnectionAttempts: Infinity,
     });
 
@@ -564,11 +565,11 @@
   }
 
   /* ── Messages ───────────────────────────────────────────────────────────── */
-  function loadMessages() {
+  function loadMessages(_retry) {
     if (!S.room || !EL.messagesArea) return;
     var roomAtLoad = S.room;
     var _ctrl = new AbortController();
-    var _tid = setTimeout(function() { _ctrl.abort(); }, 8000);
+    var _tid = setTimeout(function() { _ctrl.abort(); }, 10000);
     fetch('/chat/api/messages?room=' + encodeURIComponent(S.room), { signal: _ctrl.signal })
       .then(function(r){ clearTimeout(_tid); return r.json(); })
       .then(function(d){
@@ -595,7 +596,12 @@
       }).catch(function(){
         S.loading = false;
         S._msgBuf = [];
-        if (EL.messagesArea) EL.messagesArea.innerHTML = '<div class="text-center text-muted p-4" style="font-size:.9rem">שגיאה בטעינת ההודעות. לחץ על השיחה שוב.</div>';
+        if (S.room !== roomAtLoad) return;
+        if (!_retry) {
+          setTimeout(function() { if (S.room === roomAtLoad) loadMessages(true); }, 2000);
+        } else {
+          if (EL.messagesArea) EL.messagesArea.innerHTML = '<div class="text-center text-muted p-4" style="font-size:.9rem">שגיאה בטעינת ההודעות. לחץ על השיחה שוב.</div>';
+        }
       });
   }
 
