@@ -3,6 +3,7 @@ Flask-Login==0.6.3
 Flask-Bcrypt==1.0.1
 Flask-WTF==1.2.1
 Flask-SocketIO==5.3.6
+simple-websocket==1.1.0
 mongoengine==0.29.3
 pymongo==4.17.0
 dnspython==2.8.0
