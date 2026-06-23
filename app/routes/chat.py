@@ -126,7 +126,12 @@ def delete_group(group_id):
 @chat_bp.route('/api/conversations')
 @login_required
 def api_conversations():
+    from app.utils.cache import cache as _cache
     me_id  = str(current_user.id)
+    _ck = f'chat_convs_{me_id}'
+    _hit = _cache.get(_ck)
+    if _hit:
+        return jsonify(_hit)
     me_obj = User.objects(id=me_id).first()
     pinned    = list(me_obj.pinned_rooms    or [])
     favorites = list(me_obj.favorite_rooms or [])
@@ -231,7 +236,9 @@ def api_conversations():
                        'online': _is_online(u),
                        'pinned': rk in pinned, 'favorite': rk in favorites})
 
-    return jsonify(conversations=result, pinned=pinned, favorites=favorites)
+    payload = dict(conversations=result, pinned=pinned, favorites=favorites)
+    _cache.set(_ck, payload, timeout=10)
+    return jsonify(payload)
 
 
 # ── API: messages ──────────────────────────────────────────────────────────────
