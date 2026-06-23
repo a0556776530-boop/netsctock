@@ -488,6 +488,11 @@ def api_read():
         ChatMessage.objects(
             room=room_key, receiver_id=uid, read=False
         ).update(set__read=True, add_to_set__readers=uid)
+        # Always notify — even if 0 messages updated, sender's existing
+        # checkmarks may still need updating (e.g. page reload after read)
+        from app import socketio
+        socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
+                      to=room_key, namespace='/')
     elif room_key:
         ChatLastRead.objects(user_id=uid, room=room_key).update_one(
             set__last_read_at=datetime.utcnow(),
