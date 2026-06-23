@@ -41,7 +41,7 @@
     if (typeof io === 'undefined') return;  // socket.io not loaded
 
     _socket = io({
-      transports: ['websocket', 'polling'],  // prefer WebSocket, fall back to polling
+      transports: ['polling'],
       reconnection:      true,
       reconnectionDelay: 1000,
       reconnectionAttempts: Infinity,

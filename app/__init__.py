@@ -100,6 +100,7 @@ def create_app(config_class=Config):
         engineio_logger=False,
         ping_timeout=20,
         ping_interval=10,
+        allow_upgrades=False,
     )
 
     from datetime import datetime
