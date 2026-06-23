@@ -94,12 +94,12 @@ def on_chat_seen(data):
         ).update(set__read=True, add_to_set__readers=uid)
     except Exception:
         pass
-    # Notify only the sender — avoids emitting back to the current socket
-    # which causes lock contention with async_mode='threading'
+    # Notify only the sender via their personal notif room — avoids
+    # emitting back to the current socket (lock contention in threading mode)
     parts     = room_key[3:].split('_')   # pm_A_B → ['A', 'B']
     sender_id = parts[1] if parts[0] == uid else parts[0]
-    socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
-                  to='notif_' + sender_id)
+    emit('chat_read', {'room': room_key, 'reader_id': uid},
+         to='notif_' + sender_id)
 
 
 # ── Join / leave room ─────────────────────────────────────────────────────────
