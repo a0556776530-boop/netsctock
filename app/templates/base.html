@@ -308,16 +308,24 @@ setInterval(function() {
     t.addEventListener('click', function(){ clearTimeout(_timer); });
   }
 
-  // ── Badge polling (keeps nav badge accurate every 20s) ──────────────────────
+  // ── Badge polling + fallback toast (every 5s) ───────────────────────────────
+  var _prevCount = null;
+  var _onChat    = window.location.pathname.startsWith('/chat');
   (function pollBadge() {
     fetch('/api/unread-count').then(function(r){ return r.json(); }).then(function(d){
+      var n     = d.count || 0;
       var badge = document.getElementById('chatUnreadBadge');
       if (badge) {
-        if (d.count > 0) { badge.textContent = d.count; badge.classList.remove('d-none'); }
+        if (n > 0) { badge.textContent = n; badge.classList.remove('d-none'); }
         else badge.classList.add('d-none');
       }
+      // Show toast on non-chat pages when count rises (socket fallback)
+      if (!_onChat && _prevCount !== null && n > _prevCount) {
+        showChatToast({ sender: 'הודעה חדשה', text: '', room: '', room_name: 'צ\'אט' });
+      }
+      _prevCount = n;
     }).catch(function(){});
-    setTimeout(pollBadge, 20000);
+    setTimeout(pollBadge, 5000);
   })();
 
   // ── Real-time socket notification (non-chat pages only) ──────────────────────

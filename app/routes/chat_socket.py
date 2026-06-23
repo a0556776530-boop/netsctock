@@ -142,7 +142,7 @@ def on_chat_send(data):
         'deleted':        False,
         'timestamp':      ts.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%H:%M'),
         'date':           ts.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%d/%m/%Y'),
-        '_iso':           ts.isoformat(),
+        '_iso':           ts.isoformat() + 'Z',
         'room':           room_key,
         'receiver_id':    receiver_id,
         'readers':        [uid],
@@ -209,10 +209,10 @@ def on_chat_send(data):
     def _notify():
         try:
             emit_chat_notify(uid, uname, text, room_key, _rname)
-        except Exception:
-            pass
+        except Exception as e:
+            import traceback; traceback.print_exc()
 
-    threading.Thread(target=_notify, daemon=True).start()
+    socketio.start_background_task(_notify)
 
 
 # ── Typing indicator ──────────────────────────────────────────────────────────

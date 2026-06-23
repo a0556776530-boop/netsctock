@@ -191,7 +191,7 @@ def api_conversations():
             return '', '', ''
         ts = doc['timestamp']
         display = ts.strftime('%H:%M') if ts else ''
-        iso     = ts.isoformat() if ts else ''
+        iso     = (ts.isoformat() + 'Z') if ts else ''
         return (doc.get('text') or '')[:60], display, iso
 
     result = []
