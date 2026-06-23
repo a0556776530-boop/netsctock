@@ -19,6 +19,15 @@ from app.models.chat_group   import ChatGroup
 from app.models.user         import User
 from app.routes.chat         import _can_access_room, _is_online, _ONLINE_MINS
 
+# ── Online presence (socket-based, single-worker safe) ────────────────────────
+# uid → number of active socket connections (supports multiple tabs)
+_ONLINE_COUNTS: dict = {}
+
+
+def is_socket_connected(uid: str) -> bool:
+    """True if the user has at least one active Socket.IO connection."""
+    return _ONLINE_COUNTS.get(str(uid), 0) > 0
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -69,11 +78,38 @@ def on_connect():
             join_room('notif_grp_' + str(g.id))
     except Exception:
         pass
+    # Track connection count
+    _ONLINE_COUNTS[uid] = _ONLINE_COUNTS.get(uid, 0) + 1
+    # State 1 → State 2: notify each DM sender individually via their personal notif room.
+    # Emitting to notif_<sender_id> guarantees delivery regardless of which room they have open.
+    try:
+        for doc in ChatMessage._get_collection().aggregate([
+            {'$match': {'receiver_id': uid, 'read': False}},
+            {'$group': {'_id': {'room': '$room', 'sender': '$user_id'}}},
+        ]):
+            room_key  = doc['_id']['room']
+            sender_id = doc['_id']['sender']
+            if room_key and room_key.startswith('pm_') and sender_id:
+                socketio.emit(
+                    'chat_delivered',
+                    {'room': room_key, 'recipient_id': uid},
+                    to='notif_' + sender_id,
+                    namespace='/',
+                )
+    except Exception:
+        pass
 
 
 @socketio.on('disconnect')
 def on_disconnect():
-    pass
+    if not current_user.is_authenticated:
+        return
+    uid = str(current_user.id)
+    count = _ONLINE_COUNTS.get(uid, 1) - 1
+    if count <= 0:
+        _ONLINE_COUNTS.pop(uid, None)
+    else:
+        _ONLINE_COUNTS[uid] = count
 
 
 # ── Read receipt ──────────────────────────────────────────────────────────────
@@ -152,11 +188,7 @@ def on_chat_send(data):
                      room_key.startswith('ch_') or
                      room_key.startswith('grp_'))
 
-    recv_online = False
-    if receiver_id:
-        other = User.objects(id=receiver_id).only('last_seen').first()
-        if other:
-            recv_online = _is_online(other)
+    recv_online = is_socket_connected(receiver_id) if receiver_id else False
 
     # Pre-generate the MongoDB ObjectId so we can broadcast before the DB write
     msg_id = _BsonOID()
@@ -194,9 +226,10 @@ def on_chat_send(data):
     emit('chat_message', msg_dict, to=room_key)
     if tmp_id:
         emit('chat_confirmed', {
-            'tmp_id':  tmp_id,
-            'real_id': str(msg_id),
-            '_iso':    ts.isoformat(),
+            'tmp_id':          tmp_id,
+            'real_id':         str(msg_id),
+            '_iso':            ts.isoformat(),
+            'receiver_online': recv_online,
         }, to=sid)
 
     # 2. Persist asynchronously — does not block the WebSocket response

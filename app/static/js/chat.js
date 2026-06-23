@@ -49,8 +49,8 @@
 
     _socket.on('connect', function () {
       S.socketReady = true;
-      // Re-join current room after reconnect
-      if (S.room) _socket.emit('chat_join', { room: S.room });
+      // Re-join current room on connect / reconnect, then send chat_seen for DMs
+      if (S.room) _joinAndSeen(S.room);
     });
 
     _socket.on('disconnect', function () {
@@ -103,10 +103,20 @@
       if (el) {
         el.setAttribute('data-id', data.real_id);
         el.style.opacity = '';
+        // State 1 → State 2: if recipient was already online when we sent, show double gray
+        if (data.receiver_online) {
+          var chk = el.querySelector('.chat-check');
+          if (chk && !chk.classList.contains('seen')) {
+            chk.className = 'chat-check delivered';
+            var ico = chk.querySelector('i');
+            if (ico) ico.className = 'bi bi-check-all';
+          }
+        }
         // Migrate msgMap entry from tmp to real id
         if (_msgMap[data.tmp_id]) {
           _msgMap[data.real_id] = _msgMap[data.tmp_id];
           _msgMap[data.real_id].id = data.real_id;
+          if (data.receiver_online) _msgMap[data.real_id].receiver_online = true;
           delete _msgMap[data.tmp_id];
         }
       }
@@ -115,7 +125,19 @@
       }
     });
 
-    // Read receipt — update outgoing message checkmarks to blue when recipient reads
+    // State 1 → State 2: recipient came online — upgrade single gray to double gray
+    _socket.on('chat_delivered', function(data) {
+      if (!EL.messagesArea || data.room !== S.room) return;
+      $$('.chat-msg-row.out .chat-check', EL.messagesArea).forEach(function(el) {
+        if (!el.classList.contains('seen')) {
+          el.className = 'chat-check delivered';
+          var ico = el.querySelector('i');
+          if (ico) ico.className = 'bi bi-check-all';
+        }
+      });
+    });
+
+    // State 2/3 → State 3: recipient opened this room — upgrade all to blue
     _socket.on('chat_read', function(data) {
       if (!EL.messagesArea || data.room !== S.room || data.reader_id === S.me) return;
       $$('.chat-msg-row.out .chat-check', EL.messagesArea).forEach(function(el) {
@@ -144,6 +166,22 @@
   /* ── DOM refs ───────────────────────────────────────────────────────────── */
   var $ = function(sel, ctx) { return (ctx||document).querySelector(sel); };
   var $$ = function(sel, ctx) { return Array.from((ctx||document).querySelectorAll(sel)); };
+
+  /* ── Socket helpers ─────────────────────────────────────────────────────── */
+  // Emit chat_join then — for DM rooms only — wait for server's chat_joined ACK
+  // before emitting chat_seen. This serialization prevents chat_read from being
+  // broadcast to a room the recipient hasn't actually joined yet (Bug 3 fix).
+  function _joinAndSeen(roomKey) {
+    if (!_socket || !S.socketReady || !roomKey) return;
+    _socket.emit('chat_join', { room: roomKey });
+    if (roomKey.startsWith('pm_')) {
+      _socket.once('chat_joined', function(data) {
+        if (data.room === roomKey && S.room === roomKey) {
+          _socket.emit('chat_seen', { room: roomKey });
+        }
+      });
+    }
+  }
 
   var EL = {};
 
@@ -308,7 +346,11 @@
     // Event listeners
     bindEvents();
 
-    // Check URL param
+    // Init WebSocket first so _socket exists before openRoom() may need it
+    initSocket();
+
+    // Check URL param — openRoom will queue chat_join+chat_seen via the connect handler
+    // if the socket isn't ready yet (socketReady=false on first connect)
     var params = new URLSearchParams(window.location.search);
     if (params.get('room')) openRoom(params.get('room'));
 
@@ -317,9 +359,6 @@
     // pollMessages kept as safety net for when socket is disconnected.
     setInterval(function() { if (!S.socketReady) pollMessages(); }, 3000);
     setInterval(pollConversations, 60000);
-
-    // Init WebSocket connection
-    initSocket();
   }
 
   /* ── Theme ──────────────────────────────────────────────────────────────── */
@@ -501,15 +540,11 @@
     }
     if (EL.typingBar) EL.typingBar.innerHTML = '';
 
-    // Join room via WebSocket
-    if (_socket && S.socketReady) {
-      _socket.emit('chat_join', { room: roomKey });
-    }
-
-    // Mark as read: DMs via socket (real-time, reliable), groups via HTTP
-    if (roomKey.startsWith('pm_') && _socket && S.socketReady) {
-      _socket.emit('chat_seen', { room: roomKey });
-    } else {
+    // Join room and send read receipt:
+    // DMs — chat_join → wait for chat_joined → chat_seen (serialized, reliable)
+    // Groups — chat_join + api/read (last_read_at tracking)
+    _joinAndSeen(roomKey);
+    if (!roomKey.startsWith('pm_')) {
       apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
     }
     // Surgically clear the unread badge
