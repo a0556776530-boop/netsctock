@@ -485,9 +485,20 @@ def api_read():
     room_key = data.get('room', '')
     uid      = str(current_user.id)
     if room_key.startswith('pm_'):
-        ChatMessage.objects(
+        result = ChatMessage.objects(
             room=room_key, receiver_id=uid, read=False
         ).update(set__read=True, add_to_set__readers=uid)
+        # Notify the sender in real-time so their checkmarks turn blue instantly
+        if result:
+            def _emit_read():
+                try:
+                    from app import socketio
+                    socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
+                                  to=room_key, namespace='/')
+                except Exception:
+                    pass
+            import threading
+            threading.Thread(target=_emit_read, daemon=True).start()
     elif room_key:
         ChatLastRead.objects(user_id=uid, room=room_key).update_one(
             set__last_read_at=datetime.utcnow(),

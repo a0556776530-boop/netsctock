@@ -96,6 +96,16 @@
       }
     });
 
+    // Read receipt — update outgoing message checkmarks to blue when recipient reads
+    _socket.on('chat_read', function(data) {
+      if (!EL.messagesArea || data.room !== S.room || data.reader_id === S.me) return;
+      $$('.chat-msg-row.out .chat-check', EL.messagesArea).forEach(function(el) {
+        el.className = 'chat-check seen';
+        var ico = el.querySelector('i');
+        if (ico) { ico.className = 'bi bi-check-all'; }
+      });
+    });
+
     // Typing indicator from others
     _socket.on('chat_typing', function (data) {
       if (!EL.typingBar || data.user_id === S.me) return;
@@ -368,6 +378,10 @@
 
     closeSearch();
     renderChatWindow();
+    // Clear old messages immediately — don't wait for fetch to return
+    if (EL.messagesArea) {
+      EL.messagesArea.innerHTML = '<div class="chat-loading-spinner"><div class="spinner-border spinner-border-sm text-secondary" role="status"></div></div>';
+    }
     loadMessages();
     closeReplyBar();
 

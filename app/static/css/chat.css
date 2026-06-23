@@ -430,6 +430,15 @@
   scrollbar-color: var(--chat-divider) transparent;
 }
 
+/* Loading spinner shown during room transition */
+.chat-loading-spinner {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+}
+
 /* Date divider */
 .chat-date-divider {
   text-align: center;
