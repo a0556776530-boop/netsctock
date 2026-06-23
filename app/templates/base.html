@@ -331,7 +331,7 @@ setInterval(function() {
   // socket.io is loaded in base.html <head> for all authenticated users,
   // so io() is available here without dynamic loading.
   if (!window.location.pathname.startsWith('/chat') && window.APP_ME_ID && typeof io !== 'undefined') {
-    var _ns = io({ transports: ['websocket', 'polling'], reconnectionAttempts: 5 });
+    var _ns = io({ transports: ['polling'], reconnectionAttempts: 5 });
     _ns.on('chat_notify', function(d) {
       if (d.sender_id === window.APP_ME_ID) return; // skip own messages in other tabs
       showChatToast(d);
