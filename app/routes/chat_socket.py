@@ -76,6 +76,26 @@ def on_disconnect():
     pass
 
 
+# ── Read receipt ──────────────────────────────────────────────────────────────
+
+@socketio.on('chat_seen')
+def on_chat_seen(data):
+    """Recipient tells server they've seen new messages — runs inside socket
+    context so emit is guaranteed reliable with eventlet/gevent."""
+    if not current_user.is_authenticated:
+        return
+    uid      = str(current_user.id)
+    room_key = (data.get('room') or '').strip()
+    if not room_key.startswith('pm_'):
+        return
+    # Mark unread messages as read
+    ChatMessage.objects(
+        room=room_key, receiver_id=uid, read=False
+    ).update(set__read=True, add_to_set__readers=uid)
+    # Emit to the room — sender receives this and turns their checkmarks blue
+    emit('chat_read', {'room': room_key, 'reader_id': uid}, to=room_key)
+
+
 # ── Join / leave room ─────────────────────────────────────────────────────────
 
 @socketio.on('chat_join')

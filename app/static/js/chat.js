@@ -84,14 +84,11 @@
       playPing();
       showToast(msg);
 
-      // Acknowledge read to sender so their checkmarks turn blue.
-      // Debounced — fires once per burst of messages, not per message.
-      clearTimeout(_readAckTimer);
-      _readAckTimer = setTimeout(function() {
-        if (S.room && S.room.startsWith('pm_')) {
-          apiPost('/chat/api/read', {room: S.room}).catch(function(){});
-        }
-      }, 400);
+      // Tell server we've seen this message — fires via socket (reliable with eventlet).
+      // Server marks read + emits chat_read back to the sender.
+      if (S.room && S.room.startsWith('pm_') && _socket && S.socketReady) {
+        _socket.emit('chat_seen', { room: S.room });
+      }
     });
 
     // Server confirms our optimistic message: tmp_id → real id
@@ -509,8 +506,12 @@
       _socket.emit('chat_join', { room: roomKey });
     }
 
-    // Mark as read immediately (DMs + groups/channels)
-    apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
+    // Mark as read: DMs via socket (real-time, reliable), groups via HTTP
+    if (roomKey.startsWith('pm_') && _socket && S.socketReady) {
+      _socket.emit('chat_seen', { room: roomKey });
+    } else {
+      apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
+    }
     // Surgically clear the unread badge
     if (EL.convList) {
       var _openItem = EL.convList.querySelector('[data-room="' + roomKey + '"]');
