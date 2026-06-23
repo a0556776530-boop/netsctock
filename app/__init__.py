@@ -107,10 +107,14 @@ def create_app(config_class=Config):
         g.t = TRANSLATIONS[lang]
         g.dir_html = 'rtl' if lang == 'he' else 'ltr'
 
-        # Update last_seen on every authenticated request
+        # Update last_seen — throttled to once per 30s to avoid write on every AJAX call
         if current_user.is_authenticated:
-            from .models.user import User
-            User.objects(id=current_user.id).update_one(set__last_seen=datetime.utcnow())
+            now = datetime.utcnow()
+            ls = current_user.last_seen
+            if ls is None or (now - ls).total_seconds() > 30:
+                from .models.user import User
+                User.objects(id=current_user.id).update_one(set__last_seen=now)
+                current_user.last_seen = now
 
 
     from zoneinfo import ZoneInfo

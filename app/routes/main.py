@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, jsonify, redirect, request, session, url_for
 from flask_login import login_required, current_user
+from app.utils.cache import cache
 
 from app.models.asset import Asset, AssetEvent, AssetType
 from app.models.task import Task
@@ -143,6 +144,7 @@ def save_settings():
 
 @main_bp.route('/')
 @login_required
+@cache.cached(timeout=30, key_prefix=lambda: f'dashboard_{current_user.id}')
 def dashboard():
     if current_user.is_warehouse:
         return redirect(url_for('estimates.list_estimates'))
