@@ -147,6 +147,12 @@ def save_settings():
 def dashboard():
     if current_user.is_warehouse:
         return redirect(url_for('estimates.list_estimates'))
+
+    _cache_key = 'dashboard_data'
+    _cached = cache.get(_cache_key)
+    if _cached:
+        return render_template('dashboard.html', **_cached)
+
     from mongoengine import Q
     from app.models.estimate import Estimate
     from app.models.purchase import Purchase
@@ -302,8 +308,7 @@ def dashboard():
         activity_data.append(activity_by_day.get(day.strftime('%Y-%m-%d'), 0))
     activity_chart = {'labels': activity_labels, 'data': activity_data}
 
-    return render_template(
-        'dashboard.html',
+    _ctx = dict(
         total_assets=total_assets,
         status_counts=status_counts,
         recent_events=recent_events,
@@ -321,3 +326,5 @@ def dashboard():
         status_chart=json.dumps(status_chart),
         activity_chart=json.dumps(activity_chart),
     )
+    cache.set(_cache_key, _ctx, timeout=30)
+    return render_template('dashboard.html', **_ctx)
