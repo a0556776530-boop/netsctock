@@ -88,12 +88,18 @@ def on_chat_seen(data):
     room_key = (data.get('room') or '').strip()
     if not room_key.startswith('pm_'):
         return
-    # Mark unread messages as read
-    ChatMessage.objects(
-        room=room_key, receiver_id=uid, read=False
-    ).update(set__read=True, add_to_set__readers=uid)
-    # Emit to the room — sender receives this and turns their checkmarks blue
-    emit('chat_read', {'room': room_key, 'reader_id': uid}, to=room_key)
+    try:
+        ChatMessage.objects(
+            room=room_key, receiver_id=uid, read=False
+        ).update(set__read=True, add_to_set__readers=uid)
+    except Exception:
+        pass
+    # Notify only the sender — avoids emitting back to the current socket
+    # which causes lock contention with async_mode='threading'
+    parts     = room_key[3:].split('_')   # pm_A_B → ['A', 'B']
+    sender_id = parts[1] if parts[0] == uid else parts[0]
+    socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
+                  to='notif_' + sender_id)
 
 
 # ── Join / leave room ─────────────────────────────────────────────────────────
