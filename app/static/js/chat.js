@@ -30,7 +30,8 @@
     _msgBuf:        [],      // socket messages buffered during room switch
   };
 
-  var _msgMap = {};  // msgId → msg object, used by event delegation handlers
+  var _msgMap      = {};  // msgId → msg object, used by event delegation handlers
+  var _readAckTimer = null; // debounce timer for read acknowledgment
 
   /* ── WebSocket (Socket.IO) ───────────────────────────────────────────────── */
   var _socket          = null;
@@ -82,6 +83,15 @@
       if (atBottom) scrollBottom();
       playPing();
       showToast(msg);
+
+      // Acknowledge read to sender so their checkmarks turn blue.
+      // Debounced — fires once per burst of messages, not per message.
+      clearTimeout(_readAckTimer);
+      _readAckTimer = setTimeout(function() {
+        if (S.room && S.room.startsWith('pm_')) {
+          apiPost('/chat/api/read', {room: S.room}).catch(function(){});
+        }
+      }, 400);
     });
 
     // Server confirms our optimistic message: tmp_id → real id

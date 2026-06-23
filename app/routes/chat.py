@@ -485,14 +485,14 @@ def api_read():
     room_key = data.get('room', '')
     uid      = str(current_user.id)
     if room_key.startswith('pm_'):
-        result = ChatMessage.objects(
+        ChatMessage.objects(
             room=room_key, receiver_id=uid, read=False
         ).update(set__read=True, add_to_set__readers=uid)
-        # Notify the sender in real-time so their checkmarks turn blue instantly
-        if result:
-            from app import socketio
-            socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
-                          to=room_key, namespace='/')
+        # Always notify — even if 0 messages updated, sender's existing
+        # checkmarks may still need updating (e.g. page reload after read)
+        from app import socketio
+        socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
+                      to=room_key, namespace='/')
     elif room_key:
         ChatLastRead.objects(user_id=uid, room=room_key).update_one(
             set__last_read_at=datetime.utcnow(),
