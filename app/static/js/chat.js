@@ -567,8 +567,10 @@
   function loadMessages() {
     if (!S.room || !EL.messagesArea) return;
     var roomAtLoad = S.room;
-    fetch('/chat/api/messages?room=' + encodeURIComponent(S.room))
-      .then(function(r){ return r.json(); })
+    var _ctrl = new AbortController();
+    var _tid = setTimeout(function() { _ctrl.abort(); }, 8000);
+    fetch('/chat/api/messages?room=' + encodeURIComponent(S.room), { signal: _ctrl.signal })
+      .then(function(r){ clearTimeout(_tid); return r.json(); })
       .then(function(d){
         // Discard if user switched rooms while fetch was in-flight
         if (S.room !== roomAtLoad) { S.loading = false; S._msgBuf = []; return; }
@@ -590,7 +592,11 @@
         });
         S._msgBuf = [];
         scrollBottom();
-      }).catch(function(){ S.loading = false; S._msgBuf = []; });
+      }).catch(function(){
+        S.loading = false;
+        S._msgBuf = [];
+        if (EL.messagesArea) EL.messagesArea.innerHTML = '<div class="text-center text-muted p-4" style="font-size:.9rem">שגיאה בטעינת ההודעות. לחץ על השיחה שוב.</div>';
+      });
   }
 
   function pollMessages() {
