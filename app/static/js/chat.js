@@ -26,7 +26,11 @@
     searchIdx:      -1,
     forwardMsgId:   null,
     socketReady:    false,   // WebSocket connected and authenticated
+    loading:        false,   // true while loadMessages fetch is in-flight
+    _msgBuf:        [],      // socket messages buffered during room switch
   };
+
+  var _msgMap = {};  // msgId → msg object, used by event delegation handlers
 
   /* ── WebSocket (Socket.IO) ───────────────────────────────────────────────── */
   var _socket          = null;
@@ -59,16 +63,18 @@
 
       if (!EL.messagesArea) return;
 
-      // Skip if we already have this message (own optimistic or duplicate)
-      if (EL.messagesArea.querySelector('[data-id="' + msg.id + '"]')) return;
-
       // Own message — the optimistic bubble is already showing; chat_confirmed upgrades it
       if (msg.user_id === S.me) return;
 
       // Message is for a different room — toast only
       if (msg.room !== S.room) { showToast(msg); return; }
 
-      // Append instantly — no poll delay
+      // Buffer while loadMessages is in-flight — flush after load completes
+      if (S.loading) { S._msgBuf.push(msg); return; }
+
+      // Skip duplicates
+      if (EL.messagesArea.querySelector('[data-id="' + msg.id + '"]')) return;
+
       var area = EL.messagesArea;
       var atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
       appendMessage(msg, true);
@@ -90,6 +96,12 @@
       if (el) {
         el.setAttribute('data-id', data.real_id);
         el.style.opacity = '';
+        // Migrate msgMap entry from tmp to real id
+        if (_msgMap[data.tmp_id]) {
+          _msgMap[data.real_id] = _msgMap[data.tmp_id];
+          _msgMap[data.real_id].id = data.real_id;
+          delete _msgMap[data.tmp_id];
+        }
       }
       if (data._iso && (S.lastTs === null || data._iso > S.lastTs)) {
         S.lastTs = data._iso;
@@ -182,6 +194,104 @@
       EL.convList.addEventListener('click', function(e) {
         var item = e.target.closest('.chat-conv-item');
         if (item && item.dataset.room) openRoom(item.dataset.room);
+      });
+    }
+
+    // ── Message area event delegation — replaces N listeners per message ──
+    if (EL.messagesArea) {
+      var _pressTimer = null;
+
+      // Right-click context menu
+      EL.messagesArea.addEventListener('contextmenu', function(e) {
+        var row = e.target.closest('.chat-msg-row');
+        if (!row) return;
+        e.preventDefault();
+        var msg = _msgMap[row.dataset.id];
+        if (msg) showContextMenu(e, msg, msg.user_id === S.me);
+      });
+
+      // Long-press (mobile)
+      EL.messagesArea.addEventListener('touchstart', function(e) {
+        var row = e.target.closest('.chat-msg-row');
+        if (!row) return;
+        _pressTimer = setTimeout(function() {
+          var msg = _msgMap[row.dataset.id];
+          if (msg) showContextMenu(e.touches[0], msg, msg.user_id === S.me);
+        }, 500);
+      }, { passive: true });
+      EL.messagesArea.addEventListener('touchend', function() { clearTimeout(_pressTimer); });
+
+      // All clicks — cba-trigger, cba-item, reaction-trigger, picker emoji, pill, lightbox
+      EL.messagesArea.addEventListener('click', function(e) {
+        // CBA trigger (⌄ action button)
+        var cbaTrig = e.target.closest('.cba-trigger');
+        if (cbaTrig) {
+          e.stopPropagation();
+          var menu = cbaTrig.nextElementSibling;
+          $$('.cba-menu.open', EL.messagesArea).forEach(function(m){ if (m !== menu) m.classList.remove('open'); });
+          if (menu) menu.classList.toggle('open');
+          return;
+        }
+        // CBA item (reply / copy / edit / forward / delete)
+        var cbaItem = e.target.closest('.cba-item');
+        if (cbaItem) {
+          e.stopPropagation();
+          var row = e.target.closest('.chat-msg-row');
+          if (row) { var m2 = row.querySelector('.cba-menu'); if (m2) m2.classList.remove('open'); }
+          var msg = row && _msgMap[row.dataset.id];
+          if (!msg) return;
+          var act = cbaItem.dataset.act;
+          if (act === 'reply')   setReply(msg);
+          if (act === 'copy')    navigator.clipboard && navigator.clipboard.writeText(msg.text || '');
+          if (act === 'react') { var rp = row.querySelector('.chat-reaction-picker'); if (rp) rp.classList.toggle('show'); }
+          if (act === 'edit')    startEditMessage(row, msg);
+          if (act === 'forward') openForwardModal(msg);
+          if (act === 'delete')  deleteMsg(msg.id);
+          return;
+        }
+        // Reaction picker toggle button
+        var rTrig = e.target.closest('.chat-reaction-trigger');
+        if (rTrig) {
+          e.stopPropagation();
+          var row = e.target.closest('.chat-msg-row');
+          var picker = row && row.querySelector('.chat-reaction-picker');
+          if (picker) picker.classList.toggle('show');
+          return;
+        }
+        // Reaction picker emoji
+        var pSpan = e.target.closest('.chat-reaction-picker span');
+        if (pSpan) {
+          e.stopPropagation();
+          var p2 = pSpan.closest('.chat-reaction-picker');
+          if (p2) p2.classList.remove('show');
+          var row = e.target.closest('.chat-msg-row');
+          if (row) sendReaction(row.dataset.id, pSpan.textContent);
+          return;
+        }
+        // Existing reaction pill
+        var pill = e.target.closest('.chat-reaction-pill');
+        if (pill) {
+          e.stopPropagation();
+          var row = e.target.closest('.chat-msg-row');
+          if (row) sendReaction(row.dataset.id, pill.dataset.emoji);
+          return;
+        }
+        // Image lightbox
+        var img = e.target.closest('.chat-file-preview img');
+        if (img && EL.lightbox && EL.lightboxImg) {
+          EL.lightboxImg.src = img.src;
+          EL.lightbox.classList.add('show');
+        }
+      });
+    }
+
+    // Forward modal — delegated once, prevents duplicate handlers on re-open
+    if (EL.forwardList) {
+      EL.forwardList.addEventListener('click', function(e) {
+        var item = e.target.closest('.chat-modal-item');
+        if (!item) return;
+        executeForward(S.forwardMsgId, item.dataset.room, item.dataset.rcv || null);
+        if (EL.forwardOverlay) EL.forwardOverlay.style.display = 'none';
       });
     }
 
@@ -363,14 +473,24 @@
     url.searchParams.set('room', roomKey);
     history.replaceState({}, '', url.toString());
 
-    // Join room via WebSocket so server pushes messages in real-time
+    // Clear messages + set loading flag BEFORE joining — prevents stale socket
+    // messages from landing in the spinner div then getting overwritten by loadMessages
+    S.loading = true;
+    S._msgBuf = [];
+    _msgMap   = {};
+    if (EL.messagesArea) {
+      EL.messagesArea.innerHTML = '<div class="chat-loading-spinner"><div class="spinner-border spinner-border-sm text-secondary" role="status"></div></div>';
+    }
+    if (EL.typingBar) EL.typingBar.innerHTML = '';
+
+    // Join room via WebSocket
     if (_socket && S.socketReady) {
       _socket.emit('chat_join', { room: roomKey });
     }
 
     // Mark as read immediately (DMs + groups/channels)
     apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
-    // Surgically clear the unread badge without re-rendering the whole sidebar
+    // Surgically clear the unread badge
     if (EL.convList) {
       var _openItem = EL.convList.querySelector('[data-room="' + roomKey + '"]');
       if (_openItem) { var _b = _openItem.querySelector('.chat-unread-badge'); if (_b) _b.style.display = 'none'; }
@@ -378,10 +498,6 @@
 
     closeSearch();
     renderChatWindow();
-    // Clear old messages immediately — don't wait for fetch to return
-    if (EL.messagesArea) {
-      EL.messagesArea.innerHTML = '<div class="chat-loading-spinner"><div class="spinner-border spinner-border-sm text-secondary" role="status"></div></div>';
-    }
     loadMessages();
     closeReplyBar();
 
@@ -428,23 +544,31 @@
   /* ── Messages ───────────────────────────────────────────────────────────── */
   function loadMessages() {
     if (!S.room || !EL.messagesArea) return;
+    var roomAtLoad = S.room;
     fetch('/chat/api/messages?room=' + encodeURIComponent(S.room))
       .then(function(r){ return r.json(); })
       .then(function(d){
+        // Discard if user switched rooms while fetch was in-flight
+        if (S.room !== roomAtLoad) { S.loading = false; S._msgBuf = []; return; }
         EL.messagesArea.innerHTML = '';
         var msgs = d.messages || [];
         var lastDate = '';
         msgs.forEach(function(msg){
-          var d = msg.date || '';
-          if (d !== lastDate) {
-            appendDateDivider(d);
-            lastDate = d;
-          }
+          var dt = msg.date || '';
+          if (dt !== lastDate) { appendDateDivider(dt); lastDate = dt; }
           appendMessage(msg, false);
         });
         if (msgs.length) S.lastTs = msgs[msgs.length - 1]._iso;
+        // Flush socket messages that arrived while loading
+        S.loading = false;
+        S._msgBuf.forEach(function(msg){
+          if (EL.messagesArea.querySelector('[data-id="' + msg.id + '"]')) return;
+          appendMessage(msg, true);
+          if (S.lastTs === null || msg._iso > S.lastTs) S.lastTs = msg._iso;
+        });
+        S._msgBuf = [];
         scrollBottom();
-      }).catch(function(){});
+      }).catch(function(){ S.loading = false; S._msgBuf = []; });
   }
 
   function pollMessages() {
@@ -553,88 +677,7 @@
     if (!animate) row.style.animation = 'none';
     row.innerHTML = buildBubbleHTML(msg, isMe);
     EL.messagesArea.appendChild(row);
-
-    // Context menu on right-click
-    row.addEventListener('contextmenu', function(e){
-      e.preventDefault();
-      showContextMenu(e, msg, isMe);
-    });
-
-    // Long-press for mobile
-    var pressTimer;
-    row.addEventListener('touchstart', function(e){
-      pressTimer = setTimeout(function(){ showContextMenu(e.touches[0], msg, isMe); }, 500);
-    });
-    row.addEventListener('touchend', function(){ clearTimeout(pressTimer); });
-
-    // Hover action menu trigger
-    var cbaTrigger = row.querySelector('.cba-trigger');
-    if (cbaTrigger) {
-      cbaTrigger.addEventListener('click', function(e) {
-        e.stopPropagation();
-        var menu = row.querySelector('.cba-menu');
-        $$('.cba-menu.open').forEach(function(m) { if (m !== menu) m.classList.remove('open'); });
-        menu.classList.toggle('open');
-      });
-      row.querySelectorAll('.cba-item').forEach(function(item) {
-        item.addEventListener('click', function(e) {
-          e.stopPropagation();
-          row.querySelector('.cba-menu').classList.remove('open');
-          var act = item.dataset.act;
-          if (act === 'reply')   setReply(msg);
-          if (act === 'copy')    navigator.clipboard && navigator.clipboard.writeText(msg.text || '');
-          if (act === 'react') {
-            var rp = row.querySelector('.chat-reaction-picker');
-            if (rp) rp.classList.toggle('show');
-          }
-          if (act === 'edit') {
-            var r2 = EL.messagesArea && EL.messagesArea.querySelector('[data-id="' + msg.id + '"]');
-            if (r2) startEditMessage(r2, msg);
-          }
-          if (act === 'forward') openForwardModal(msg);
-          if (act === 'delete')  deleteMsg(msg.id);
-        });
-      });
-    }
-
-    // Reaction picker toggle
-    var reactionTrigger = row.querySelector('.chat-reaction-trigger');
-    if (reactionTrigger) {
-      reactionTrigger.addEventListener('click', function(e){
-        e.stopPropagation();
-        var picker = row.querySelector('.chat-reaction-picker');
-        if (picker) picker.classList.toggle('show');
-      });
-    }
-
-    // Reaction pill clicks
-    row.querySelectorAll('.chat-reaction-picker span').forEach(function(el){
-      el.addEventListener('click', function(e){
-        e.stopPropagation();
-        var picker = el.closest('.chat-reaction-picker');
-        if (picker) picker.classList.remove('show');
-        sendReaction(msg.id, el.textContent);
-      });
-    });
-
-    // Existing reaction pill clicks
-    row.querySelectorAll('.chat-reaction-pill').forEach(function(el){
-      el.addEventListener('click', function(e){
-        e.stopPropagation();
-        sendReaction(msg.id, el.dataset.emoji);
-      });
-    });
-
-    // Image lightbox
-    var img = row.querySelector('.chat-file-preview img');
-    if (img) {
-      img.addEventListener('click', function(){
-        if (EL.lightbox && EL.lightboxImg) {
-          EL.lightboxImg.src = img.src;
-          EL.lightbox.classList.add('show');
-        }
-      });
-    }
+    _msgMap[msg.id] = msg;  // register for event delegation
   }
 
   var _EMOJI_ONLY_RE = /^[\p{Emoji}\s]+$/u;
@@ -699,11 +742,13 @@
     var editedHTML = (msg.edited && !msg.deleted) ? '<span class="chat-edited-label">ערוך</span>' : '';
 
     var checks = '';
-    if (isMe && !msg.deleted) {
-      var read      = msg.readers && msg.readers.length > 1;  // receiver is in readers
-      var delivered = !read && msg.receiver_online;           // online but not read yet
-      var cls = read ? ' seen' : (delivered ? ' delivered' : '');
-      var icon = (read || delivered) ? 'bi-check-all' : 'bi-check';
+    if (isMe && !msg.deleted && S.roomType === 'dm') {
+      // msg.read = true when recipient has opened the chat (set server-side)
+      // msg.readers.length > 1 = same thing, from DB readers array
+      var seen      = msg.read === true || (msg.readers && msg.readers.length > 1);
+      var delivered = !seen && msg.receiver_online;
+      var cls  = seen ? ' seen' : (delivered ? ' delivered' : '');
+      var icon = (seen || delivered) ? 'bi-check-all' : 'bi-check';
       checks = '<span class="chat-check' + cls + '"><i class="bi ' + icon + '"></i></span>';
     }
 
@@ -880,23 +925,26 @@
     var hh = String(now.getHours()).padStart(2, '0');
     var mm = String(now.getMinutes()).padStart(2, '0');
     var optimistic = {
-      id:            tmpId,
-      _iso:          now.toISOString(),
-      user_id:       S.me,
-      user_name:     S.meName,
-      user_role:     S.meRole,
-      text:          text,
-      timestamp:     hh + ':' + mm,
-      date:          now.toLocaleDateString('he-IL'),
-      reactions:     {},
-      deleted:       false,
-      edited:        false,
-      has_file:      false,
-      readers:       [],
-      forwarded:     false,
-      reply_to_id:   S.replyTo ? S.replyTo.id   : null,
-      reply_to_text: S.replyTo ? S.replyTo.text  : null,
-      reply_to_user: S.replyTo ? S.replyTo.user  : null,
+      id:              tmpId,
+      _iso:            now.toISOString(),
+      user_id:         S.me,
+      user_name:       S.meName,
+      user_role:       S.meRole,
+      text:            text,
+      timestamp:       hh + ':' + mm,
+      date:            now.toLocaleDateString('he-IL'),
+      reactions:       {},
+      deleted:         false,
+      edited:          false,
+      has_file:        false,
+      readers:         [S.me],
+      read:            false,
+      receiver_id:     S.receiverId || '',
+      receiver_online: false,
+      forwarded:       false,
+      reply_to_id:     S.replyTo ? S.replyTo.id   : null,
+      reply_to_text:   S.replyTo ? S.replyTo.text  : null,
+      reply_to_user:   S.replyTo ? S.replyTo.user  : null,
     };
 
     var replySnapshot = S.replyTo;
@@ -1006,14 +1054,7 @@
           var body = row.querySelector('.chat-msg-body');
           if (body) body.insertAdjacentHTML('beforeend', newHtml);
         }
-        // Re-bind reaction pill clicks
-        row.querySelectorAll('.chat-reaction-pill').forEach(function(el){
-          el.onclick = null;
-          el.addEventListener('click', function(e){
-            e.stopPropagation();
-            sendReaction(msgId, el.dataset.emoji);
-          });
-        });
+        // Pills handled by event delegation — no rebind needed
       });
   }
 
@@ -1419,14 +1460,7 @@
         avatar + '<span class="item-name">' + _esc(c.name) + '</span></div>';
     });
     EL.forwardList.innerHTML = html || '<div class="p-4 text-center text-muted" style="font-size:.85rem;">אין שיחות אחרות</div>';
-
-    EL.forwardList.querySelectorAll('.chat-modal-item').forEach(function(el){
-      el.addEventListener('click', function(){
-        executeForward(S.forwardMsgId, el.dataset.room, el.dataset.rcv || null);
-        EL.forwardOverlay.style.display = 'none';
-      });
-    });
-
+    // Clicks handled by delegation bound once in init()
     EL.forwardOverlay.style.display = 'flex';
   }
 

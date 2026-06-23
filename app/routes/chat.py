@@ -490,15 +490,9 @@ def api_read():
         ).update(set__read=True, add_to_set__readers=uid)
         # Notify the sender in real-time so their checkmarks turn blue instantly
         if result:
-            def _emit_read():
-                try:
-                    from app import socketio
-                    socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
-                                  to=room_key, namespace='/')
-                except Exception:
-                    pass
-            import threading
-            threading.Thread(target=_emit_read, daemon=True).start()
+            from app import socketio
+            socketio.emit('chat_read', {'room': room_key, 'reader_id': uid},
+                          to=room_key, namespace='/')
     elif room_key:
         ChatLastRead.objects(user_id=uid, room=room_key).update_one(
             set__last_read_at=datetime.utcnow(),
