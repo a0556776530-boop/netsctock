@@ -29,7 +29,10 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     # Connect MongoEngine to Atlas
-    me.connect(host=MONGO_URI, alias='default')
+    me.connect(host=MONGO_URI, alias='default',
+               serverSelectionTimeoutMS=5000,
+               socketTimeoutMS=10000,
+               connectTimeoutMS=5000)
 
     login_manager.init_app(app)
     bcrypt.init_app(app)
