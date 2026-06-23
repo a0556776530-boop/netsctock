@@ -313,14 +313,11 @@
     var params = new URLSearchParams(window.location.search);
     if (params.get('room')) openRoom(params.get('room'));
 
-    // WebSocket handles real-time messages — no pollMessages needed.
-    // pollConversations updates sidebar (last message preview, unread counts).
-    // pollMessages kept as safety net for when socket is disconnected.
-    setInterval(function() { if (!S.socketReady) pollMessages(); }, 15000);
-    setInterval(pollConversations, 60000);
-
-    // Init WebSocket connection
-    initSocket();
+    // Socket.IO disabled — pure HTTP polling to avoid thread starvation.
+    // Each socket.io long-poll holds a gunicorn thread; reconnect storms
+    // create zombie sessions that exhaust the thread pool and block all HTTP.
+    setInterval(pollMessages, 5000);
+    setInterval(pollConversations, 15000);
   }
 
   /* ── Theme ──────────────────────────────────────────────────────────────── */
