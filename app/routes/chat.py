@@ -162,7 +162,7 @@ def api_conversations():
         ]):
             unread_map[doc['_id']] = doc['count']
 
-    # Group/channel unread counts via last_read_at timestamps
+    # Group/channel unread counts — single aggregation (replaces N count_documents calls)
     try:
         from app.models.chat_last_read import ChatLastRead
         group_keys = grp_keys + ch_keys  # ch_keys already contains 'group'
@@ -171,18 +171,18 @@ def api_conversations():
             for d in ChatLastRead.objects(user_id=me_id, room__in=group_keys)
         }
         group_unread_map = {}
-        for rk in group_keys:
-            lr = last_read_docs.get(rk)
-            if lr is None:
-                group_unread_map[rk] = 0
-            else:
-                group_unread_map[rk] = ChatMessage._get_collection().count_documents({
-                    'room': rk,
-                    'user_id': {'$ne': me_id},
-                    'deleted': {'$ne': True},
-                    'timestamp': {'$gt': lr},
-                })
+        if last_read_docs:
+            or_conds = [
+                {'room': rk, 'timestamp': {'$gt': lr}}
+                for rk, lr in last_read_docs.items()
+            ]
+            for doc in ChatMessage._get_collection().aggregate([
+                {'$match': {'$or': or_conds, 'user_id': {'$ne': me_id}, 'deleted': {'$ne': True}}},
+                {'$group': {'_id': '$room', 'count': {'$sum': 1}}},
+            ]):
+                group_unread_map[doc['_id']] = doc['count']
     except Exception:
+        import traceback; traceback.print_exc()
         group_unread_map = {}
 
     def _last(rk):

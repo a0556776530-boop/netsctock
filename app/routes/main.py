@@ -56,13 +56,16 @@ def unread_count():
             d.room: d.last_read_at
             for d in ChatLastRead.objects(user_id=me_id, room__in=grp_keys)
         }
-        for rk in grp_keys:
-            lr = last_read_docs.get(rk)
-            if lr is not None:
-                group_count += ChatMessage._get_collection().count_documents({
-                    'room': rk, 'user_id': {'$ne': me_id},
-                    'deleted': {'$ne': True}, 'timestamp': {'$gt': lr},
-                })
+        if last_read_docs:
+            or_conds = [
+                {'room': rk, 'timestamp': {'$gt': lr}}
+                for rk, lr in last_read_docs.items()
+            ]
+            for doc in ChatMessage._get_collection().aggregate([
+                {'$match': {'$or': or_conds, 'user_id': {'$ne': me_id}, 'deleted': {'$ne': True}}},
+                {'$group': {'_id': '$room', 'count': {'$sum': 1}}},
+            ]):
+                group_count += doc['count']
     except Exception:
         pass
 

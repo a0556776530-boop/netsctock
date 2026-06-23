@@ -23,34 +23,32 @@ from app.routes.chat         import _can_access_room, _is_online, _ONLINE_MINS
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def emit_chat_notify(sender_id, sender_name, text, room_key, room_name):
-    """Push a chat_notify event to every recipient's personal notification room.
+    """Push a chat_notify event to recipient notification rooms.
 
-    Each authenticated socket session joins 'notif_<user_id>' on connect so
-    notifications reach the user regardless of which page they're on.
+    On connect, each user joins:
+      - notif_<uid>          — personal (DMs)
+      - notif_all            — everyone/channel rooms
+      - notif_grp_<grp_id>   — each group they belong to
+    This lets us emit once per group/channel instead of looping over all users.
     """
     payload = {
         'sender':    sender_name,
+        'sender_id': sender_id,
         'text':      (text or '')[:80],
         'room':      room_key,
         'room_name': room_name,
     }
     ns = '/'
     if room_key.startswith('pm_'):
-        parts    = room_key[3:].split('_')            # ['<uid1>', '<uid2>']
+        parts    = room_key[3:].split('_')
         other_id = parts[1] if parts[0] == sender_id else parts[0]
         socketio.emit('chat_notify', payload, to='notif_' + other_id, namespace=ns)
     elif room_key.startswith('grp_'):
-        grp = ChatGroup.objects(id=room_key[4:]).first()
-        if grp:
-            for mid in grp.member_ids:
-                if mid != sender_id:
-                    socketio.emit('chat_notify', payload, to='notif_' + mid, namespace=ns)
+        # Single emit to the group's notification room (all members joined on connect)
+        socketio.emit('chat_notify', payload, to='notif_' + room_key, namespace=ns)
     else:
-        # 'group' or ch_* — broadcast to every user except sender
-        for u in User.objects.only('id'):
-            uid = str(u.id)
-            if uid != sender_id:
-                socketio.emit('chat_notify', payload, to='notif_' + uid, namespace=ns)
+        # 'group' or ch_* — single broadcast to all connected users
+        socketio.emit('chat_notify', payload, to='notif_all', namespace=ns)
 
 
 # ── Connection ────────────────────────────────────────────────────────────────
@@ -59,8 +57,18 @@ def emit_chat_notify(sender_id, sender_name, text, room_key, room_name):
 def on_connect():
     if not current_user.is_authenticated:
         return False
-    # Every session joins a personal room so targeted notifications always land
-    join_room('notif_' + str(current_user.id))
+    uid = str(current_user.id)
+    # Personal room (DMs)
+    join_room('notif_' + uid)
+    # Broadcast room for everyone/channel messages
+    join_room('notif_all')
+    # Group notification rooms — one join per group, enables single-emit broadcasts
+    try:
+        my_groups = ChatGroup.objects(member_ids=uid).only('id')
+        for g in my_groups:
+            join_room('notif_grp_' + str(g.id))
+    except Exception:
+        pass
 
 
 @socketio.on('disconnect')

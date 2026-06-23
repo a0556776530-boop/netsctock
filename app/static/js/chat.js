@@ -167,6 +167,14 @@
     updateSoundBtn();
     updateNotifBtn();
 
+    // Delegated click — one listener on the container instead of N per renderSidebar()
+    if (EL.convList) {
+      EL.convList.addEventListener('click', function(e) {
+        var item = e.target.closest('.chat-conv-item');
+        if (item && item.dataset.room) openRoom(item.dataset.room);
+      });
+    }
+
     // Load conversations
     loadConversations();
 
@@ -281,10 +289,9 @@
 
     EL.convList.innerHTML = html;
 
-    // Active
+    // Mark active — click is handled by event delegation bound once in init()
     $$('.chat-conv-item', EL.convList).forEach(function(el){
       if (el.dataset.room === S.room) el.classList.add('active');
-      el.addEventListener('click', function(){ openRoom(el.dataset.room); });
     });
   }
 
@@ -353,7 +360,11 @@
 
     // Mark as read immediately (DMs + groups/channels)
     apiPost('/chat/api/read', {room: roomKey}).catch(function(){});
-    renderSidebar(); // reflect the optimistic unread=0 immediately
+    // Surgically clear the unread badge without re-rendering the whole sidebar
+    if (EL.convList) {
+      var _openItem = EL.convList.querySelector('[data-room="' + roomKey + '"]');
+      if (_openItem) { var _b = _openItem.querySelector('.chat-unread-badge'); if (_b) _b.style.display = 'none'; }
+    }
 
     closeSearch();
     renderChatWindow();

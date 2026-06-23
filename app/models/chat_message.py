@@ -71,7 +71,7 @@ class ChatMessage(me.Document):
             'deleted':       bool(self.deleted),
             'timestamp':     self.timestamp.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%H:%M'),
             'date':          self.timestamp.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%d/%m/%Y'),
-            '_iso':          self.timestamp.isoformat(),
+            '_iso':          self.timestamp.isoformat() + 'Z',
             'room':          self.room or 'group',
             'receiver_id':   self.receiver_id or '',
             'readers':       list(self.readers or []),
