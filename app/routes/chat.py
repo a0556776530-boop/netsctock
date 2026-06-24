@@ -611,12 +611,18 @@ def api_profile_photo():
     from app.models.user import _user_cache
     from app.utils.cache import cache as _cache
 
+    def _bust_all_conv_caches():
+        # Invalidate conversation cache for every active user so they
+        # immediately see the updated photo on their next poll.
+        for cached_uid in list(_user_cache.keys()):
+            _cache.delete(f'chat_convs_{cached_uid}')
+
     # Empty string = remove photo
     if photo == '':
         User.objects(id=uid).update_one(unset__profile_photo=1)
         current_user.profile_photo = None
         _user_cache.pop(uid, None)
-        _cache.delete(f'chat_convs_{uid}')
+        _bust_all_conv_caches()
         return jsonify(ok=True, removed=True)
 
     if not photo.startswith('data:image/'):
@@ -627,7 +633,7 @@ def api_profile_photo():
     User.objects(id=uid).update_one(set__profile_photo=photo)
     current_user.profile_photo = photo
     _user_cache.pop(uid, None)
-    _cache.delete(f'chat_convs_{uid}')
+    _bust_all_conv_caches()
     return jsonify(ok=True)
 
 
