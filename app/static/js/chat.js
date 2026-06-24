@@ -1033,7 +1033,7 @@
   /* ── File upload ────────────────────────────────────────────────────────── */
   function uploadFile(file) {
     if (!file || !S.room) return;
-    if (file.size > 2 * 1024 * 1024) { alert('הקובץ גדול מדי (מקסימום 2MB)'); return; }
+    if (file.size > 50 * 1024 * 1024) { alert('הקובץ גדול מדי (מקסימום 50MB)'); return; }
 
     if (EL.uploadProg) EL.uploadProg.classList.add('show');
 
