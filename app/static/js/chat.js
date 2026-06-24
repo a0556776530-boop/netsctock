@@ -1495,7 +1495,10 @@
     // Theme toggle
     if (EL.themeBtn) EL.themeBtn.addEventListener('click', function(){ applyTheme(S.theme === 'dark' ? 'light' : 'dark'); });
 
-    // Own avatar → open profile panel
+    // Profile button (next to theme toggle) → open profile panel
+    var _profileBtn = document.getElementById('chatProfileBtn');
+    if (_profileBtn) _profileBtn.addEventListener('click', openProfilePanel);
+    // Own avatar also opens profile panel
     var _avatarWrap = document.getElementById('chatMyAvatarWrap');
     if (_avatarWrap) _avatarWrap.addEventListener('click', openProfilePanel);
 

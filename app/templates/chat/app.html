@@ -36,6 +36,9 @@
         <button class="chat-icon-btn" id="chatThemeBtn" title="Toggle theme">
           <i class="bi bi-moon"></i>
         </button>
+        <button class="chat-icon-btn" id="chatProfileBtn" title="פרופיל והגדרות">
+          <i class="bi bi-person-circle"></i>
+        </button>
         {% if current_user.is_admin %}
         <a href="{{ url_for('chat.groups') }}" class="chat-icon-btn" title="Manage groups">
           <i class="bi bi-gear"></i>
@@ -215,5 +218,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260624j"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260624k"></script>
 {% endblock %}
