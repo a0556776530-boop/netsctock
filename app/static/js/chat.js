@@ -567,7 +567,9 @@
     var roomAtLoad = S.room;
     var _ctrl = new AbortController();
     var _tid = setTimeout(function() { _ctrl.abort(); }, 10000);
-    fetch('/chat/api/messages?room=' + encodeURIComponent(S.room), { signal: _ctrl.signal })
+    var _initUrl = '/chat/api/messages?room=' + encodeURIComponent(S.room);
+    if (S.receiverId) _initUrl += '&receiver_id=' + encodeURIComponent(S.receiverId);
+    fetch(_initUrl, { signal: _ctrl.signal })
       .then(function(r){ clearTimeout(_tid); return r.json(); })
       .then(function(d){
         // Discard if user switched rooms while fetch was in-flight
@@ -603,14 +605,15 @@
   }
 
   function pollMessages() {
-    if (!S.room) return;
+    if (!S.room || !S.lastTs || S.loading) return;
     var url = '/chat/api/messages?room=' + encodeURIComponent(S.room);
-    if (S.lastTs) url += '&since=' + encodeURIComponent(S.lastTs);
-    if (!S.lastTs) return;
+    url += '&since=' + encodeURIComponent(S.lastTs);
     if (S.receiverId) url += '&receiver_id=' + encodeURIComponent(S.receiverId);
 
-    fetch(url)
-      .then(function(r){ return r.json(); })
+    var _ctrl = new AbortController();
+    var _tid  = setTimeout(function() { _ctrl.abort(); }, 6000);
+    fetch(url, { signal: _ctrl.signal })
+      .then(function(r){ clearTimeout(_tid); return r.json(); })
       .then(function(d){
         var msgs = d.messages || [];
         if (!msgs.length) return;
@@ -645,7 +648,7 @@
         });
         S.lastTs = msgs[msgs.length - 1]._iso;
         if (atBottom) scrollBottom();
-      }).catch(function(){});
+      }).catch(function(){ clearTimeout(_tid); });
   }
 
   function pollTyping() {

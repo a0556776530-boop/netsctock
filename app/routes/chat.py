@@ -65,17 +65,18 @@ def room():
 @chat_bp.route('/app')
 @login_required
 def app():
-    me_id  = str(current_user.id)
+    from app.utils.cache import cache as _cache
+    me_id = str(current_user.id)
+    _ck   = f'chat_app_{me_id}'
+    _hit  = _cache.get(_ck)
+    if _hit:
+        return render_template('chat/app.html', **_hit)
     users  = [u for u in User.objects.only('id', 'name').order_by('name') if str(u.id) != me_id]
     groups = list(ChatGroup.objects(member_ids=me_id).order_by('name'))
-    return render_template(
-        'chat/app.html',
-        users=users,
-        groups=groups,
-        channels=_CHANNELS,
-        reactions=_REACTIONS,
-        me_id=me_id,
-    )
+    _ctx = dict(users=users, groups=groups, channels=_CHANNELS,
+                reactions=_REACTIONS, me_id=me_id)
+    _cache.set(_ck, _ctx, timeout=30)
+    return render_template('chat/app.html', **_ctx)
 
 
 @chat_bp.route('/groups')
@@ -132,12 +133,11 @@ def api_conversations():
     _hit = _cache.get(_ck)
     if _hit:
         return jsonify(_hit)
-    me_obj = User.objects(id=me_id).first()
-    pinned    = list(me_obj.pinned_rooms    or [])
-    favorites = list(me_obj.favorite_rooms or [])
+    pinned    = list(current_user.pinned_rooms    or [])
+    favorites = list(current_user.favorite_rooms or [])
 
     # --- Build the full list of room keys we need last-messages for ---
-    all_users   = [u for u in User.objects.only('id', 'name').order_by('name') if str(u.id) != me_id]
+    all_users   = [u for u in User.objects.only('id', 'name', 'last_seen').order_by('name') if str(u.id) != me_id]
     my_groups   = list(ChatGroup.objects(member_ids=me_id).order_by('name'))
     dm_keys     = [_private_room(me_id, str(u.id)) for u in all_users]
     grp_keys    = [g.room_key for g in my_groups]
@@ -237,7 +237,7 @@ def api_conversations():
                        'pinned': rk in pinned, 'favorite': rk in favorites})
 
     payload = dict(conversations=result, pinned=pinned, favorites=favorites)
-    _cache.set(_ck, payload, timeout=10)
+    _cache.set(_ck, payload, timeout=15)
     return jsonify(payload)
 
 
