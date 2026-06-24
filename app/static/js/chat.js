@@ -215,7 +215,7 @@
         if (!row) return;
         e.preventDefault();
         var msg = _msgMap[row.dataset.id];
-        if (msg) showContextMenu(e, msg, msg.user_id === S.me);
+        if (msg && !msg.deleted) showContextMenu(e, msg, msg.user_id === S.me);
       });
 
       // Long-press (mobile)
@@ -224,7 +224,7 @@
         if (!row) return;
         _pressTimer = setTimeout(function() {
           var msg = _msgMap[row.dataset.id];
-          if (msg) showContextMenu(e.touches[0], msg, msg.user_id === S.me);
+          if (msg && !msg.deleted) showContextMenu(e.touches[0], msg, msg.user_id === S.me);
         }, 500);
       }, { passive: true });
       EL.messagesArea.addEventListener('touchend', function() { clearTimeout(_pressTimer); });
@@ -1134,8 +1134,8 @@
           var bubble = row.querySelector('.chat-bubble');
           if (bubble) {
             bubble.classList.add('deleted');
-            // Remove media/file elements
-            ['img', 'audio', 'video', '.chat-file-preview', '.chat-img-wrap'].forEach(function(sel){
+            // Remove media/file elements and action menu
+            ['img', 'audio', 'video', '.chat-file-preview', '.chat-img-wrap', '.cba'].forEach(function(sel){
               bubble.querySelectorAll(sel).forEach(function(el){ el.remove(); });
             });
             var textEl = bubble.querySelector('.chat-bubble-text');
