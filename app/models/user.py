@@ -15,6 +15,7 @@ class User(UserMixin, me.Document):
     last_login      = me.DateTimeField()
     pinned_rooms   = me.ListField(me.StringField())
     favorite_rooms = me.ListField(me.StringField())
+    profile_photo  = me.StringField()  # base64 data URI e.g. "data:image/jpeg;base64,..."
 
     def get_id(self):
         return str(self.id)

@@ -33,6 +33,7 @@
 
   var _msgMap      = {};  // msgId → msg object, used by event delegation handlers
   var _readAckTimer = null; // debounce timer for read acknowledgment
+  var _photoCache  = {};  // userId → base64 data URI
 
   /* ── WebSocket (Socket.IO) ───────────────────────────────────────────────── */
   var _socket          = null;
@@ -198,6 +199,9 @@
     updateSoundBtn();
     updateNotifBtn();
 
+    // Seed own photo into cache
+    if (window.CHAT_ME_PHOTO && S.me) _photoCache[S.me] = window.CHAT_ME_PHOTO;
+
     // Delegated click — one listener on the container instead of N per renderSidebar()
     if (EL.convList) {
       EL.convList.addEventListener('click', function(e) {
@@ -340,6 +344,9 @@
         S.pinned        = d.pinned        || [];
         S.favorites     = d.favorites     || [];
         S.users = S.conversations.filter(function(c){ return c.type === 'dm'; }).map(function(c){ return c.name; });
+        S.conversations.forEach(function(c) {
+          if (c.type === 'dm' && c.user_id && c.photo) _photoCache[c.user_id] = c.photo;
+        });
         // Fix race: openRoom() may have run before conversations loaded (URL param).
         // If a room is already open but roomType wasn't set, update it now and reload messages.
         if (S.room && !S.roomType) {
@@ -441,7 +448,7 @@
     var avatar = '';
     if (c.type === 'dm') {
       avatar = '<div class="chat-conv-avatar">' +
-        roleAvatar(c.role, 'sm') +
+        roleAvatar(c.role, 'sm', c.user_id) +
         '<span class="chat-online-dot' + (c.online ? ' online' : '') + '"></span>' +
         '</div>';
     } else {
@@ -544,7 +551,7 @@
     if (EL.headerAvatar && conv) {
       if (conv.type === 'dm') {
         EL.headerAvatar.innerHTML = '<div class="position-relative">' +
-          roleAvatar(conv.role, '') +
+          roleAvatar(conv.role, '', conv.user_id) +
           '<span class="chat-online-dot' + (conv.online ? ' online' : '') + '" style="position:absolute;bottom:0;right:0;border-color:var(--chat-header-bg);"></span>' +
           '</div>';
       } else {
@@ -719,7 +726,7 @@
   }
 
   function buildBubbleHTML(msg, isMe) {
-    var avatar = !isMe ? '<div class="chat-msg-avatar">' + roleAvatar(msg.user_role, 'sm') + '</div>' : '';
+    var avatar = !isMe ? '<div class="chat-msg-avatar">' + roleAvatar(msg.user_role, 'sm', msg.user_id) + '</div>' : '';
 
     var senderName = (!isMe && (S.roomType === 'channel' || S.roomType === 'group' || S.room === 'group'))
       ? '<div class="chat-sender-name">' + _esc(msg.user_name) + '</div>' : '';
@@ -1401,6 +1408,46 @@
     // Theme toggle
     if (EL.themeBtn) EL.themeBtn.addEventListener('click', function(){ applyTheme(S.theme === 'dark' ? 'light' : 'dark'); });
 
+    // Profile photo upload
+    var _avatarWrap  = document.getElementById('chatMyAvatarWrap');
+    var _photoInput  = document.getElementById('chatProfilePhotoInput');
+    if (_avatarWrap && _photoInput) {
+      _avatarWrap.addEventListener('click', function(){ _photoInput.click(); });
+      _photoInput.addEventListener('change', function(){
+        var file = this.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        var reader = new FileReader();
+        reader.onload = function(ev){
+          var img = new Image();
+          img.onload = function(){
+            var canvas = document.createElement('canvas');
+            var size = 160;
+            canvas.width = canvas.height = size;
+            var ctx = canvas.getContext('2d');
+            var s = Math.min(img.width, img.height);
+            ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+            var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            apiPost('/chat/api/profile-photo', {photo: dataUrl}).then(function(d){
+              if (!d.ok) return;
+              _photoCache[S.me] = dataUrl;
+              var wrap = document.getElementById('chatMyAvatarWrap');
+              if (wrap) {
+                var old = wrap.querySelector('img.chat-avatar-photo, .role-avatar-sm');
+                var newImg = document.createElement('img');
+                newImg.src = dataUrl;
+                newImg.className = 'chat-avatar-photo sm';
+                newImg.alt = '';
+                if (old) old.replaceWith(newImg); else wrap.prepend(newImg);
+              }
+            }).catch(function(){});
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        this.value = '';
+      });
+    }
+
     // Pin / Fav
     if (EL.pinBtn) EL.pinBtn.addEventListener('click', togglePin);
     if (EL.favBtn) EL.favBtn.addEventListener('click', toggleFav);
@@ -1760,7 +1807,10 @@
     return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
   }
 
-  function roleAvatar(role, size) {
+  function roleAvatar(role, size, uid) {
+    if (uid && _photoCache[uid]) {
+      return '<img src="' + _photoCache[uid] + '" class="chat-avatar-photo' + (size === 'sm' ? ' sm' : '') + '" alt="">';
+    }
     var cls = 'role-viewer', icon = 'bi-eye-fill';
     if (role === 'super_admin') { cls = 'role-super'; icon = 'bi-shield-fill-check'; }
     else if (role === 'admin')  { cls = 'role-admin'; icon = 'bi-crown-fill'; }

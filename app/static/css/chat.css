@@ -773,6 +773,39 @@
 .cba-item.danger:hover  { background: rgba(220,38,38,.06); }
 .chat-context-item.danger  { color: #dc3545; }
 
+/* ── Profile photo avatar ────────────────────────────────────────────────── */
+.chat-avatar-photo {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
+.chat-avatar-photo.sm { width: 30px; height: 30px; }
+
+.chat-upload-wrap {
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+}
+.chat-avatar-edit-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .15s;
+  color: #fff;
+  font-size: .7rem;
+  pointer-events: none;
+}
+.chat-upload-wrap:hover .chat-avatar-edit-overlay { opacity: 1; }
+
 /* @mention */
 .chat-mention { color: var(--chat-active-bar); font-weight: 600; }
 

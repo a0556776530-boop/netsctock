@@ -137,7 +137,7 @@ def api_conversations():
     favorites = list(current_user.favorite_rooms or [])
 
     # --- Build the full list of room keys we need last-messages for ---
-    all_users   = [u for u in User.objects.only('id', 'name', 'last_seen').order_by('name') if str(u.id) != me_id]
+    all_users   = [u for u in User.objects.only('id', 'name', 'last_seen', 'profile_photo').order_by('name') if str(u.id) != me_id]
     my_groups   = list(ChatGroup.objects(member_ids=me_id).order_by('name'))
     dm_keys     = [_private_room(me_id, str(u.id)) for u in all_users]
     grp_keys    = [g.room_key for g in my_groups]
@@ -231,6 +231,7 @@ def api_conversations():
         msg, ts, iso = _last(rk)
         result.append({'type': 'dm', 'room': rk, 'name': u.name, 'role': u.role,
                        'user_id': str(u.id), 'icon': None,
+                       'photo': u.profile_photo or '',
                        'last_msg': msg, 'last_ts': ts, 'last_iso': iso,
                        'unread': unread_map.get(rk, 0),
                        'online': _is_online(u),
@@ -596,6 +597,29 @@ def api_typing_get():
         if t.user_id != uid
     ]
     return jsonify(typers=typers)
+
+
+# ── API: profile photo ─────────────────────────────────────────────────────────
+
+@chat_bp.route('/api/profile-photo', methods=['POST'])
+@login_required
+def api_profile_photo():
+    data  = request.get_json(force=True) or {}
+    photo = (data.get('photo') or '').strip()
+    if not photo.startswith('data:image/'):
+        return jsonify(ok=False, error='invalid'), 400
+    if len(photo) > 250 * 1024:   # ~250 KB max (160×160 JPEG ≈ 8–15 KB)
+        return jsonify(ok=False, error='too_large'), 400
+    uid = str(current_user.id)
+    User.objects(id=uid).update_one(set__profile_photo=photo)
+    current_user.profile_photo = photo
+    # Invalidate user-loader cache so other requests see the new photo
+    from app.models.user import _user_cache
+    _user_cache.pop(uid, None)
+    # Invalidate conversations cache for all users (they'll pick up the new photo next fetch)
+    from app.utils.cache import cache as _cache
+    _cache.delete(f'chat_convs_{uid}')
+    return jsonify(ok=True)
 
 
 # ── API: edit ─────────────────────────────────────────────────────────────────

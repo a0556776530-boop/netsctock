@@ -13,6 +13,7 @@
   window.CHAT_ME_NAME  = {{ current_user.name | tojson }};
   window.CHAT_ME_ROLE  = {{ (current_user.role or '') | tojson }};
   window.CHAT_REACTIONS= {{ reactions | tojson }};
+  window.CHAT_ME_PHOTO = {{ (current_user.profile_photo or '') | tojson }};
 </script>
 
 <div id="chatApp">
@@ -22,9 +23,15 @@
 
     <div class="chat-sidebar-header">
       <div class="chat-sidebar-me">
-        <div class="role-avatar-sm role-{{ current_user.role or 'user' }}">
-          {{ current_user.name[0] | upper }}
+        <div class="chat-upload-wrap" id="chatMyAvatarWrap" title="לחץ לשינוי תמונת פרופיל">
+          {% if current_user.profile_photo %}
+          <img src="{{ current_user.profile_photo }}" class="chat-avatar-photo sm" alt="{{ current_user.name }}">
+          {% else %}
+          <div class="role-avatar-sm role-{{ current_user.role or 'user' }}">{{ current_user.name[0] | upper }}</div>
+          {% endif %}
+          <div class="chat-avatar-edit-overlay"><i class="bi bi-camera-fill"></i></div>
         </div>
+        <input type="file" id="chatProfilePhotoInput" accept="image/*" style="display:none">
         <span class="chat-sidebar-me-name">{{ current_user.name }}</span>
       </div>
       <div class="d-flex gap-1 align-items-center">
@@ -188,5 +195,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260624f"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260624g"></script>
 {% endblock %}
