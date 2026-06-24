@@ -1130,7 +1130,15 @@
         var row = EL.messagesArea && EL.messagesArea.querySelector('[data-id="' + msgId + '"]');
         if (row) {
           var bubble = row.querySelector('.chat-bubble');
-          if (bubble) { bubble.classList.add('deleted'); bubble.querySelector('.chat-bubble-text') && (bubble.querySelector('.chat-bubble-text').textContent = '[הודעה נמחקה]'); }
+          if (bubble) {
+            bubble.classList.add('deleted');
+            // Remove media/file elements
+            ['img', 'audio', 'video', '.chat-file-preview', '.chat-img-wrap'].forEach(function(sel){
+              bubble.querySelectorAll(sel).forEach(function(el){ el.remove(); });
+            });
+            var textEl = bubble.querySelector('.chat-bubble-text');
+            if (textEl) textEl.textContent = '[הודעה נמחקה]';
+          }
         }
       });
   }

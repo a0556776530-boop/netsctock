@@ -62,13 +62,14 @@ class ChatMessage(me.Document):
 
     def to_dict(self, viewer_id=None, receiver_online=False):
         txt = '[הודעה נמחקה]' if self.deleted else (self.text or '')
+        is_del = bool(self.deleted)
         return {
             'id':            str(self.id),
             'user_id':       self.user_id,
             'user_name':     self.user_name,
             'user_role':     self.user_role or '',
             'text':          txt,
-            'deleted':       bool(self.deleted),
+            'deleted':       is_del,
             'timestamp':     self.timestamp.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%H:%M'),
             'date':          self.timestamp.replace(tzinfo=timezone.utc).astimezone(_IL).strftime('%d/%m/%Y'),
             '_iso':          self.timestamp.isoformat() + 'Z',
@@ -80,12 +81,11 @@ class ChatMessage(me.Document):
             'reply_to_text': self.reply_to_text or '',
             'reply_to_user': self.reply_to_user or '',
             'reactions':     self.reactions or {},
-            # Only include file data when needed
-            'file_id':       self.file_id or '',
-            'file_name':     self.file_name or '',
-            'file_type':     self.file_type or '',
-            'file_size':     self.file_size or 0,
-            'has_file':      bool(self.file_id),
+            'file_id':       '' if is_del else (self.file_id or ''),
+            'file_name':     '' if is_del else (self.file_name or ''),
+            'file_type':     '' if is_del else (self.file_type or ''),
+            'file_size':     0  if is_del else (self.file_size or 0),
+            'has_file':      False if is_del else bool(self.file_id),
             'edited':        bool(self.edited),
             'forwarded':        bool(self.forwarded),
             'forward_from':     self.forward_from or '',
