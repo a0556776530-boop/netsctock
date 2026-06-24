@@ -287,7 +287,16 @@ def api_messages():
             room=room_key, receiver_id=str(current_user.id), read=False
         ).update(set__read=True, add_to_set__readers=str(current_user.id))
 
-    return jsonify(messages=[_to_d(m) for m in messages])
+    # Piggyback typing indicators — free ride on existing poll, no extra HTTP request
+    uid    = str(current_user.id)
+    cutoff = datetime.utcnow() - timedelta(seconds=5)
+    typers = [
+        t.user_name
+        for t in ChatTyping.objects(room=room_key, ts__gte=cutoff)
+        if t.user_id != uid
+    ]
+
+    return jsonify(messages=[_to_d(m) for m in messages], typers=typers)
 
 
 @chat_bp.route('/api/file/<msg_id>')

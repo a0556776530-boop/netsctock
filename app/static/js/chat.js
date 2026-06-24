@@ -319,7 +319,6 @@
     // create zombie sessions that exhaust the thread pool and block all HTTP.
     setInterval(pollMessages, 5000);
     setInterval(pollConversations, 15000);
-    setInterval(pollTyping, 2000);
   }
 
   /* ── Theme ──────────────────────────────────────────────────────────────── */
@@ -618,6 +617,7 @@
     fetch(url, { signal: _ctrl.signal })
       .then(function(r){ clearTimeout(_tid); return r.json(); })
       .then(function(d){
+        _applyTypers(d.typers || []);
         var msgs = d.messages || [];
         if (!msgs.length) return;
         var area = EL.messagesArea;
@@ -654,22 +654,17 @@
       }).catch(function(){ clearTimeout(_tid); });
   }
 
-  function pollTyping() {
-    if (!S.room || !EL.typingBar) return;
-    fetch('/chat/api/typing?room=' + encodeURIComponent(S.room))
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var typers = d.typers || [];
-        if (!typers.length) {
-          EL.typingBar.innerHTML = '';
-        } else {
-          EL.typingBar.innerHTML =
-            '<span style="font-size:.78rem;color:var(--chat-text-muted)">' +
-            _esc(typers.join(', ')) + ' מקליד...' +
-            ' <span class="typing-dots"><span></span><span></span><span></span></span>' +
-            '</span>';
-        }
-      }).catch(function(){});
+  function _applyTypers(typers) {
+    if (!EL.typingBar) return;
+    if (!typers.length) {
+      EL.typingBar.innerHTML = '';
+    } else {
+      EL.typingBar.innerHTML =
+        '<span style="font-size:.78rem;color:var(--chat-text-muted)">' +
+        _esc(typers[0]) + ' מקליד...' +
+        ' <span class="typing-dots"><span></span><span></span><span></span></span>' +
+        '</span>';
+    }
   }
 
   // Update sidebar preview + unread badge without a full re-render

@@ -7,7 +7,7 @@ class ChatTyping(me.Document):
     meta = {
         'collection': 'chat_typing',
         'indexes': [
-            {'fields': ['ts'], 'expireAfterSeconds': 3},
+            {'fields': ['ts'], 'expireAfterSeconds': 5},
             ('room', 'user_id'),
         ],
         'strict': False,
