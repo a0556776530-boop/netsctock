@@ -23,15 +23,13 @@
 
     <div class="chat-sidebar-header">
       <div class="chat-sidebar-me">
-        <div class="chat-upload-wrap" id="chatMyAvatarWrap" title="לחץ לשינוי תמונת פרופיל">
+        <div class="chat-upload-wrap" id="chatMyAvatarWrap" title="פרופיל" style="cursor:pointer">
           {% if current_user.profile_photo %}
           <img src="{{ current_user.profile_photo }}" class="chat-avatar-photo sm" alt="{{ current_user.name }}">
           {% else %}
           <div class="role-avatar-sm role-{{ current_user.role or 'user' }}">{{ current_user.name[0] | upper }}</div>
           {% endif %}
-          <div class="chat-avatar-edit-overlay"><i class="bi bi-camera-fill"></i></div>
         </div>
-        <input type="file" id="chatProfilePhotoInput" accept="image/*" style="display:none">
         <span class="chat-sidebar-me-name">{{ current_user.name }}</span>
       </div>
       <div class="d-flex gap-1 align-items-center">
@@ -158,6 +156,28 @@
 
 </div>
 
+{# Profile panel — slides over the sidebar #}
+<div id="chatProfilePanel" class="chat-profile-panel">
+  <div class="cpp-header">
+    <button class="chat-icon-btn" id="chatProfileClose" title="סגור"><i class="bi bi-x-lg"></i></button>
+    <span>פרופיל</span>
+  </div>
+  <div class="cpp-body">
+    <div class="cpp-photo-wrap" id="cppPhotoWrap"></div>
+    <div class="cpp-name" id="cppName"></div>
+    <div class="cpp-role" id="cppRole"></div>
+    <div class="cpp-btns">
+      <button class="cpp-btn-primary" id="chatProfileUploadBtn">
+        <i class="bi bi-camera-fill"></i> שנה תמונה
+      </button>
+      <button class="cpp-btn-danger" id="chatProfileRemoveBtn" style="display:none">
+        <i class="bi bi-trash3"></i> הסר תמונה
+      </button>
+    </div>
+    <input type="file" id="chatProfilePhotoInput" accept="image/*" style="display:none">
+  </div>
+</div>
+
 {# Context menu #}
 <div id="chatContextMenu" class="chat-context-menu"></div>
 
@@ -195,5 +215,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260624h"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260624j"></script>
 {% endblock %}

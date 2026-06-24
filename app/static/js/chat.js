@@ -294,6 +294,13 @@
         if (img && EL.lightbox && EL.lightboxImg) {
           EL.lightboxImg.src = img.src;
           EL.lightbox.classList.add('show');
+          return;
+        }
+        // Avatar photo → lightbox
+        var avatarImg = e.target.closest('.chat-avatar-photo');
+        if (avatarImg && EL.lightbox && EL.lightboxImg) {
+          EL.lightboxImg.src = avatarImg.src;
+          EL.lightbox.classList.add('show');
         }
       });
     }
@@ -541,16 +548,96 @@
     }
   }
 
+  /* ── Profile panel ─────────────────────────────────────────────────────── */
+  function openProfilePanel() {
+    var panel = document.getElementById('chatProfilePanel');
+    if (!panel) return;
+    var wrap = document.getElementById('cppPhotoWrap');
+    if (wrap) {
+      wrap.innerHTML = _photoCache[S.me]
+        ? '<img src="' + _photoCache[S.me] + '" alt="">'
+        : roleAvatar(S.meRole, '', null);
+    }
+    var nameEl = document.getElementById('cppName');
+    if (nameEl) nameEl.textContent = S.meName;
+    var roleEl = document.getElementById('cppRole');
+    if (roleEl) roleEl.textContent = S.meRole || '';
+    var removeBtn = document.getElementById('chatProfileRemoveBtn');
+    if (removeBtn) removeBtn.style.display = _photoCache[S.me] ? '' : 'none';
+    panel.classList.add('open');
+  }
+
+  function closeProfilePanel() {
+    var panel = document.getElementById('chatProfilePanel');
+    if (panel) panel.classList.remove('open');
+  }
+
+  function _refreshMyAvatar(dataUrl) {
+    var wrap = document.getElementById('chatMyAvatarWrap');
+    if (!wrap) return;
+    var old = wrap.querySelector('img.chat-avatar-photo, .role-avatar-sm');
+    if (dataUrl) {
+      var newImg = document.createElement('img');
+      newImg.src = dataUrl;
+      newImg.className = 'chat-avatar-photo sm';
+      newImg.alt = '';
+      if (old) old.replaceWith(newImg); else wrap.prepend(newImg);
+    } else {
+      var fallback = document.createElement('div');
+      fallback.className = 'role-avatar-sm role-' + (S.meRole || 'user');
+      fallback.textContent = (S.meName || '?')[0].toUpperCase();
+      if (old) old.replaceWith(fallback); else wrap.prepend(fallback);
+    }
+  }
+
+  function _handleProfilePhotoChange() {
+    var file = this.files && this.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var size = 160;
+        canvas.width = canvas.height = size;
+        var ctx = canvas.getContext('2d');
+        var s = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        apiPost('/chat/api/profile-photo', {photo: dataUrl}).then(function(d) {
+          if (!d.ok) return;
+          _photoCache[S.me] = dataUrl;
+          _refreshMyAvatar(dataUrl);
+          var cppWrap = document.getElementById('cppPhotoWrap');
+          if (cppWrap) cppWrap.innerHTML = '<img src="' + dataUrl + '" alt="">';
+          var removeBtn = document.getElementById('chatProfileRemoveBtn');
+          if (removeBtn) removeBtn.style.display = '';
+        }).catch(function(){});
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    this.value = '';
+  }
+
   /* ── Chat window ────────────────────────────────────────────────────────── */
   function renderChatWindow() {
     var conv = S.conversations.find(function(c){ return c.room === S.room; });
 
     // Header
     if (EL.headerName) EL.headerName.textContent = S.roomName;
-    if (EL.headerSub)  EL.headerSub.textContent  = '';
+    if (EL.headerSub) {
+      if (conv && conv.type === 'dm') {
+        EL.headerSub.textContent = conv.online ? 'מחובר/ת עכשיו' : 'לא מחובר/ת';
+      } else if (conv && conv.type === 'group') {
+        EL.headerSub.textContent = conv.member_count ? conv.member_count + ' חברים' : '';
+      } else {
+        EL.headerSub.textContent = '';
+      }
+    }
     if (EL.headerAvatar && conv) {
       if (conv.type === 'dm') {
-        EL.headerAvatar.innerHTML = '<div class="position-relative">' +
+        EL.headerAvatar.innerHTML = '<div class="position-relative" style="cursor:pointer">' +
           roleAvatar(conv.role, '', conv.user_id) +
           '<span class="chat-online-dot' + (conv.online ? ' online' : '') + '" style="position:absolute;bottom:0;right:0;border-color:var(--chat-header-bg);"></span>' +
           '</div>';
@@ -1408,43 +1495,37 @@
     // Theme toggle
     if (EL.themeBtn) EL.themeBtn.addEventListener('click', function(){ applyTheme(S.theme === 'dark' ? 'light' : 'dark'); });
 
-    // Profile photo upload
-    var _avatarWrap  = document.getElementById('chatMyAvatarWrap');
-    var _photoInput  = document.getElementById('chatProfilePhotoInput');
-    if (_avatarWrap && _photoInput) {
-      _avatarWrap.addEventListener('click', function(){ _photoInput.click(); });
-      _photoInput.addEventListener('change', function(){
-        var file = this.files[0];
-        if (!file || !file.type.startsWith('image/')) return;
-        var reader = new FileReader();
-        reader.onload = function(ev){
-          var img = new Image();
-          img.onload = function(){
-            var canvas = document.createElement('canvas');
-            var size = 160;
-            canvas.width = canvas.height = size;
-            var ctx = canvas.getContext('2d');
-            var s = Math.min(img.width, img.height);
-            ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
-            var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            apiPost('/chat/api/profile-photo', {photo: dataUrl}).then(function(d){
-              if (!d.ok) return;
-              _photoCache[S.me] = dataUrl;
-              var wrap = document.getElementById('chatMyAvatarWrap');
-              if (wrap) {
-                var old = wrap.querySelector('img.chat-avatar-photo, .role-avatar-sm');
-                var newImg = document.createElement('img');
-                newImg.src = dataUrl;
-                newImg.className = 'chat-avatar-photo sm';
-                newImg.alt = '';
-                if (old) old.replaceWith(newImg); else wrap.prepend(newImg);
-              }
-            }).catch(function(){});
-          };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-        this.value = '';
+    // Own avatar → open profile panel
+    var _avatarWrap = document.getElementById('chatMyAvatarWrap');
+    if (_avatarWrap) _avatarWrap.addEventListener('click', openProfilePanel);
+
+    // Profile panel wiring
+    var _ppClose   = document.getElementById('chatProfileClose');
+    var _ppUpload  = document.getElementById('chatProfileUploadBtn');
+    var _ppRemove  = document.getElementById('chatProfileRemoveBtn');
+    var _ppInput   = document.getElementById('chatProfilePhotoInput');
+    if (_ppClose)  _ppClose.addEventListener('click', closeProfilePanel);
+    if (_ppUpload && _ppInput) _ppUpload.addEventListener('click', function(){ _ppInput.click(); });
+    if (_ppInput)  _ppInput.addEventListener('change', _handleProfilePhotoChange);
+    if (_ppRemove) _ppRemove.addEventListener('click', function(){
+      apiPost('/chat/api/profile-photo', {photo: ''}).then(function(d){
+        if (!d.ok) return;
+        delete _photoCache[S.me];
+        _refreshMyAvatar(null);
+        var cppWrap = document.getElementById('cppPhotoWrap');
+        if (cppWrap) cppWrap.innerHTML = roleAvatar(S.meRole, '', null);
+        if (_ppRemove) _ppRemove.style.display = 'none';
+      }).catch(function(){});
+    });
+
+    // Header avatar → lightbox
+    if (EL.headerAvatar) {
+      EL.headerAvatar.addEventListener('click', function(){
+        var img = this.querySelector('.chat-avatar-photo');
+        if (img && EL.lightbox && EL.lightboxImg) {
+          EL.lightboxImg.src = img.src;
+          EL.lightbox.classList.add('show');
+        }
       });
     }
 

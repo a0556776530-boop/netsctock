@@ -790,23 +790,114 @@
   border-radius: 50%;
   display: inline-flex;
 }
-.chat-avatar-edit-overlay {
+/* Profile panel */
+.chat-profile-panel {
   position: absolute;
-  bottom: -2px; right: -2px;
-  width: 16px; height: 16px;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--chat-sidebar-bg);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-105%);
+  transition: transform .25s ease;
+  pointer-events: none;
+}
+.chat-profile-panel.open {
+  transform: translateX(0);
+  pointer-events: all;
+}
+.cpp-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  background: var(--chat-header-bg);
+  height: var(--chat-header-h);
+  font-weight: 600;
+  font-size: .95rem;
+  color: #e9edef;
+  border-bottom: 1px solid var(--chat-divider);
+  flex-shrink: 0;
+}
+.cpp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 24px 28px;
+  gap: 12px;
+  overflow-y: auto;
+}
+.cpp-photo-wrap {
+  width: 120px; height: 120px;
   border-radius: 50%;
-  background: var(--chat-active-bar, #00a884);
-  border: 2px solid var(--chat-sidebar-bg, #111b21);
+  overflow: hidden;
+  background: var(--chat-hover);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cpp-photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cpp-photo-wrap .role-avatar { width: 100%; height: 100%; font-size: 2.5rem; border-radius: 50%; }
+.cpp-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--chat-text);
+  text-align: center;
+}
+.cpp-role {
+  font-size: .78rem;
+  color: var(--chat-text-muted);
+  text-align: center;
+  text-transform: capitalize;
+}
+.cpp-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+}
+.cpp-btn-primary {
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: var(--chat-active-bar);
   color: #fff;
-  font-size: .55rem;
-  pointer-events: none;
+  font-size: .9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity .15s;
 }
-.chat-upload-wrap:hover .chat-avatar-edit-overlay {
-  transform: scale(1.15);
+.cpp-btn-primary:hover { opacity: .88; }
+.cpp-btn-danger {
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(239,68,68,.4);
+  cursor: pointer;
+  background: transparent;
+  color: #ef4444;
+  font-size: .9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background .15s;
 }
+.cpp-btn-danger:hover { background: rgba(239,68,68,.08); }
+
+/* Header avatar — clickable */
+#chatHeaderAvatar { cursor: pointer; }
+#chatHeaderAvatar .chat-avatar-photo { width: 40px; height: 40px; }
+#chatHeaderAvatar .role-avatar { width: 40px; height: 40px; font-size: 1rem; }
 
 /* @mention */
 .chat-mention { color: var(--chat-active-bar); font-weight: 600; }

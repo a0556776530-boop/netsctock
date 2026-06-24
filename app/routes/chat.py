@@ -223,6 +223,7 @@ def api_conversations():
         result.append({'type': 'group', 'room': rk, 'name': grp.name, 'icon': 'bi-people-fill',
                        'last_msg': msg, 'last_ts': ts, 'last_iso': iso,
                        'unread': group_unread_map.get(rk, 0), 'online': None,
+                       'member_count': len(grp.member_ids or []),
                        'pinned': rk in pinned, 'favorite': rk in favorites})
 
     # 4. Direct messages
@@ -606,6 +607,18 @@ def api_typing_get():
 def api_profile_photo():
     data  = request.get_json(force=True) or {}
     photo = (data.get('photo') or '').strip()
+    uid   = str(current_user.id)
+    from app.models.user import _user_cache
+    from app.utils.cache import cache as _cache
+
+    # Empty string = remove photo
+    if photo == '':
+        User.objects(id=uid).update_one(unset__profile_photo=1)
+        current_user.profile_photo = None
+        _user_cache.pop(uid, None)
+        _cache.delete(f'chat_convs_{uid}')
+        return jsonify(ok=True, removed=True)
+
     if not photo.startswith('data:image/'):
         return jsonify(ok=False, error='invalid'), 400
     if len(photo) > 250 * 1024:   # ~250 KB max (160×160 JPEG ≈ 8–15 KB)
@@ -613,11 +626,7 @@ def api_profile_photo():
     uid = str(current_user.id)
     User.objects(id=uid).update_one(set__profile_photo=photo)
     current_user.profile_photo = photo
-    # Invalidate user-loader cache so other requests see the new photo
-    from app.models.user import _user_cache
     _user_cache.pop(uid, None)
-    # Invalidate conversations cache for all users (they'll pick up the new photo next fetch)
-    from app.utils.cache import cache as _cache
     _cache.delete(f'chat_convs_{uid}')
     return jsonify(ok=True)
 
