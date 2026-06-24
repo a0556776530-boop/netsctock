@@ -361,6 +361,23 @@
   background: var(--chat-bg);
   height: 100%;
   overflow: hidden;
+  position: relative;
+}
+#chatMain::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40%;
+  aspect-ratio: 1;
+  background-image: url('/static/img/chat-bg.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.13;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .chat-empty-state {
@@ -428,12 +445,7 @@
   gap: 3px;
   scrollbar-width: thin;
   scrollbar-color: var(--chat-divider) transparent;
-  background-image: url('/static/img/chat-bg.png');
-  background-size: 38%;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: local;
-  opacity: 1;
+  position: relative;
 }
 
 /* Loading spinner shown during room transition */
