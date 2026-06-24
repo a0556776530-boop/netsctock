@@ -515,6 +515,19 @@
   background: var(--chat-bubble-del) !important;
   color: var(--chat-text-muted) !important;
   font-style: italic;
+  opacity: .85;
+}
+.chat-deleted-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-style: italic;
+  font-size: .88rem;
+  color: var(--chat-text-muted);
+}
+.chat-deleted-label i {
+  font-size: .85rem;
+  font-style: normal;
 }
 
 /* Bubble tail */

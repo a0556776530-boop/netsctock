@@ -740,7 +740,9 @@
     }
 
     var textHTML = '';
-    if (!msg.deleted) {
+    if (msg.deleted) {
+      textHTML = '<div class="chat-bubble-text"><span class="chat-deleted-label"><i class="bi bi-slash-circle"></i>הודעה נמחקה</span></div>';
+    } else {
       var rawText = _esc(msg.text || '');
       rawText = rawText.replace(/@(\S+)/g, '<span class="chat-mention">@$1</span>');
       var onlyEmoji = !msg.has_file && _isEmojiOnly(msg.text || '');
@@ -1137,7 +1139,7 @@
               bubble.querySelectorAll(sel).forEach(function(el){ el.remove(); });
             });
             var textEl = bubble.querySelector('.chat-bubble-text');
-            if (textEl) textEl.textContent = '[הודעה נמחקה]';
+            if (textEl) textEl.innerHTML = '<span class="chat-deleted-label"><i class="bi bi-slash-circle"></i>הודעה נמחקה</span>';
           }
         }
       });
