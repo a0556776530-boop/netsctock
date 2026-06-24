@@ -28,6 +28,7 @@ class Config:
     REMEMBER_COOKIE_SECURE   = _HTTPS
     REMEMBER_COOKIE_DURATION = 60 * 60 * 24 * 14  # 14 days
 
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB upload limit
     WTF_CSRF_TIME_LIMIT = 3600  # 1 hour
     TEMPLATES_AUTO_RELOAD = True
 
