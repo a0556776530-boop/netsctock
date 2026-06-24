@@ -1,6 +1,5 @@
 import os
 import traceback
-from bson import ObjectId
 from datetime import datetime
 from flask import (Blueprint, render_template, redirect, url_for, flash,
                    request, abort, g, current_app, jsonify)
@@ -14,70 +13,6 @@ from app.utils.mongo_helpers import get_or_404
 purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
 
 
-def _sync_inventory_on_cancel(purchase):
-    """Subtract received quantities from asset stock when cancelling/reversing an order."""
-    col = Asset._get_collection()
-    updated = 0
-    for item in purchase.items:
-        if not item.asset:
-            continue
-        # Use received_qty if tracked (partial delivery), else fall back to quantity
-        qty = item.received_qty or item.quantity or 0
-        if qty <= 0:
-            continue
-        try:
-            asset_id = item.asset.id
-        except Exception:
-            continue
-        result = col.update_one(
-            {'_id': asset_id},
-            [{'$set': {'quantity': {'$max': [0, {'$subtract': [{'$ifNull': ['$quantity', 0]}, qty]}]}}}]
-        )
-        if result.modified_count:
-            updated += 1
-    return updated
-
-
-def _sync_inventory_on_receipt(purchase):
-    """Add received quantities to asset stock using atomic $inc. Returns count of updated items."""
-    col = Asset._get_collection()
-    updated = 0
-    for item in purchase.items:
-        if not item.asset:
-            continue
-        qty = item.quantity or 0
-        if qty <= 0:
-            continue
-        try:
-            asset_id = item.asset.id
-        except Exception:
-            continue
-        # Pipeline update handles null quantity gracefully
-        result = col.update_one(
-            {'_id': asset_id},
-            [{'$set': {'quantity': {'$add': [{'$ifNull': ['$quantity', 0]}, qty]}}}]
-        )
-        if result.modified_count:
-            updated += 1
-    return updated
-
-def _sync_inventory_delta(delta_map):
-    """Increment asset stock by delta quantities. delta_map: {asset_id_str: delta_int}"""
-    col = Asset._get_collection()
-    updated = 0
-    for asset_id_str, delta in delta_map.items():
-        if delta <= 0:
-            continue
-        try:
-            result = col.update_one(
-                {'_id': ObjectId(asset_id_str)},
-                [{'$set': {'quantity': {'$add': [{'$ifNull': ['$quantity', 0]}, delta]}}}]
-            )
-            if result.modified_count:
-                updated += 1
-        except Exception:
-            continue
-    return updated
 
 
 ALLOWED_EXTENSIONS = {'pdf', 'xlsx', 'xls', 'csv', 'doc', 'docx', 'png', 'jpg'}
@@ -345,27 +280,18 @@ def edit(id):
                                    assets=assets, grouped_assets=grouped_assets,
                                    statuses=MANUAL_STATUSES, currencies=CURRENCIES)
 
-        # ── Inventory sync on status transitions ─────────────────────────────
-        # Note: transitioning TO "Order Received in Warehouse" is only possible via
-        # the warehouse receive page — the edit form blocks it above.
         _RECEIVED  = 'Order Received in Warehouse'
         _CANCELLED = 'בוטל'
 
         if old_status == _RECEIVED and status in ACTIVE_STATUSES:
-            # Reversed from received → subtract back, clear the guard
             Purchase._get_collection().update_one(
                 {'_id': purchase.id},
                 {'$unset': {'received_at': ''}}
             )
-            updated = _sync_inventory_on_cancel(purchase)
-            flash(
-                f'הסטטוס שונה בחזרה — {updated} פריטים הופחתו מהמלאי (ביטול קליטה בטעות).',
-                'warning'
-            )
+            flash('הסטטוס שונה בחזרה — הקליטה בוטלה.', 'warning')
 
         elif old_status == _CANCELLED and status in ACTIVE_STATUSES:
-            # Reactivated from cancelled → aggregation restores in_purchase automatically
-            flash('ההזמנה הופעלה מחדש — הכמויות חזרו לעמודת ברכש אוטומטית.', 'info')
+            flash('ההזמנה הופעלה מחדש.', 'info')
 
         elif old_status != _CANCELLED and status == _CANCELLED:
             if old_status == _RECEIVED:
@@ -373,10 +299,7 @@ def edit(id):
                     {'_id': purchase.id},
                     {'$unset': {'received_at': ''}}
                 )
-                updated = _sync_inventory_on_cancel(purchase)
-                flash(f'ההזמנה בוטלה — {updated} פריטים הופחתו מהמלאי.', 'warning')
-            else:
-                flash('ההזמנה בוטלה — הכמויות הוסרו מעמודת ברכש אוטומטית.', 'warning')
+            flash('ההזמנה בוטלה.', 'warning')
 
         flash(t.get('flash_purchase_updated', 'Purchase updated successfully.'), 'success')
         return redirect(url_for('purchases.detail', id=purchase.id))
@@ -413,22 +336,14 @@ def quick_status(id):
         Purchase._get_collection().update_one(
             {'_id': purchase.id}, {'$unset': {'received_at': ''}}
         )
-        purchase.save()
-        _sync_inventory_on_cancel(purchase)
 
     elif old_status != _CANCELLED and new_status == _CANCELLED:
-        purchase.save()
         if old_status == _RECEIVED:
             Purchase._get_collection().update_one(
                 {'_id': purchase.id}, {'$unset': {'received_at': ''}}
             )
-            _sync_inventory_on_cancel(purchase)
 
-    elif old_status == _CANCELLED and new_status in ACTIVE_STATUSES:
-        purchase.save()
-
-    else:
-        purchase.save()
+    purchase.save()
 
     key = 'purchase_status_' + new_status.lower().replace(' ', '_')
     label = t.get(key, new_status)
@@ -445,17 +360,8 @@ def delete(id):
     was_received = purchase.status == 'Order Received in Warehouse'
     was_history  = purchase.status in _HISTORY_STATUSES
 
-    if was_received:
-        # Quantities were added to inventory when received — subtract them back
-        updated = _sync_inventory_on_cancel(purchase)
-        purchase.delete()
-        flash(
-            f'הרכש נמחק — {updated} פריטים הופחתו מהמלאי אוטומטית.',
-            'warning'
-        )
-    else:
-        purchase.delete()
-        flash(t.get('flash_purchase_deleted', 'Purchase deleted.'), 'warning')
+    purchase.delete()
+    flash(t.get('flash_purchase_deleted', 'Purchase deleted.'), 'warning')
 
     # Route back to history if the purchase was in the history list
     if was_history:
@@ -498,7 +404,6 @@ def verify(id):
 
     verified_ids = set(request.form.getlist('verified_ids[]'))
 
-    delta_map = {}
     for item in purchase.items:
         a = item.safe_asset
         if not a:
@@ -512,11 +417,7 @@ def verify(id):
                 qty = remaining
             qty = max(0, min(qty, remaining))
             if qty > 0:
-                delta_map[asset_id_str] = qty
                 item.received_qty = (item.received_qty or 0) + qty
-
-    if delta_map:
-        _sync_inventory_delta(delta_map)
 
     active_items  = [i for i in purchase.items if i.safe_asset]
     total         = len(active_items)
@@ -560,7 +461,6 @@ def receive(id):
         return render_template('purchases/receive.html', purchase=purchase)
 
     # POST — process received quantities
-    delta_map = {}
     any_received = False
     for item in purchase.items:
         a = item.safe_asset
@@ -574,12 +474,8 @@ def receive(id):
             now_val = 0
         now_val = max(0, min(now_val, item.remaining_qty))
         if now_val > 0:
-            delta_map[asset_id_str] = now_val
             item.received_qty = (item.received_qty or 0) + now_val
             any_received = True
-
-    if delta_map:
-        _sync_inventory_delta(delta_map)
 
     # Recalculate status
     active_items = [i for i in purchase.items if i.safe_asset]
