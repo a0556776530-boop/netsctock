@@ -428,6 +428,12 @@
   gap: 3px;
   scrollbar-width: thin;
   scrollbar-color: var(--chat-divider) transparent;
+  background-image: url('/static/img/רקע לצאט.png');
+  background-size: 38%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: local;
+  opacity: 1;
 }
 
 /* Loading spinner shown during room transition */
