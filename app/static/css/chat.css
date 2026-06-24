@@ -428,7 +428,7 @@
   gap: 3px;
   scrollbar-width: thin;
   scrollbar-color: var(--chat-divider) transparent;
-  background-image: url('/static/img/רקע לצאט.png');
+  background-image: url('/static/img/chat-bg.png');
   background-size: 38%;
   background-position: center;
   background-repeat: no-repeat;
