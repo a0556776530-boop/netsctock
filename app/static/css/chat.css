@@ -792,19 +792,21 @@
 }
 .chat-avatar-edit-overlay {
   position: absolute;
-  inset: 0;
+  bottom: -2px; right: -2px;
+  width: 16px; height: 16px;
   border-radius: 50%;
-  background: rgba(0,0,0,.45);
+  background: var(--chat-active-bar, #00a884);
+  border: 2px solid var(--chat-sidebar-bg, #111b21);
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity .15s;
   color: #fff;
-  font-size: .7rem;
+  font-size: .55rem;
   pointer-events: none;
 }
-.chat-upload-wrap:hover .chat-avatar-edit-overlay { opacity: 1; }
+.chat-upload-wrap:hover .chat-avatar-edit-overlay {
+  transform: scale(1.15);
+}
 
 /* @mention */
 .chat-mention { color: var(--chat-active-bar); font-weight: 600; }
