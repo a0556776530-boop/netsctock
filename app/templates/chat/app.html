@@ -23,7 +23,7 @@
 
     <div class="chat-sidebar-header">
       <div class="chat-sidebar-me">
-        <div class="chat-upload-wrap" id="chatMyAvatarWrap" title="פרופיל" style="cursor:pointer">
+        <div class="chat-upload-wrap" id="chatMyAvatarWrap">
           {% if current_user.profile_photo %}
           <img src="{{ current_user.profile_photo }}" class="chat-avatar-photo sm" alt="{{ current_user.name }}">
           {% else %}
@@ -218,5 +218,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260624k"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260624l"></script>
 {% endblock %}
