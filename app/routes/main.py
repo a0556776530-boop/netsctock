@@ -42,9 +42,13 @@ def ping():
 @main_bp.route('/api/unread-count')
 @login_required
 def unread_count():
-    from app.models.chat_message import ChatMessage
     me_id = str(current_user.id)
+    _ck   = f'unread_{me_id}'
+    _hit  = cache.get(_ck)
+    if _hit is not None:
+        return jsonify({'count': _hit})
 
+    from app.models.chat_message import ChatMessage
     dm_count = ChatMessage.objects(receiver_id=me_id, read=False).count()
 
     group_count = 0
@@ -70,7 +74,9 @@ def unread_count():
     except Exception:
         pass
 
-    return jsonify({'count': dm_count + group_count})
+    total = dm_count + group_count
+    cache.set(_ck, total, timeout=25)
+    return jsonify({'count': total})
 
 
 @main_bp.route('/api/user-activity')
@@ -326,5 +332,5 @@ def dashboard():
         status_chart=json.dumps(status_chart),
         activity_chart=json.dumps(activity_chart),
     )
-    cache.set(_cache_key, _ctx, timeout=30)
+    cache.set(_cache_key, _ctx, timeout=90)
     return render_template('dashboard.html', **_ctx)
