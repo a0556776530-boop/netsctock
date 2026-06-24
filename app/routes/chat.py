@@ -367,6 +367,23 @@ def api_send():
         _rname  = grp_obj.name if grp_obj else room_key
     emit_chat_notify(str(current_user.id), current_user.name, text, room_key, _rname)
 
+    # Mention notifications — emit directly to each mentioned user's personal room
+    import re as _re
+    from app import socketio as _sio
+    _mentioned = set(_re.findall(r'@(\S+)', text))
+    if _mentioned:
+        _me_id = str(current_user.id)
+        for _mname in _mentioned:
+            _u = User.objects(name=_mname).first()
+            if _u and str(_u.id) != _me_id:
+                _sio.emit('chat_notify', {
+                    'sender':    current_user.name,
+                    'sender_id': _me_id,
+                    'text':      f'תויגת: {text[:80]}',
+                    'room':      room_key,
+                    'room_name': f'תיוג מ-{current_user.name}',
+                }, to='notif_' + str(_u.id), namespace='/')
+
     return jsonify(ok=True, message=msg.to_dict(receiver_online=recv_online))
 
 

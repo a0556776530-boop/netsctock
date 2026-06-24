@@ -28,6 +28,7 @@
     socketReady:    false,   // WebSocket connected and authenticated
     loading:        false,   // true while loadMessages fetch is in-flight
     _msgBuf:        [],      // socket messages buffered during room switch
+    users:          [],      // all known user names (for @ autocomplete)
   };
 
   var _msgMap      = {};  // msgId → msg object, used by event delegation handlers
@@ -318,6 +319,7 @@
     // create zombie sessions that exhaust the thread pool and block all HTTP.
     setInterval(pollMessages, 5000);
     setInterval(pollConversations, 15000);
+    setInterval(pollTyping, 2000);
   }
 
   /* ── Theme ──────────────────────────────────────────────────────────────── */
@@ -338,6 +340,7 @@
         S.conversations = d.conversations || [];
         S.pinned        = d.pinned        || [];
         S.favorites     = d.favorites     || [];
+        S.users = S.conversations.filter(function(c){ return c.type === 'dm'; }).map(function(c){ return c.name; });
         // Fix race: openRoom() may have run before conversations loaded (URL param).
         // If a room is already open but roomType wasn't set, update it now and reload messages.
         if (S.room && !S.roomType) {
@@ -1161,6 +1164,62 @@
     if (EL.replyBar) EL.replyBar.classList.remove('show');
   }
 
+  /* ── @ Mention autocomplete ─────────────────────────────────────────────── */
+  function _mentionQuery(val, pos) {
+    var before = val.slice(0, pos);
+    var m = before.match(/@(\S*)$/);
+    return m ? m[1] : null;
+  }
+
+  function showMentionDropdown(q) {
+    var matches = S.users.filter(function(n){
+      return n.toLowerCase().indexOf(q.toLowerCase()) !== -1 && n !== S.meName;
+    });
+    if (!matches.length) { hideMentionDropdown(); return; }
+    var existing = document.getElementById('chatMentionDrop');
+    var drop = existing || document.createElement('div');
+    drop.id = 'chatMentionDrop';
+    drop.innerHTML = matches.slice(0, 8).map(function(n){
+      return '<div class="mention-item" data-name="' + _esc(n) + '">' +
+        '<i class="bi bi-person"></i>' + _esc(n) + '</div>';
+    }).join('');
+    drop.querySelectorAll('.mention-item').forEach(function(item){
+      item.addEventListener('mousedown', function(e){
+        e.preventDefault();
+        _insertMention(item.dataset.name);
+      });
+    });
+    if (!existing) {
+      var bar = document.querySelector('.chat-input-bar');
+      if (bar) bar.appendChild(drop);
+    }
+  }
+
+  function hideMentionDropdown() {
+    var d = document.getElementById('chatMentionDrop');
+    if (d) d.remove();
+  }
+
+  function _insertMention(name) {
+    if (!EL.inputField) return;
+    var val = EL.inputField.value;
+    var pos = EL.inputField.selectionStart;
+    var before = val.slice(0, pos).replace(/@(\S*)$/, '@' + name + ' ');
+    var after  = val.slice(pos);
+    EL.inputField.value = before + after;
+    EL.inputField.selectionStart = EL.inputField.selectionEnd = before.length;
+    EL.inputField.focus();
+    hideMentionDropdown();
+  }
+
+  function _mentionNav(drop, dir) {
+    var items = Array.from(drop.querySelectorAll('.mention-item'));
+    var idx   = items.findIndex(function(i){ return i.classList.contains('active'); });
+    var next  = (idx + dir + items.length) % items.length;
+    items.forEach(function(i){ i.classList.remove('active'); });
+    items[next].classList.add('active');
+  }
+
   /* ── Typing ─────────────────────────────────────────────────────────────── */
   function onTyping() {
     if (!S.room) return;
@@ -1308,9 +1367,26 @@
     // Enter key (not shift)
     if (EL.inputField) {
       EL.inputField.addEventListener('keydown', function(e){
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        if (e.key === 'Escape') { hideMentionDropdown(); return; }
+        var drop = document.getElementById('chatMentionDrop');
+        if (drop) {
+          var active = drop.querySelector('.mention-item.active');
+          if (e.key === 'ArrowDown') { e.preventDefault(); _mentionNav(drop, 1); return; }
+          if (e.key === 'ArrowUp')   { e.preventDefault(); _mentionNav(drop, -1); return; }
+          if ((e.key === 'Enter' || e.key === 'Tab') && active) {
+            e.preventDefault();
+            _insertMention(active.dataset.name);
+            return;
+          }
+        }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); hideMentionDropdown(); sendMessage(); }
       });
-      EL.inputField.addEventListener('input', function(){ autoResizeInput(); onTyping(); });
+      EL.inputField.addEventListener('input', function(){
+        autoResizeInput(); onTyping();
+        var q = _mentionQuery(this.value, this.selectionStart);
+        if (q !== null) showMentionDropdown(q);
+        else hideMentionDropdown();
+      });
     }
 
     // Attach button
