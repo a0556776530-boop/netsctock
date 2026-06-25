@@ -151,7 +151,10 @@
 
     <div class="mt-auto border-top border-secondary pt-3">
       <div class="d-flex align-items-center gap-2 mb-2">
-        {% if current_user.role == 'super_admin' %}
+        {% if current_user.profile_photo %}
+        <img src="{{ current_user.profile_photo }}" alt="{{ current_user.name }}"
+             style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+        {% elif current_user.role == 'super_admin' %}
         <div class="role-avatar role-super"><i class="bi bi-shield-fill-check"></i></div>
         {% elif current_user.role == 'admin' %}
         <div class="role-avatar role-admin"><i class="bi bi-crown-fill"></i></div>
