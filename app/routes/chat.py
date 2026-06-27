@@ -18,16 +18,23 @@ chat_bp = Blueprint('chat', __name__, url_prefix='/chat')
 
 def _send_push_notifications(recipient_id: str, sender_name: str, text: str, room_key: str):
     """Send Web Push to all subscriptions of an offline user (background thread)."""
-    import threading, json as _json
+    import threading, json as _json, logging as _logging
     from flask import current_app
+
+    _log = _logging.getLogger(__name__)
 
     def _push():
         try:
             from pywebpush import webpush, WebPushException
             recipient = User.objects(id=recipient_id).only('push_subscriptions', 'last_seen').first()
-            if not recipient or not recipient.push_subscriptions:
+            if not recipient:
+                _log.debug('push: recipient %s not found', recipient_id)
+                return
+            if not recipient.push_subscriptions:
+                _log.debug('push: recipient %s has no subscriptions', recipient_id)
                 return
             if _is_online(recipient):
+                _log.debug('push: recipient %s is online — skipping', recipient_id)
                 return  # already online — SocketIO handles it
 
             payload = _json.dumps({
@@ -40,6 +47,7 @@ def _send_push_notifications(recipient_id: str, sender_name: str, text: str, roo
             priv_key = current_app.config.get('VAPID_PRIVATE_KEY', '')
             email    = current_app.config.get('VAPID_EMAIL', 'mailto:admin@netstock.app')
             if not priv_key:
+                _log.warning('push: VAPID_PRIVATE_KEY not configured')
                 return
 
             dead = []
@@ -51,23 +59,25 @@ def _send_push_notifications(recipient_id: str, sender_name: str, text: str, roo
                         vapid_private_key=priv_key,
                         vapid_claims={'sub': email},
                     )
+                    _log.info('push: sent to %s endpoint=%s', recipient_id, sub.get('endpoint', '')[:40])
                 except WebPushException as e:
+                    _log.warning('push: WebPushException for %s: %s', recipient_id, e)
                     if e.response and e.response.status_code in (404, 410):
                         dead.append(sub)
-                except Exception:
-                    pass
+                except Exception as e:
+                    _log.error('push: error for %s: %s', recipient_id, e)
             if dead:
                 User.objects(id=recipient_id).update_one(
                     pull_all__push_subscriptions=dead
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            _log.error('push: outer error: %s', e)
 
     threading.Thread(target=_push, daemon=True).start()
 
 _MAX_HISTORY  = 40
 _MAX_FILE_B   = 50 * 1024 * 1024  # 50 MB
-_ONLINE_MINS  = 3
+_ONLINE_MINS  = 0.75  # 45 seconds
 _REACTIONS    = ['👍', '❤️', '🔥', '✅', '😂', '😮']
 
 _CHANNELS = []  # predefined channels removed — only groups and DMs remain
