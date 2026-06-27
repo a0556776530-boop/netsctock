@@ -198,6 +198,7 @@
     applyTheme(S.theme);
     updateSoundBtn();
     updateNotifBtn();
+    if (Notification && Notification.permission === 'granted') _registerPush();
 
     // Seed own photo into cache
     if (window.CHAT_ME_PHOTO && S.me) _photoCache[S.me] = window.CHAT_ME_PHOTO;
@@ -1848,7 +1849,44 @@
   /* ── Feature 6: Browser notifications ──────────────────────────────────── */
   function requestNotifPermission() {
     if (!('Notification' in window)) return;
-    Notification.requestPermission().then(updateNotifBtn);
+    Notification.requestPermission().then(function(perm) {
+      updateNotifBtn();
+      if (perm === 'granted') _registerPush();
+    });
+  }
+
+  function _urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var raw     = window.atob(base64);
+    var output  = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+    return output;
+  }
+
+  function _registerPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    var vapidKey = window.VAPID_PUBLIC_KEY;
+    if (!vapidKey) return;
+    navigator.serviceWorker.register('/static/sw.js').then(function(reg) {
+      return reg.pushManager.getSubscription().then(function(existing) {
+        if (existing) return existing;
+        return reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: _urlBase64ToUint8Array(vapidKey),
+        });
+      });
+    }).then(function(sub) {
+      var csrf = document.querySelector('meta[name="csrf-token"]');
+      fetch('/chat/api/push-subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf ? csrf.content : '',
+        },
+        body: JSON.stringify(sub.toJSON()),
+      });
+    }).catch(function() {});
   }
 
   function showBrowserNotification(msg) {

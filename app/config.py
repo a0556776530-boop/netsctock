@@ -33,3 +33,7 @@ class Config:
     TEMPLATES_AUTO_RELOAD = True
 
     CISCO_SERIAL_PATTERN = r'^[A-Z]{3}[0-9]{4}[A-Z0-9]{4}$'
+
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+    VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY', '')
+    VAPID_EMAIL       = os.environ.get('VAPID_EMAIL', 'mailto:admin@netstock.app')

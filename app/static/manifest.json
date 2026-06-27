@@ -1,0 +1,12 @@
+{
+  "name": "NetStock",
+  "short_name": "NetStock",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e293b",
+  "theme_color": "#1e293b",
+  "icons": [
+    { "src": "/static/img/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/img/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

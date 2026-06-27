@@ -15,6 +15,56 @@ from app.models.user         import User
 
 chat_bp = Blueprint('chat', __name__, url_prefix='/chat')
 
+
+def _send_push_notifications(recipient_id: str, sender_name: str, text: str, room_key: str):
+    """Send Web Push to all subscriptions of an offline user (background thread)."""
+    import threading, json as _json
+    from flask import current_app
+
+    def _push():
+        try:
+            from pywebpush import webpush, WebPushException
+            recipient = User.objects(id=recipient_id).only('push_subscriptions', 'last_seen').first()
+            if not recipient or not recipient.push_subscriptions:
+                return
+            if _is_online(recipient):
+                return  # already online — SocketIO handles it
+
+            payload = _json.dumps({
+                'title': sender_name,
+                'body':  (text or '')[:80],
+                'icon':  '/static/img/logo.png',
+                'url':   '/chat',
+                'room':  room_key,
+            })
+            priv_key = current_app.config.get('VAPID_PRIVATE_KEY', '')
+            email    = current_app.config.get('VAPID_EMAIL', 'mailto:admin@netstock.app')
+            if not priv_key:
+                return
+
+            dead = []
+            for sub in recipient.push_subscriptions:
+                try:
+                    webpush(
+                        subscription_info=sub,
+                        data=payload,
+                        vapid_private_key=priv_key,
+                        vapid_claims={'sub': email},
+                    )
+                except WebPushException as e:
+                    if e.response and e.response.status_code in (404, 410):
+                        dead.append(sub)
+                except Exception:
+                    pass
+            if dead:
+                User.objects(id=recipient_id).update_one(
+                    pull_all__push_subscriptions=dead
+                )
+        except Exception:
+            pass
+
+    threading.Thread(target=_push, daemon=True).start()
+
 _MAX_HISTORY  = 40
 _MAX_FILE_B   = 50 * 1024 * 1024  # 50 MB
 _ONLINE_MINS  = 3
@@ -395,7 +445,51 @@ def api_send():
                     'room_name': f'תיוג מ-{current_user.name}',
                 }, to='notif_' + str(_u.id), namespace='/')
 
+    # Web Push — notify offline recipient(s)
+    if receiver_id:
+        _send_push_notifications(receiver_id, current_user.name, text, room_key)
+    elif room_key == 'group' or room_key.startswith('ch_') or room_key.startswith('grp_'):
+        # Notify all offline members of the room
+        import threading as _th
+        def _push_group():
+            try:
+                me_id = str(current_user.id)
+                if room_key.startswith('grp_'):
+                    grp_obj2 = ChatGroup.objects(id=room_key[4:]).first()
+                    member_ids = [str(m) for m in (grp_obj2.members if grp_obj2 else [])] if room_key.startswith('grp_') else []
+                else:
+                    member_ids = [str(u.id) for u in User.objects().only('id')]
+                for uid in member_ids:
+                    if uid != me_id:
+                        _send_push_notifications(uid, current_user.name, text, room_key)
+            except Exception:
+                pass
+        _th.Thread(target=_push_group, daemon=True).start()
+
     return jsonify(ok=True, message=msg.to_dict(receiver_online=recv_online))
+
+
+@chat_bp.route('/api/push-subscribe', methods=['POST'])
+@login_required
+def api_push_subscribe():
+    sub = request.get_json(force=True) or {}
+    if not sub.get('endpoint'):
+        return jsonify(ok=False), 400
+    User.objects(id=current_user.id).update_one(
+        add_to_set__push_subscriptions=sub
+    )
+    return jsonify(ok=True)
+
+
+@chat_bp.route('/api/push-unsubscribe', methods=['POST'])
+@login_required
+def api_push_unsubscribe():
+    sub = request.get_json(force=True) or {}
+    if sub.get('endpoint'):
+        User.objects(id=current_user.id).update_one(
+            pull__push_subscriptions__endpoint=sub['endpoint']
+        )
+    return jsonify(ok=True)
 
 
 @chat_bp.route('/api/upload', methods=['POST'])
