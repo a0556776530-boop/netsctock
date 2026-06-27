@@ -199,6 +199,7 @@
     updateSoundBtn();
     updateNotifBtn();
     if (Notification && Notification.permission === 'granted') _registerPush();
+    _initNotifBanner();
 
     // Seed own photo into cache
     if (window.CHAT_ME_PHOTO && S.me) _photoCache[S.me] = window.CHAT_ME_PHOTO;
@@ -1848,6 +1849,32 @@
 
   /* ── Feature 6: Browser notifications ──────────────────────────────────── */
   var _pushEnabled = false;
+
+  function _initNotifBanner() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+    if (Notification.permission !== 'default') return;
+    if (localStorage.getItem('chat-notif-dismissed') === '1') return;
+
+    var banner  = document.getElementById('chatNotifBanner');
+    var btnAllow   = document.getElementById('chatNotifBannerAllow');
+    var btnDismiss = document.getElementById('chatNotifBannerDismiss');
+    if (!banner) return;
+
+    banner.style.display = 'flex';
+
+    btnAllow.addEventListener('click', function() {
+      banner.style.display = 'none';
+      Notification.requestPermission().then(function(perm) {
+        updateNotifBtn();
+        if (perm === 'granted') _registerPush();
+      });
+    });
+
+    btnDismiss.addEventListener('click', function() {
+      banner.style.display = 'none';
+      localStorage.setItem('chat-notif-dismissed', '1');
+    });
+  }
 
   function requestNotifPermission() {
     if (!('Notification' in window)) return;
