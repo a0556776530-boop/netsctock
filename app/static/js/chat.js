@@ -1861,6 +1861,7 @@
     if (!banner) return;
 
     banner.style.display = 'flex';
+    banner.style.flexDirection = 'row';
 
     btnAllow.addEventListener('click', function() {
       banner.style.display = 'none';

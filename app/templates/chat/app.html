@@ -64,13 +64,13 @@
   <div class="chat-sidebar-resizer" id="chatSidebarResizer"></div>
 
   {# ── Notification permission banner ── #}
-  <div id="chatNotifBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:1100;
+  <div id="chatNotifBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999;
        background:#1e40af; color:#fff; padding:10px 16px; font-size:14px;
-       display:flex; align-items:center; gap:10px; justify-content:center; flex-wrap:wrap;">
+       align-items:center; gap:10px; justify-content:center; flex-wrap:wrap;">
     <i class="bi bi-bell-fill"></i>
     <span>קבל התראות על הודעות חדשות גם כשהאפליקציה סגורה</span>
-    <button id="chatNotifBannerAllow" class="btn btn-sm btn-light fw-bold">אשר התראות</button>
-    <button id="chatNotifBannerDismiss" class="btn btn-sm btn-outline-light">לא עכשיו</button>
+    <button id="chatNotifBannerAllow" type="button" class="btn btn-sm btn-light fw-bold" style="cursor:pointer;">אשר התראות</button>
+    <button id="chatNotifBannerDismiss" type="button" class="btn btn-sm btn-outline-light" style="cursor:pointer;">לא עכשיו</button>
   </div>
 
   {# ── Main chat window ── #}
