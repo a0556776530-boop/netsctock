@@ -1847,12 +1847,43 @@
   }
 
   /* ── Feature 6: Browser notifications ──────────────────────────────────── */
+  var _pushEnabled = false;
+
   function requestNotifPermission() {
     if (!('Notification' in window)) return;
+
+    // Toggle off — already subscribed
+    if (_pushEnabled) {
+      if (!confirm('לבטל התראות?')) return;
+      _unregisterPush();
+      return;
+    }
+
+    // Toggle on — request permission
     Notification.requestPermission().then(function(perm) {
       updateNotifBtn();
       if (perm === 'granted') _registerPush();
     });
+  }
+
+  function _unregisterPush() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.getRegistration('/static/sw.js').then(function(reg) {
+      if (!reg) return;
+      return reg.pushManager.getSubscription().then(function(sub) {
+        if (!sub) return;
+        var csrf = document.querySelector('meta[name="csrf-token"]');
+        fetch('/chat/api/push-unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? csrf.content : '' },
+          body: JSON.stringify({ endpoint: sub.endpoint }),
+        });
+        return sub.unsubscribe();
+      });
+    }).then(function() {
+      _pushEnabled = false;
+      updateNotifBtn();
+    }).catch(function() {});
   }
 
   function _urlBase64ToUint8Array(base64String) {
@@ -1886,6 +1917,8 @@
         },
         body: JSON.stringify(sub.toJSON()),
       });
+      _pushEnabled = true;
+      updateNotifBtn();
     }).catch(function() {});
   }
 
@@ -1911,12 +1944,16 @@
     if (!EL.notifBtn) return;
     if (!('Notification' in window)) { EL.notifBtn.style.display = 'none'; return; }
     var perm = Notification.permission;
-    EL.notifBtn.innerHTML = perm === 'granted'
-      ? '<i class="bi bi-bell-fill text-primary"></i>'
-      : perm === 'denied'
-      ? '<i class="bi bi-bell-slash"></i>'
-      : '<i class="bi bi-bell"></i>';
-    EL.notifBtn.title = perm === 'granted' ? 'התראות פעילות' : 'הפעל התראות';
+    if (_pushEnabled) {
+      EL.notifBtn.innerHTML = '<i class="bi bi-bell-fill text-primary"></i>';
+      EL.notifBtn.title = 'התראות פעילות — לחץ לביטול';
+    } else if (perm === 'denied') {
+      EL.notifBtn.innerHTML = '<i class="bi bi-bell-slash text-muted"></i>';
+      EL.notifBtn.title = 'התראות חסומות בדפדפן';
+    } else {
+      EL.notifBtn.innerHTML = '<i class="bi bi-bell"></i>';
+      EL.notifBtn.title = 'הפעל התראות';
+    }
   }
 
   /* ── Helpers ────────────────────────────────────────────────────────────── */
