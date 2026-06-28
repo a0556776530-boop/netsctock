@@ -1872,22 +1872,21 @@
   /* ── Feature 6: Browser notifications ──────────────────────────────────── */
   var _pushEnabled = false;
 
-  function _initNotifBanner() {
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
-    if (Notification.permission === 'granted') return;
-    if (Notification.permission === 'denied') return;
-    // Don't show again within 24 hours of dismissal
-    var dismissed = parseInt(localStorage.getItem('chat-notif-dismissed') || '0');
-    if (dismissed && Date.now() - dismissed < 86400000) return;
-
-    var banner  = document.getElementById('chatNotifBanner');
+  function _showNotifBanner() {
+    var banner     = document.getElementById('chatNotifBanner');
     var btnAllow   = document.getElementById('chatNotifBannerAllow');
     var btnDismiss = document.getElementById('chatNotifBannerDismiss');
     if (!banner) return;
 
+    // Clone buttons to remove any previously attached listeners
+    var newAllow   = btnAllow.cloneNode(true);
+    var newDismiss = btnDismiss.cloneNode(true);
+    btnAllow.parentNode.replaceChild(newAllow, btnAllow);
+    btnDismiss.parentNode.replaceChild(newDismiss, btnDismiss);
+
     banner.style.display = 'flex';
 
-    btnAllow.addEventListener('click', function() {
+    newAllow.addEventListener('click', function() {
       banner.style.display = 'none';
       Notification.requestPermission().then(function(perm) {
         updateNotifBtn();
@@ -1895,11 +1894,19 @@
       });
     });
 
-    btnDismiss.addEventListener('click', function() {
+    newDismiss.addEventListener('click', function() {
       banner.style.display = 'none';
-      // Ask again after 24 hours
-      localStorage.setItem('chat-notif-dismissed', Date.now().toString());
+      localStorage.setItem('chat-notif-dismissed', '1');
+      updateNotifBtn();
     });
+  }
+
+  function _initNotifBanner() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+    if (Notification.permission === 'granted') return;
+    if (Notification.permission === 'denied') return;
+    if (localStorage.getItem('chat-notif-dismissed') === '1') return;
+    _showNotifBanner();
   }
 
   function requestNotifPermission() {
@@ -1912,11 +1919,14 @@
       return;
     }
 
-    // Toggle on — request permission
-    Notification.requestPermission().then(function(perm) {
-      updateNotifBtn();
-      if (perm === 'granted') _registerPush();
-    });
+    // Blocked in browser — inform user
+    if (Notification.permission === 'denied') {
+      showToast('התראות חסומות — שנה בהגדרות הדפדפן', 'warning');
+      return;
+    }
+
+    // Not yet decided — show the friendly modal
+    _showNotifBanner();
   }
 
   function _unregisterPush() {
