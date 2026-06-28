@@ -198,7 +198,7 @@
     applyTheme(S.theme);
     updateSoundBtn();
     updateNotifBtn();
-    if (Notification && Notification.permission === 'granted') _registerPush();
+    if (Notification && Notification.permission === 'granted') _registerPush(true);
     // Force-hide banner if it somehow leaked through (stale localStorage)
     var _b = document.getElementById('chatNotifBanner');
     if (_b) _b.style.display = 'none';
@@ -1963,9 +1963,9 @@
     return output;
   }
 
-  function _registerPush() {
+  function _registerPush(silent) {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      showToast('הדפדפן לא תומך בהתראות', 'warning'); return;
+      if (!silent) showToast('הדפדפן לא תומך בהתראות', 'warning'); return;
     }
     var vapidKey = window.VAPID_PUBLIC_KEY;
     if (!vapidKey) {
@@ -1992,14 +1992,14 @@
         if (r.ok) {
           _pushEnabled = true;
           updateNotifBtn();
-          showToast('התראות הופעלו בהצלחה ✓', 'success');
+          if (!silent) showToast('התראות הופעלו בהצלחה ✓', 'success');
         } else {
-          showToast('שגיאה בשמירת subscription (' + r.status + ')', 'error');
+          if (!silent) showToast('שגיאה בשמירת subscription (' + r.status + ')', 'error');
         }
       });
     }).catch(function(e) {
       console.error('push subscribe failed:', e);
-      showToast('שגיאה בהפעלת התראות: ' + e.message, 'error');
+      if (!silent) showToast('שגיאה בהפעלת התראות: ' + e.message, 'error');
     });
   }
 
