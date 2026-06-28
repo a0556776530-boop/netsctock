@@ -23,6 +23,10 @@ def _send_push_notifications(recipient_id: str, sender_name: str, text: str, roo
 
     _log = _logging.getLogger(__name__)
 
+    # Capture config BEFORE the thread starts (app context only exists in request)
+    priv_key = current_app.config.get('VAPID_PRIVATE_KEY', '')
+    email    = current_app.config.get('VAPID_EMAIL', 'mailto:admin@netstock.app')
+
     def _push():
         try:
             from pywebpush import webpush, WebPushException
@@ -44,8 +48,6 @@ def _send_push_notifications(recipient_id: str, sender_name: str, text: str, roo
                 'url':   '/chat',
                 'room':  room_key,
             })
-            priv_key = current_app.config.get('VAPID_PRIVATE_KEY', '')
-            email    = current_app.config.get('VAPID_EMAIL', 'mailto:admin@netstock.app')
             if not priv_key:
                 _log.warning('push: VAPID_PRIVATE_KEY not configured')
                 return
