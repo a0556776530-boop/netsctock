@@ -1874,8 +1874,9 @@
 
   function _initNotifBanner() {
     if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
-    if (Notification.permission !== 'default') return;
-    if (localStorage.getItem('chat-notif-dismissed') === '1') return;
+    // Show banner whenever permission is not yet granted — ignore "dismissed" state
+    if (Notification.permission === 'granted') return;
+    if (Notification.permission === 'denied') return; // browser blocked — can't do anything
 
     var banner  = document.getElementById('chatNotifBanner');
     var btnAllow   = document.getElementById('chatNotifBannerAllow');
@@ -1895,7 +1896,6 @@
 
     btnDismiss.addEventListener('click', function() {
       banner.style.display = 'none';
-      localStorage.setItem('chat-notif-dismissed', '1');
     });
   }
 
@@ -1969,7 +1969,7 @@
       });
       _pushEnabled = true;
       updateNotifBtn();
-    }).catch(function() {});
+    }).catch(function(e) { console.error('push subscribe failed:', e); });
   }
 
   function showBrowserNotification(msg) {
