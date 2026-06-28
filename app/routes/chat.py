@@ -32,15 +32,15 @@ def _send_push_notifications(recipient_id: str, sender_name: str, text: str, roo
             from pywebpush import webpush, WebPushException
             recipient = User.objects(id=recipient_id).only('push_subscriptions', 'last_seen').first()
             if not recipient:
-                _log.info('push: recipient %s not found', recipient_id)
+                _log.warning('push: recipient %s not found', recipient_id)
                 return
             if not recipient.push_subscriptions:
-                _log.info('push: recipient %s has no subscriptions', recipient_id)
+                _log.warning('push: recipient %s has no subscriptions', recipient_id)
                 return
             if _is_online(recipient):
-                _log.info('push: recipient %s is online — skipping', recipient_id)
+                _log.warning('push: recipient %s is online — skipping', recipient_id)
                 return  # already online — SocketIO handles it
-            _log.info('push: sending to offline recipient %s', recipient_id)
+            _log.warning('push: sending to offline recipient %s', recipient_id)
 
             payload = _json.dumps({
                 'title': sender_name,
@@ -62,7 +62,7 @@ def _send_push_notifications(recipient_id: str, sender_name: str, text: str, roo
                         vapid_private_key=priv_key,
                         vapid_claims={'sub': email},
                     )
-                    _log.info('push: sent to %s endpoint=%s', recipient_id, sub.get('endpoint', '')[:40])
+                    _log.warning('push: sent to %s endpoint=%s', recipient_id, sub.get('endpoint', '')[:40])
                 except WebPushException as e:
                     _log.warning('push: WebPushException for %s: %s', recipient_id, e)
                     if e.response and e.response.status_code in (404, 410):
