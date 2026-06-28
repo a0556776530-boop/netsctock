@@ -371,6 +371,8 @@
       }).catch(function(){});
   }
 
+  var _prevUnread = {};  // room → unread count, for detecting new messages
+
   function pollConversations() {
     fetch('/chat/api/inbox-status')
       .then(function(r){ return r.json(); })
@@ -388,6 +390,26 @@
           }
           var dot = el.querySelector('.chat-online-dot');
           if (dot) dot.className = 'chat-online-dot' + (info.online ? ' online' : '');
+
+          // Browser notification when unread count rises for a room that isn't open
+          var roomKey = el.dataset.room;
+          if (roomKey && roomKey !== S.room && info.unread > 0) {
+            var prev = _prevUnread[roomKey] || 0;
+            if (info.unread > prev && Notification && Notification.permission === 'granted') {
+              try {
+                var convName = (el.querySelector('.chat-conv-name') || {}).textContent || uid;
+                var n = new Notification(convName, {
+                  body: 'הודעה חדשה',
+                  tag:  roomKey,
+                });
+                n.onclick = function(){ window.focus(); openRoom(roomKey); n.close(); };
+                setTimeout(function(){ n.close(); }, 6000);
+              } catch(e) {}
+            }
+            _prevUnread[roomKey] = info.unread;
+          } else if (roomKey && info.unread === 0) {
+            _prevUnread[roomKey] = 0;
+          }
         });
         // Update nav badge
         var navBadge = document.getElementById('chatUnreadBadge');
