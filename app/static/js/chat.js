@@ -199,6 +199,9 @@
     updateSoundBtn();
     updateNotifBtn();
     if (Notification && Notification.permission === 'granted') _registerPush();
+    // Force-hide banner if it somehow leaked through (stale localStorage)
+    var _b = document.getElementById('chatNotifBanner');
+    if (_b) _b.style.display = 'none';
     _initNotifBanner();
 
     // Seed own photo into cache
@@ -1905,7 +1908,7 @@
     if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
     if (Notification.permission === 'granted') return;
     if (Notification.permission === 'denied') return;
-    if (localStorage.getItem('chat-notif-dismissed') === '1') return;
+    if (localStorage.getItem('chat-notif-dismissed')) return;  // any value counts
     _showNotifBanner();
   }
 
