@@ -1874,9 +1874,11 @@
 
   function _initNotifBanner() {
     if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
-    // Show banner whenever permission is not yet granted — ignore "dismissed" state
     if (Notification.permission === 'granted') return;
-    if (Notification.permission === 'denied') return; // browser blocked — can't do anything
+    if (Notification.permission === 'denied') return;
+    // Don't show again within 24 hours of dismissal
+    var dismissed = parseInt(localStorage.getItem('chat-notif-dismissed') || '0');
+    if (dismissed && Date.now() - dismissed < 86400000) return;
 
     var banner  = document.getElementById('chatNotifBanner');
     var btnAllow   = document.getElementById('chatNotifBannerAllow');
@@ -1896,6 +1898,8 @@
 
     btnDismiss.addEventListener('click', function() {
       banner.style.display = 'none';
+      // Ask again after 24 hours
+      localStorage.setItem('chat-notif-dismissed', Date.now().toString());
     });
   }
 
