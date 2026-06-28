@@ -223,6 +223,7 @@ def edit_user(id):
                 flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
                 return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
             user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+            user.session_version = (user.session_version or 0) + 1
 
         # Prevent removing the last super_admin
         if user.role == 'super_admin' and form.role.data != 'super_admin':
@@ -275,6 +276,7 @@ def reset_password(id):
     form = ResetPasswordForm()
     if form.validate_on_submit():
         user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+        user.session_version = (user.session_version or 0) + 1
         user.save()
         flash(t.get('flash_password_reset', 'Password for {name} has been reset.').format(name=user.name), 'success')
         return redirect(url_for('admin.users'))

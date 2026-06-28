@@ -17,9 +17,10 @@ class User(UserMixin, me.Document):
     favorite_rooms = me.ListField(me.StringField())
     profile_photo       = me.StringField()  # base64 data URI e.g. "data:image/jpeg;base64,..."
     push_subscriptions  = me.ListField(me.DictField())  # Web Push subscription objects
+    session_version     = me.IntField(default=0)
 
     def get_id(self):
-        return str(self.id)
+        return f"{self.id}:{self.session_version or 0}"
 
     def __repr__(self):
         return f'<User {self.name}>'
@@ -48,13 +49,24 @@ _user_cache: dict = {}  # {user_id: (User, timestamp)}
 def load_user(user_id):
     try:
         from datetime import datetime as _dt
+        # user_id format: "<mongo_id>:<session_version>"
+        parts = user_id.split(':', 1)
+        oid   = parts[0]
+        sv    = int(parts[1]) if len(parts) > 1 else 0
+
         now = _dt.utcnow()
-        cached = _user_cache.get(user_id)
+        cached = _user_cache.get(oid)
         if cached and (now - cached[1]).total_seconds() < 10:
-            return cached[0]
-        user = User.objects(id=user_id).first()
-        if user:
-            _user_cache[user_id] = (user, now)
+            user = cached[0]
+        else:
+            user = User.objects(id=oid).first()
+            if user:
+                _user_cache[oid] = (user, now)
+        if not user:
+            return None
+        # Reject session if password was changed since login
+        if (user.session_version or 0) != sv:
+            return None
         return user
     except Exception:
         return None
