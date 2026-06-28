@@ -1881,6 +1881,9 @@
     var btnDismiss = document.getElementById('chatNotifBannerDismiss');
     if (!banner) return;
 
+    // Save dismiss immediately — banner will never auto-show again after this
+    localStorage.setItem('chat-notif-dismissed', '1');
+
     // Clone buttons to remove any previously attached listeners
     var newAllow   = btnAllow.cloneNode(true);
     var newDismiss = btnDismiss.cloneNode(true);
@@ -1899,7 +1902,6 @@
 
     newDismiss.addEventListener('click', function() {
       banner.style.display = 'none';
-      localStorage.setItem('chat-notif-dismissed', '1');
       updateNotifBtn();
     });
   }
