@@ -502,6 +502,19 @@ def api_push_unsubscribe():
     return jsonify(ok=True)
 
 
+@chat_bp.route('/api/push-status')
+@login_required
+def api_push_status():
+    from flask import current_app
+    u = User.objects(id=current_user.id).only('push_subscriptions').first()
+    subs = u.push_subscriptions or [] if u else []
+    return jsonify(
+        subscriptions=len(subs),
+        vapid_ok=bool(current_app.config.get('VAPID_PRIVATE_KEY')),
+        vapid_pub=bool(current_app.config.get('VAPID_PUBLIC_KEY')),
+    )
+
+
 @chat_bp.route('/api/upload', methods=['POST'])
 @login_required
 def api_upload():
