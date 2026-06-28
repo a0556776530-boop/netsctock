@@ -65,12 +65,16 @@
 
   {# ── Notification permission banner ── #}
   <div id="chatNotifBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999;
-       background:#1e40af; color:#fff; padding:10px 16px; font-size:14px;
-       align-items:center; gap:10px; justify-content:center; flex-wrap:wrap;">
-    <i class="bi bi-bell-fill"></i>
-    <span>קבל התראות על הודעות חדשות גם כשהאפליקציה סגורה</span>
-    <button id="chatNotifBannerAllow" type="button" class="btn btn-sm btn-light fw-bold" style="cursor:pointer;">אשר התראות</button>
-    <button id="chatNotifBannerDismiss" type="button" class="btn btn-sm btn-outline-light" style="cursor:pointer;">לא עכשיו</button>
+       background:#1e40af; color:#fff; padding:14px 20px; font-size:15px;
+       align-items:center; gap:12px; justify-content:center; flex-wrap:wrap;">
+    <i class="bi bi-bell-fill" style="font-size:18px;"></i>
+    <span style="font-weight:600;">האם לאפשר לאתר זה לשלוח לך התראות על הודעות חדשות?</span>
+    <button id="chatNotifBannerAllow" type="button" class="btn btn-light fw-bold" style="cursor:pointer; font-size:14px; padding:6px 18px;">
+      ✓ כן, אשר התראות
+    </button>
+    <button id="chatNotifBannerDismiss" type="button" class="btn btn-outline-light" style="cursor:pointer; font-size:13px;">
+      לא עכשיו
+    </button>
   </div>
 
   {# ── Main chat window ── #}
