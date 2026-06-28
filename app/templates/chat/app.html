@@ -63,31 +63,6 @@
   {# ── Resize handle ── #}
   <div class="chat-sidebar-resizer" id="chatSidebarResizer"></div>
 
-  {# ── Notification permission modal ── #}
-  <div id="chatNotifBanner" style="display:none; position:fixed; inset:0; z-index:99999;
-       background:rgba(0,0,0,0.55); align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:16px; padding:32px 28px; max-width:380px; width:90%;
-                text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.25); direction:rtl;">
-      <div style="font-size:40px; margin-bottom:12px;">🔔</div>
-      <div style="font-size:17px; font-weight:700; color:#1e293b; margin-bottom:8px;">
-        הפעל התראות
-      </div>
-      <div style="font-size:14px; color:#64748b; margin-bottom:24px; line-height:1.6;">
-        כדי לקבל התראות על הודעות חדשות גם כשהאפליקציה סגורה, יש לאשר התראות.
-      </div>
-      <button id="chatNotifBannerAllow" type="button"
-              style="width:100%; padding:12px; border-radius:10px; border:none; cursor:pointer;
-                     background:#1d4ed8; color:#fff; font-size:15px; font-weight:700; margin-bottom:10px;">
-        ✓ אשר התראות
-      </button>
-      <button id="chatNotifBannerDismiss" type="button"
-              style="width:100%; padding:10px; border-radius:10px; border:1px solid #e2e8f0;
-                     background:transparent; color:#64748b; font-size:14px; cursor:pointer;">
-        לא עכשיו
-      </button>
-    </div>
-  </div>
-
   {# ── Main chat window ── #}
   <div id="chatMain">
 
@@ -184,6 +159,29 @@
 
 </div>
 
+{# ── Notification permission modal — outside #chatApp so position:fixed works correctly ── #}
+<div id="chatNotifBanner" style="display:none; position:fixed; inset:0; z-index:99999;
+     background:rgba(0,0,0,0.55); align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:16px; padding:32px 28px; max-width:380px; width:90%;
+              text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.25); direction:rtl;">
+    <div style="font-size:40px; margin-bottom:12px;">🔔</div>
+    <div style="font-size:17px; font-weight:700; color:#1e293b; margin-bottom:8px;">הפעל התראות</div>
+    <div style="font-size:14px; color:#64748b; margin-bottom:24px; line-height:1.6;">
+      כדי לקבל התראות על הודעות חדשות גם כשהאפליקציה סגורה, יש לאשר התראות.
+    </div>
+    <button id="chatNotifBannerAllow" type="button"
+            style="width:100%; padding:12px; border-radius:10px; border:none; cursor:pointer;
+                   background:#1d4ed8; color:#fff; font-size:15px; font-weight:700; margin-bottom:10px;">
+      ✓ אשר התראות
+    </button>
+    <button id="chatNotifBannerDismiss" type="button"
+            style="width:100%; padding:10px; border-radius:10px; border:1px solid #e2e8f0;
+                   background:transparent; color:#64748b; font-size:14px; cursor:pointer;">
+      לא עכשיו
+    </button>
+  </div>
+</div>
+
 {# Profile panel — slides over the sidebar #}
 <div id="chatProfilePanel" class="chat-profile-panel">
   <div class="cpp-header">
@@ -243,5 +241,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260628d"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260628e"></script>
 {% endblock %}
