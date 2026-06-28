@@ -1946,9 +1946,13 @@
   }
 
   function _registerPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      showToast('הדפדפן לא תומך בהתראות', 'warning'); return;
+    }
     var vapidKey = window.VAPID_PUBLIC_KEY;
-    if (!vapidKey) return;
+    if (!vapidKey) {
+      showToast('שגיאת הגדרות שרת (VAPID חסר)', 'error'); return;
+    }
     navigator.serviceWorker.register('/static/sw.js').then(function(reg) {
       return reg.pushManager.getSubscription().then(function(existing) {
         if (existing) return existing;
@@ -1959,17 +1963,26 @@
       });
     }).then(function(sub) {
       var csrf = document.querySelector('meta[name="csrf-token"]');
-      fetch('/chat/api/push-subscribe', {
+      return fetch('/chat/api/push-subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrf ? csrf.content : '',
         },
         body: JSON.stringify(sub.toJSON()),
+      }).then(function(r) {
+        if (r.ok) {
+          _pushEnabled = true;
+          updateNotifBtn();
+          showToast('התראות הופעלו בהצלחה ✓', 'success');
+        } else {
+          showToast('שגיאה בשמירת subscription (' + r.status + ')', 'error');
+        }
       });
-      _pushEnabled = true;
-      updateNotifBtn();
-    }).catch(function(e) { console.error('push subscribe failed:', e); });
+    }).catch(function(e) {
+      console.error('push subscribe failed:', e);
+      showToast('שגיאה בהפעלת התראות: ' + e.message, 'error');
+    });
   }
 
   function showBrowserNotification(msg) {
