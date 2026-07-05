@@ -149,11 +149,13 @@
             </button>
             {% if q or type_filter %}
             <a href="{{ url_for('assets.list_assets') }}" class="btn btn-sm btn-outline-secondary" title="נקה פילטר">
-            {% else %}
-            <a href="#" onclick="return false;" class="btn btn-sm btn-outline-secondary disabled" style="opacity:0.35; cursor:default;" title="אין פילטר פעיל">
-            {% endif %}
               <i class="bi bi-x"></i>
             </a>
+            {% else %}
+            <button type="button" class="btn btn-sm btn-outline-secondary" style="opacity:0.35; cursor:default;" title="אין פילטר פעיל">
+              <i class="bi bi-x"></i>
+            </button>
+            {% endif %}
           </div>
         </form>
       </div>
