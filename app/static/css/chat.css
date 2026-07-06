@@ -367,7 +367,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: url('/static/img/chat-bg.jpg');
+  background-image: url('/static/img/chat-bg.png');
   background-size: 45%;
   background-repeat: no-repeat;
   background-position: center;
