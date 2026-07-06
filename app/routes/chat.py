@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from flask import (Blueprint, render_template, request, jsonify,
                    abort, redirect, url_for, flash, g)
 from flask_login import login_required, current_user
+from app import limiter
 
 from app.models.chat_message import ChatMessage, _private_room
 from app.models.chat_file    import ChatFile
@@ -315,11 +316,9 @@ def api_messages():
     since       = request.args.get('since')
     receiver_id = request.args.get('receiver_id', '')
 
-    # Access control for group rooms
-    if room_key.startswith('grp_'):
-        grp = ChatGroup.objects(id=room_key[4:]).first()
-        if not grp or not grp.is_member(current_user.id):
-            return jsonify(messages=[])
+    # Access control — all room types
+    if not _can_access_room(str(current_user.id), room_key):
+        return jsonify(messages=[]), 403
 
     # For DMs: look up the other user's online status once
     recv_online = False
@@ -383,6 +382,7 @@ def api_file(msg_id):
 
 @chat_bp.route('/api/send', methods=['POST'])
 @login_required
+@limiter.limit('60 per minute')
 def api_send():
     data        = request.get_json(force=True) or {}
     text        = (data.get('text') or '').strip()[:4000]
@@ -393,11 +393,9 @@ def api_send():
     if not text:
         return jsonify(ok=False, error='empty'), 400
 
-    # Access check
-    if room_key.startswith('grp_'):
-        grp = ChatGroup.objects(id=room_key[4:]).first()
-        if not grp or not grp.is_member(current_user.id):
-            return jsonify(ok=False, error='forbidden'), 403
+    # Access control — all room types
+    if not _can_access_room(str(current_user.id), room_key):
+        return jsonify(ok=False, error='forbidden'), 403
 
     # Reply context
     reply_text = reply_user = ''
@@ -520,11 +518,16 @@ def api_push_status():
 
 @chat_bp.route('/api/upload', methods=['POST'])
 @login_required
+@limiter.limit('20 per minute')
 def api_upload():
     room_key    = request.form.get('room', 'group')
     receiver_id = request.form.get('receiver_id') or None
     reply_to_id = request.form.get('reply_to_id') or None
     caption     = (request.form.get('caption') or '').strip()[:500]
+
+    # Access control — all room types
+    if not _can_access_room(str(current_user.id), room_key):
+        return jsonify(ok=False, error='forbidden'), 403
 
     f = request.files.get('file')
     if not f:
@@ -583,6 +586,7 @@ def api_upload():
 
 @chat_bp.route('/api/react', methods=['POST'])
 @login_required
+@limiter.limit('60 per minute')
 def api_react():
     data   = request.get_json(force=True) or {}
     msg_id = data.get('msg_id')
@@ -593,6 +597,8 @@ def api_react():
     msg = ChatMessage.objects(id=msg_id).first()
     if not msg:
         return jsonify(ok=False), 404
+    if not _can_access_room(str(current_user.id), msg.room or 'group'):
+        return jsonify(ok=False), 403
 
     reactions = dict(msg.reactions or {})
     uid = str(current_user.id)
@@ -663,6 +669,8 @@ def api_read():
 def api_pin():
     data     = request.get_json(force=True) or {}
     room_key = data.get('room', '')
+    if room_key and not _can_access_room(str(current_user.id), room_key):
+        return jsonify(ok=False, error='forbidden'), 403
     me_obj   = User.objects(id=current_user.id).first()
     pinned   = list(me_obj.pinned_rooms or [])
     if room_key in pinned:
@@ -679,6 +687,8 @@ def api_pin():
 def api_favorite():
     data     = request.get_json(force=True) or {}
     room_key = data.get('room', '')
+    if room_key and not _can_access_room(str(current_user.id), room_key):
+        return jsonify(ok=False, error='forbidden'), 403
     me_obj   = User.objects(id=current_user.id).first()
     favs     = list(me_obj.favorite_rooms or [])
     if room_key in favs:

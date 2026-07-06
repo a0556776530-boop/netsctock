@@ -100,6 +100,7 @@ def change_password():
             current_user.password_hash = bcrypt.generate_password_hash(
                 form.new_password.data
             ).decode('utf-8')
+            current_user.session_version = (current_user.session_version or 0) + 1
             current_user.save()
             flash(t.get('flash_password_changed', 'Password changed successfully.'), 'success')
             return redirect(url_for('main.dashboard'), 303)

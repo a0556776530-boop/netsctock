@@ -15,4 +15,4 @@ geoip2==4.8.0
 maxminddb==2.6.2
 tzdata
 Flask-Caching==2.3.0
-pywebpush
+pywebpush>=1.14.0,<2.0.0
