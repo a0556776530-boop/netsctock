@@ -18,7 +18,7 @@ def _password_already_used(plaintext, exclude_id=None):
     """Return True if any user (other than exclude_id) already has this password.
     Sorted by last_login so recently-active users are checked first — exits early on match.
     """
-    qs = User.objects.order_by('-last_login')
+    qs = User.objects.order_by('-last_login').only('id', 'password_hash')
     for u in qs:
         if exclude_id and str(u.id) == str(exclude_id):
             continue

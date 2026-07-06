@@ -30,9 +30,13 @@ def create_app(config_class=Config):
 
     # Connect MongoEngine to Atlas
     me.connect(host=MONGO_URI, alias='default',
-               serverSelectionTimeoutMS=10000,
+               serverSelectionTimeoutMS=15000,
                socketTimeoutMS=20000,
-               connectTimeoutMS=10000)
+               connectTimeoutMS=10000,
+               maxPoolSize=100,
+               minPoolSize=5,
+               maxIdleTimeMS=45000,
+               retryWrites=True)
 
     login_manager.init_app(app)
     bcrypt.init_app(app)
@@ -101,10 +105,10 @@ def create_app(config_class=Config):
         async_mode='threading',
         logger=False,
         engineio_logger=False,
-        ping_timeout=20,
-        ping_interval=10,
-        allow_upgrades=False,
-        transports=['polling'],
+        ping_timeout=25,
+        ping_interval=15,
+        allow_upgrades=True,
+        transports=['websocket', 'polling'],
     )
 
     from datetime import datetime

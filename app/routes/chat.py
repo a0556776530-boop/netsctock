@@ -469,7 +469,14 @@ def api_send():
                     grp_obj2 = ChatGroup.objects(id=room_key[4:]).first()
                     member_ids = [str(m) for m in (grp_obj2.members if grp_obj2 else [])] if room_key.startswith('grp_') else []
                 else:
-                    member_ids = [str(u.id) for u in User.objects().only('id')]
+                    cutoff = datetime.utcnow() - timedelta(minutes=_ONLINE_MINS)
+                    member_ids = [
+                        str(u.id) for u in User.objects(
+                            last_seen__lt=cutoff,
+                            push_subscriptions__exists=True,
+                            push_subscriptions__0__exists=True,
+                        ).only('id')
+                    ]
                 for uid in member_ids:
                     if uid != me_id:
                         _send_push_notifications(uid, current_user.name, text, room_key)

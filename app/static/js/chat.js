@@ -43,7 +43,7 @@
     if (typeof io === 'undefined') return;  // socket.io not loaded
 
     _socket = io({
-      transports: ['polling'],
+      transports: ['websocket', 'polling'],
       reconnection:         true,
       reconnectionDelay:    3000,
       reconnectionDelayMax: 15000,
@@ -333,7 +333,11 @@
     // Socket.IO disabled — pure HTTP polling to avoid thread starvation.
     // Each socket.io long-poll holds a gunicorn thread; reconnect storms
     // create zombie sessions that exhaust the thread pool and block all HTTP.
-    setInterval(pollMessages, 5000);
+    var _pollTimer = setInterval(pollMessages, 10000);
+    document.addEventListener('visibilitychange', function() {
+      clearInterval(_pollTimer);
+      _pollTimer = setInterval(pollMessages, document.hidden ? 30000 : 10000);
+    });
     setInterval(pollConversations, 15000);
   }
 
@@ -1299,11 +1303,11 @@
       return '<div class="mention-item" data-name="' + _esc(n) + '">' +
         '<i class="bi bi-person"></i>' + _esc(n) + '</div>';
     }).join('');
-    drop.querySelectorAll('.mention-item').forEach(function(item){
-      item.addEventListener('mousedown', function(e){
-        e.preventDefault();
-        _insertMention(item.dataset.name);
-      });
+    drop.addEventListener('mousedown', function(e) {
+      var item = e.target.closest('.mention-item');
+      if (!item) return;
+      e.preventDefault();
+      _insertMention(item.dataset.name);
     });
     if (!existing) {
       var bar = document.querySelector('.chat-input-bar');
@@ -1433,17 +1437,17 @@
       html += '<button class="cep-em" type="button">' + em + '</button>';
     });
     grid.innerHTML = html;
-    grid.querySelectorAll('.cep-em').forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (!EL.inputField) return;
-        var s = EL.inputField.selectionStart, en = EL.inputField.selectionEnd;
-        var v = EL.inputField.value;
-        EL.inputField.value = v.slice(0, s) + btn.textContent + v.slice(en);
-        EL.inputField.selectionStart = EL.inputField.selectionEnd = s + btn.textContent.length;
-        EL.inputField.focus();
-        autoResizeInput();
-      });
+    grid.addEventListener('click', function(e) {
+      var btn = e.target.closest('.cep-em');
+      if (!btn) return;
+      e.stopPropagation();
+      if (!EL.inputField) return;
+      var s = EL.inputField.selectionStart, en = EL.inputField.selectionEnd;
+      var v = EL.inputField.value;
+      EL.inputField.value = v.slice(0, s) + btn.textContent + v.slice(en);
+      EL.inputField.selectionStart = EL.inputField.selectionEnd = s + btn.textContent.length;
+      EL.inputField.focus();
+      autoResizeInput();
     });
   }
 
