@@ -55,6 +55,7 @@ class Asset(me.Document):
     quantity       = me.IntField()
     min_threshold  = me.IntField()
     photo          = me.StringField()
+    specs          = me.DictField()
     created_at     = me.DateTimeField(default=datetime.utcnow)
     updated_at     = me.DateTimeField(default=datetime.utcnow)
 

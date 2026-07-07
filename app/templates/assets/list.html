@@ -294,7 +294,8 @@
                   "created":      asset.created_at.strftime("%d %b %Y") if asset.created_at else "",
                   "open_orders":  open_order_counts.get(asset.id|string, 0),
                   "closed_orders": closed_order_counts.get(asset.id|string, 0),
-                  "photo":        asset.photo or ""
+                  "photo":        asset.photo or "",
+                  "specs":        asset.specs or {}
                 } | tojson }}'>
 
               <!-- 1. Asset ID -->
@@ -519,6 +520,12 @@
       </table>
       <div id="popNotes" class="mt-2 small text-muted fst-italic border-top pt-2" style="display:none;"></div>
     </div>
+
+    <!-- Specs bar -->
+    <div id="popSpecsWrap" style="display:none; padding:8px 12px 10px; background:#f8fafc; border-top:1px solid #e2e8f0;">
+      <div id="popSpecsRow" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+    </div>
+
   </div>
 </div>
 
@@ -924,6 +931,29 @@
         ordersEl.appendChild(b2);
       }
       ordersEl.style.display = (d.open_orders || d.closed_orders) ? 'flex' : 'none';
+
+      // Specs
+      var specsWrap = document.getElementById('popSpecsWrap');
+      var specsRow  = document.getElementById('popSpecsRow');
+      specsRow.innerHTML = '';
+      var s = d.specs || {};
+      var specItems = [
+        { key: 'rj45_ports',   icon: '🔌', label: 'RJ45',  suffix: '' },
+        { key: 'sfp_ports',    icon: '💡', label: 'SFP',   suffix: '' },
+        { key: 'poe',          icon: '⚡', label: 'PoE',   suffix: '' },
+        { key: 'power_watts',  icon: '🔋', label: 'W',     suffix: 'W' },
+        { key: 'rack_units',   icon: '📦', label: 'RU',    suffix: 'U' },
+        { key: 'depth_mm',     icon: '📐', label: 'Depth', suffix: 'mm' },
+      ];
+      specItems.forEach(function(item) {
+        var val = s[item.key];
+        if (val === undefined || val === null || val === '') return;
+        var chip = document.createElement('span');
+        chip.style.cssText = 'display:inline-flex;align-items:center;gap:3px;font-size:.72rem;font-weight:600;padding:3px 8px;border-radius:20px;background:#e0f2fe;color:#0369a1;white-space:nowrap;';
+        chip.innerHTML = item.icon + ' <span style="opacity:.75;">' + item.label + '</span> ' + val + (item.suffix && item.suffix !== item.label ? item.suffix : '');
+        specsRow.appendChild(chip);
+      });
+      specsWrap.style.display = specsRow.children.length ? '' : 'none';
 
       // Position
       pop.style.display = 'block';
