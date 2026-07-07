@@ -61,11 +61,6 @@
               <i class="bi bi-pencil"></i>
             </a>
             {% endif %}
-            {% if current_user.is_super_admin %}
-            <a href="{{ url_for('admin.reset_password', id=user.id) }}" class="btn btn-sm btn-outline-warning" title="{{ t.btn_reset_password or 'Reset Password' }}">
-              <i class="bi bi-key"></i>
-            </a>
-            {% endif %}
             {% if user.id != current_user.id %}
               {% set can_delete = current_user.is_super_admin or (current_user.is_admin and user.role == 'viewer') %}
               {% if can_delete %}
