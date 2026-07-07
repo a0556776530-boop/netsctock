@@ -41,7 +41,8 @@
             </div>
           </div>
 
-          <!-- Current password -->
+          <!-- Current password — only needed when editing own account -->
+          {% if editing_self %}
           <div class="mb-3">
             <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.label_current_password }}</label>
             <div class="input-group">
@@ -53,6 +54,7 @@
               </button>
             </div>
           </div>
+          {% endif %}
 
           <!-- New password -->
           <div class="mb-3">

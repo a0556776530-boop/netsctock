@@ -239,7 +239,8 @@ def edit_user(id):
         user.save()
         flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
         return redirect(url_for('admin.users'))
-    return render_template('admin/edit_user.html', form=form, user=user)
+    editing_self = (str(user.id) == str(current_user.id))
+    return render_template('admin/edit_user.html', form=form, user=user, editing_self=editing_self)
 
 
 @admin_bp.route('/users/<id>/delete', methods=['POST'])
