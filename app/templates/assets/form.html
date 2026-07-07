@@ -9,6 +9,7 @@
       <div class="card-body p-4">
         <form method="POST" novalidate>
           {{ form.hidden_tag() }}
+          <input type="hidden" id="assetPhotoData" name="photo_data" value="">
 
           <div class="row g-3">
             <!-- Asset ID -->
@@ -52,6 +53,39 @@
             <div class="col-12">
               {{ form.notes.label(class="form-label fw-semibold") }}
               {{ form.notes(class="form-control", rows=3, placeholder="Any additional information…") }}
+            </div>
+
+            <!-- Asset Photo -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">תמונת רכיב</label>
+              <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div id="assetPhotoPreview" style="width:80px;height:80px;border-radius:8px;overflow:hidden;
+                     background:#f1f5f9;display:flex;align-items:center;justify-content:center;
+                     border:1px solid #e2e8f0;cursor:pointer;flex-shrink:0;"
+                     onclick="document.getElementById('assetPhotoInput').click()">
+                  {% if asset and asset.photo %}
+                  <img id="assetPhotoImg" src="{{ asset.photo }}" style="width:100%;height:100%;object-fit:cover;">
+                  {% else %}
+                  <i class="bi bi-image" style="font-size:1.8rem;color:#94a3b8;" id="assetPhotoIcon"></i>
+                  {% endif %}
+                </div>
+                <div class="d-flex flex-column gap-2">
+                  <input type="file" id="assetPhotoInput" accept="image/*" style="display:none">
+                  <button type="button" class="btn btn-sm btn-outline-secondary"
+                          onclick="document.getElementById('assetPhotoInput').click()">
+                    <i class="bi bi-camera me-1"></i>בחר תמונה
+                  </button>
+                  {% if asset and asset.photo %}
+                  <button type="button" class="btn btn-sm btn-outline-danger" id="assetRemovePhotoBtn">
+                    <i class="bi bi-trash3 me-1"></i>הסר תמונה
+                  </button>
+                  {% else %}
+                  <button type="button" class="btn btn-sm btn-outline-danger" id="assetRemovePhotoBtn" style="display:none">
+                    <i class="bi bi-trash3 me-1"></i>הסר תמונה
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
             </div>
 
             <!-- ── Pricing & Inventory section header ──────────────────────── -->
@@ -213,6 +247,36 @@
   });
 
   recalcNis();
+
+  // ── Asset photo ──────────────────────────────────────────────────────────────
+  document.getElementById('assetPhotoInput').addEventListener('change', function() {
+    var file = this.files[0];
+    if (!file) return;
+    var canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    var ctx = canvas.getContext('2d');
+    var img = new Image();
+    img.onload = function() {
+      var s = Math.min(img.width, img.height);
+      var ox = (img.width - s) / 2, oy = (img.height - s) / 2;
+      ctx.drawImage(img, ox, oy, s, s, 0, 0, 256, 256);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      document.getElementById('assetPhotoData').value = dataUrl;
+      var preview = document.getElementById('assetPhotoPreview');
+      preview.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;">';
+      var rmBtn = document.getElementById('assetRemovePhotoBtn');
+      if (rmBtn) rmBtn.style.display = '';
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  var assetRemoveBtn = document.getElementById('assetRemovePhotoBtn');
+  if (assetRemoveBtn) assetRemoveBtn.addEventListener('click', function() {
+    document.getElementById('assetPhotoData').value = 'REMOVE';
+    document.getElementById('assetPhotoPreview').innerHTML =
+      '<i class="bi bi-image" style="font-size:1.8rem;color:#94a3b8;"></i>';
+    this.style.display = 'none';
+  });
 
 </script>
 {% endblock %}

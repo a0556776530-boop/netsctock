@@ -293,7 +293,8 @@
                   "notes":        asset.notes or "",
                   "created":      asset.created_at.strftime("%d %b %Y") if asset.created_at else "",
                   "open_orders":  open_order_counts.get(asset.id|string, 0),
-                  "closed_orders": closed_order_counts.get(asset.id|string, 0)
+                  "closed_orders": closed_order_counts.get(asset.id|string, 0),
+                  "photo":        asset.photo or ""
                 } | tojson }}'>
 
               <!-- 1. Asset ID -->
@@ -470,6 +471,9 @@
   filter: drop-shadow(0 8px 24px rgba(0,0,0,.18));
 ">
   <div class="card border-0" style="border-radius:12px; overflow:hidden; font-size:.82rem;">
+    <div id="popPhotoWrap" style="display:none; width:100%; height:140px; overflow:hidden; background:#f1f5f9;">
+      <img id="popPhoto" src="" alt="" style="width:100%;height:100%;object-fit:cover;">
+    </div>
     <div id="popHeader" class="px-3 pt-3 pb-2" style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
       <div class="d-flex align-items-center gap-2 mb-1">
         <span id="popStatus" class="badge"></span>
@@ -847,6 +851,17 @@
       if (!raw) return;
       var d;
       try { d = JSON.parse(raw); } catch (_) { return; }
+
+      // Photo
+      var photoWrap = document.getElementById('popPhotoWrap');
+      var photoImg  = document.getElementById('popPhoto');
+      if (d.photo) {
+        photoImg.src = d.photo;
+        photoWrap.style.display = '';
+      } else {
+        photoWrap.style.display = 'none';
+        photoImg.src = '';
+      }
 
       // Header
       var sc = STATUS_COLORS[d.status_color] || STATUS_COLORS['secondary'];

@@ -54,6 +54,7 @@ class Asset(me.Document):
     conversion_fee = me.FloatField()
     quantity       = me.IntField()
     min_threshold  = me.IntField()
+    photo          = me.StringField()
     created_at     = me.DateTimeField(default=datetime.utcnow)
     updated_at     = me.DateTimeField(default=datetime.utcnow)
 

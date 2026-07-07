@@ -262,6 +262,7 @@ def new_asset():
             return redirect(url_for('assets.new_asset'))
 
         asset_type = AssetType.objects(id=form.asset_type_id.data).first()
+        photo_data = request.form.get('photo_data', '').strip()
         asset = Asset(
             component_id  = (form.component_id.data or '').strip() or None,
             serial_number = form.serial_number.data.strip().upper(),
@@ -274,6 +275,7 @@ def new_asset():
             price_nis     = float(form.price_nis.data) if form.price_nis.data is not None else None,
             quantity      = 0,
             min_threshold = form.min_threshold.data,
+            photo         = photo_data if photo_data else None,
         )
         asset.save()
         log_event(asset, 'created', current_user, notes=f'Asset registered. Status: {asset.status_label}')
@@ -335,6 +337,7 @@ def edit(id):
         form.min_threshold.data = asset.min_threshold
 
     if form.validate_on_submit():
+        photo_data = request.form.get('photo_data', '').strip()
         asset.component_id  = (form.component_id.data or '').strip() or None
         asset.serial_number = form.serial_number.data.strip().upper()
         asset.asset_type    = AssetType.objects(id=form.asset_type_id.data).first()
@@ -344,6 +347,10 @@ def edit(id):
         asset.price_usd     = float(form.price_usd.data) if form.price_usd.data is not None else None
         asset.price_nis     = float(form.price_nis.data) if form.price_nis.data is not None else None
         asset.min_threshold = form.min_threshold.data
+        if photo_data == 'REMOVE':
+            asset.photo = None
+        elif photo_data:
+            asset.photo = photo_data
         asset.save()
         flash(t.get('flash_asset_updated', 'Asset updated successfully.'), 'success')
         return redirect(url_for('assets.list_assets'))
