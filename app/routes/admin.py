@@ -236,7 +236,25 @@ def edit_user(id):
 
         user.name = form.name.data.strip()
         user.role = form.role.data
+
+        # Profile photo — base64 data URI sent from JS
+        photo_data = request.form.get('profile_photo_data', '').strip()
+        if photo_data == 'REMOVE':
+            user.profile_photo = None
+        elif photo_data:
+            user.profile_photo = photo_data
+
         user.save()
+
+        # Bust all conversation caches so photo update is visible in chat
+        if photo_data:
+            from app.utils.cache import cache as _cache
+            from app.models.user import _user_cache
+            _user_cache.pop(str(user.id), None)
+            for uid in list(_user_cache.keys()):
+                _cache.delete(f'chat_convs_{uid}')
+            _cache.delete(f'chat_convs_{user.id}')
+
         flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
         return redirect(url_for('admin.users'))
     editing_self = (str(user.id) == str(current_user.id))

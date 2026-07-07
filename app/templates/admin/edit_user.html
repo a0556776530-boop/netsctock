@@ -18,8 +18,33 @@
       </div>
 
       <div class="card-body px-4 pb-4">
-        <form method="POST" novalidate>
+        <form method="POST" novalidate enctype="multipart/form-data">
           {{ form.hidden_tag() }}
+          <input type="hidden" id="profilePhotoData" name="profile_photo_data" value="">
+
+          <!-- Profile photo -->
+          <div class="mb-3 text-center">
+            <div id="photoPreview" style="width:90px;height:90px;border-radius:50%;overflow:hidden;
+                 margin:0 auto 10px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;cursor:pointer;"
+                 onclick="document.getElementById('photoInput').click()" title="לחץ לשינוי תמונה">
+              {% if user.profile_photo %}
+              <img id="photoImg" src="{{ user.profile_photo }}" style="width:100%;height:100%;object-fit:cover;">
+              {% else %}
+              <i class="bi bi-person-fill" style="font-size:2.5rem;color:#94a3b8;" id="photoIcon"></i>
+              {% endif %}
+            </div>
+            <input type="file" id="photoInput" accept="image/*" style="display:none">
+            <div class="d-flex gap-2 justify-content-center">
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('photoInput').click()">
+                <i class="bi bi-camera"></i> שנה תמונה
+              </button>
+              {% if user.profile_photo %}
+              <button type="button" class="btn btn-sm btn-outline-danger" id="removePhotoBtn">
+                <i class="bi bi-trash3"></i> הסר
+              </button>
+              {% endif %}
+            </div>
+          </div>
 
           <div class="mb-3">
             <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_name }}</label>
@@ -113,5 +138,32 @@ function makeToggle(btnId, fldId, icoId) {
 }
 makeToggle('curPwToggle', 'curPwField', 'curPwIcon');
 makeToggle('newPwToggle', 'newPwField', 'newPwIcon');
+
+// Profile photo handling
+document.getElementById('photoInput').addEventListener('change', function() {
+  var file = this.files[0];
+  if (!file) return;
+  var canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  var ctx = canvas.getContext('2d');
+  var img = new Image();
+  img.onload = function() {
+    var s = Math.min(img.width, img.height);
+    var ox = (img.width - s) / 2, oy = (img.height - s) / 2;
+    ctx.drawImage(img, ox, oy, s, s, 0, 0, 256, 256);
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    document.getElementById('profilePhotoData').value = dataUrl;
+    var preview = document.getElementById('photoPreview');
+    preview.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;">';
+  };
+  img.src = URL.createObjectURL(file);
+});
+
+var removeBtn = document.getElementById('removePhotoBtn');
+if (removeBtn) removeBtn.addEventListener('click', function() {
+  document.getElementById('profilePhotoData').value = 'REMOVE';
+  document.getElementById('photoPreview').innerHTML = '<i class="bi bi-person-fill" style="font-size:2.5rem;color:#94a3b8;"></i>';
+  this.style.display = 'none';
+});
 </script>
 {% endblock %}
