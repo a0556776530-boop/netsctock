@@ -213,9 +213,12 @@ def edit_user(id):
 
     if form.validate_on_submit():
         if form.new_password.data:
-            if not form.current_password.data or not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
-                flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
-                return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
+            editing_self = (str(user.id) == str(current_user.id))
+            # When editing own account, verify current password; for other users no need
+            if editing_self:
+                if not form.current_password.data or not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
+                    flash(t.get('flash_wrong_password', 'Current password is incorrect.'), 'danger')
+                    return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
             if bcrypt.check_password_hash(user.password_hash, form.new_password.data):
                 flash(t.get('flash_same_password', 'New password must be different from your current password.'), 'danger')
                 return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
