@@ -550,21 +550,28 @@
 <!-- ── Lightbox ────────────────────────────────────────────────────────────── -->
 <div id="imgLightbox" style="
   display:none; position:fixed; inset:0; z-index:99999;
-  background:rgba(0,0,0,.85); backdrop-filter:blur(4px);
+  background:rgba(0,0,0,.92); backdrop-filter:blur(8px) saturate(1.2);
   align-items:center; justify-content:center; cursor:zoom-out;
 ">
   <img id="imgLightboxImg" src="" alt="" style="
-    max-width:90vw; max-height:90vh;
-    object-fit:contain; border-radius:8px;
-    box-shadow:0 24px 64px rgba(0,0,0,.6);
+    max-width:94vw; max-height:94vh;
+    width:auto; height:auto;
+    object-fit:contain;
+    border-radius:6px;
+    box-shadow:0 32px 80px rgba(0,0,0,.8);
+    image-rendering:-webkit-optimize-contrast;
+    image-rendering:crisp-edges;
+    -ms-interpolation-mode:bicubic;
   ">
   <button id="imgLightboxClose" style="
     position:absolute; top:16px; right:20px;
     background:rgba(255,255,255,.15); border:none; border-radius:50%;
-    width:40px; height:40px; font-size:1.3rem; color:#fff;
+    width:44px; height:44px; font-size:1.4rem; color:#fff;
     cursor:pointer; display:flex; align-items:center; justify-content:center;
-    line-height:1;
-  ">✕</button>
+    line-height:1; backdrop-filter:blur(4px);
+    transition:background .15s;
+  " onmouseover="this.style.background='rgba(255,255,255,.3)'"
+     onmouseout="this.style.background='rgba(255,255,255,.15)'">✕</button>
 </div>
 
 {% endblock %}
