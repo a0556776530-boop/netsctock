@@ -1006,8 +1006,16 @@
         if (pop.style.display !== 'none') position(e);
       });
       cell.addEventListener('mouseleave', function () {
-        hideTimer = setTimeout(hide, 120);
+        hideTimer = setTimeout(hide, 150);
       });
+    });
+
+    pop.style.pointerEvents = 'auto';
+    pop.addEventListener('mouseenter', function () {
+      clearTimeout(hideTimer);
+    });
+    pop.addEventListener('mouseleave', function () {
+      hideTimer = setTimeout(hide, 150);
     });
   })();
 })();
