@@ -4,9 +4,153 @@
 
 {% block content %}
 
+{# ── KPI Cards ── #}
+<div class="row g-3 mb-3">
+  {# Total #}
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(13,110,253,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-person-lines-fill fs-5" style="color:#0d6efd;"></i>
+        </div>
+        <div>
+          <div class="fs-3 fw-bold lh-1">{{ stats.total }}</div>
+          <div class="text-muted small mt-1">סה"כ כניסות</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Success rate #}
+  {% set rate_color = '#16a34a' if stats.rate >= 95 else ('#b45309' if stats.rate >= 85 else '#dc2626') %}
+  {% set rate_bg    = 'rgba(22,163,74,.12)' if stats.rate >= 95 else ('rgba(180,83,9,.12)' if stats.rate >= 85 else 'rgba(220,38,38,.12)') %}
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div style="width:48px;height:48px;border-radius:12px;background:{{ rate_bg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-shield-check fs-5" style="color:{{ rate_color }};"></i>
+        </div>
+        <div>
+          <div class="fs-3 fw-bold lh-1" style="color:{{ rate_color }};">{{ stats.rate }}%</div>
+          <div class="text-muted small mt-1">אחוז הצלחה</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Failed #}
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-x-circle-fill fs-5" style="color:#dc2626;"></i>
+        </div>
+        <div>
+          <div class="fs-3 fw-bold lh-1" style="color:{% if stats.failed > 0 %}#dc2626{% else %}inherit{% endif %};">{{ stats.failed }}</div>
+          <div class="text-muted small mt-1">כניסות כושלות</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Unique IPs #}
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(3,105,161,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-globe2 fs-5" style="color:#0369a1;"></i>
+        </div>
+        <div>
+          <div class="fs-3 fw-bold lh-1">{{ stats.unique_ips }}</div>
+          <div class="text-muted small mt-1">כתובות IP</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Unique users #}
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(126,34,206,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="bi bi-people-fill fs-5" style="color:#7e22ce;"></i>
+        </div>
+        <div>
+          <div class="fs-3 fw-bold lh-1">{{ stats.unique_users }}</div>
+          <div class="text-muted small mt-1">משתמשים פעילים</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Chart + Alerts row ── #}
+<div class="row g-3 mb-3">
+
+  {# Activity chart #}
+  <div class="{{ 'col-md-8' if security_alerts else 'col-12' }}">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body pb-2 pt-3 px-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small fw-semibold text-muted text-uppercase" style="letter-spacing:.06em;">
+            <i class="bi bi-bar-chart-line me-1"></i>פעילות כניסות — 14 ימים אחרונים
+          </span>
+          <div class="d-flex gap-3 small">
+            <span style="color:#16a34a;"><i class="bi bi-circle-fill" style="font-size:.55rem;vertical-align:middle;"></i> הצלחה</span>
+            <span style="color:#dc2626;"><i class="bi bi-circle-fill" style="font-size:.55rem;vertical-align:middle;"></i> כישלון</span>
+          </div>
+        </div>
+        <canvas id="loginChart" style="max-height:160px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  {# Security alerts #}
+  {% if security_alerts %}
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100 border-start border-danger border-3">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <i class="bi bi-shield-exclamation fs-5" style="color:#dc2626;"></i>
+          <span class="fw-semibold small" style="color:#dc2626;">התראות אבטחה</span>
+          <span class="badge bg-danger ms-auto">{{ security_alerts|length }}</span>
+        </div>
+        <div class="text-muted" style="font-size:.72rem;margin-bottom:10px;">IPs עם 5+ כשלונות ב-24 שעות אחרונות</div>
+        {% for alert in security_alerts %}
+        <div class="d-flex align-items-start gap-2 mb-2 pb-2 {{ 'border-bottom' if not loop.last }}">
+          <div style="flex-shrink:0;margin-top:2px;">
+            <i class="bi bi-exclamation-triangle-fill" style="color:#f59e0b;font-size:.8rem;"></i>
+          </div>
+          <div style="min-width:0;">
+            <div class="font-monospace fw-semibold small">{{ alert._id }}</div>
+            <div style="font-size:.72rem;color:#dc2626;font-weight:600;">{{ alert.count }} כשלונות</div>
+            <div class="text-muted" style="font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              {{ alert.users | join(', ') }}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% if top_failed %}
+        <div class="mt-2 pt-2 border-top">
+          <div class="text-muted mb-1" style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">משתמשים עם הכי הרבה כישלונות (7 ימים)</div>
+          {% for tf in top_failed %}
+          <div class="d-flex justify-content-between align-items-center small">
+            <span class="fw-semibold">{{ tf._id or '—' }}</span>
+            <span class="badge bg-danger-subtle text-danger">{{ tf.count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
 {# ── Filter bar ── #}
 <form method="GET" action="{{ url_for('admin.login_history') }}" class="card border-0 shadow-sm mb-3">
-  <div class="card-body py-2">
+  <div class="card-body py-2 px-3">
     <div class="row g-2 align-items-end">
       <div class="col-md-3">
         <label class="form-label small text-muted mb-1">{{ t.login_history_filter_user }}</label>
@@ -25,9 +169,9 @@
       <div class="col-md-2">
         <label class="form-label small text-muted mb-1">{{ t.login_history_filter_status }}</label>
         <select name="success" class="form-select form-select-sm">
-          <option value=""   {% if success_filter == '' %}selected{% endif %}>{{ t.login_history_all }}</option>
-          <option value="1"  {% if success_filter == '1' %}selected{% endif %}>{{ t.login_history_success }}</option>
-          <option value="0"  {% if success_filter == '0' %}selected{% endif %}>{{ t.login_history_failed }}</option>
+          <option value=""  {% if success_filter == '' %}selected{% endif %}>{{ t.login_history_all }}</option>
+          <option value="1" {% if success_filter == '1' %}selected{% endif %}>{{ t.login_history_success }}</option>
+          <option value="0" {% if success_filter == '0' %}selected{% endif %}>{{ t.login_history_failed }}</option>
         </select>
       </div>
       <div class="col-md-2">
@@ -38,22 +182,28 @@
         <label class="form-label small text-muted mb-1">{{ t.login_history_date_to }}</label>
         <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-sm">
       </div>
-      <div class="col-md-3 d-flex gap-2">
+      <div class="col-md-3 d-flex gap-2 flex-wrap">
         <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
           <i class="bi bi-search me-1"></i>{{ t.login_history_btn_filter }}
         </button>
-        <a href="{{ url_for('admin.login_history') }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ url_for('admin.login_history') }}" class="btn btn-outline-secondary btn-sm" title="נקה">
           <i class="bi bi-x-lg"></i>
         </a>
+        <button type="button" class="btn btn-outline-success btn-sm" id="csvExportBtn" title="ייצוא CSV">
+          <i class="bi bi-download me-1"></i>CSV
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="autoRefreshBtn" title="רענון אוטומטי (30 שנ׳)">
+          <i class="bi bi-arrow-clockwise" id="autoRefreshIcon"></i>
+        </button>
       </div>
     </div>
   </div>
 </form>
 
-{# ── Summary badge ── #}
-<div class="d-flex justify-content-between align-items-center mb-2">
+{# ── Summary ── #}
+<div class="d-flex justify-content-between align-items-center mb-2 px-1">
   <span class="text-muted small">
-    {{ total }} {{ t.login_history_records }}
+    <i class="bi bi-list-ul me-1"></i>{{ total }} {{ t.login_history_records }}
   </span>
   {% if pages > 1 %}
   <span class="text-muted small">{{ t.login_history_page }} {{ page }} / {{ pages }}</span>
@@ -63,71 +213,123 @@
 {# ── Table ── #}
 <div class="card border-0 shadow-sm">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0 small">
+    <table class="table table-hover align-middle mb-0" style="font-size:.83rem;">
       <thead class="table-dark">
         <tr>
-          <th>{{ t.login_history_col_date }}</th>
-          <th>{{ t.login_history_col_time }}</th>
+          <th class="text-center" style="width:36px;">#</th>
           <th>{{ t.login_history_col_user }}</th>
-          <th>{{ t.login_history_col_role }}</th>
+          <th>{{ t.login_history_col_date }} / {{ t.login_history_col_time }}</th>
           <th>{{ t.login_history_col_ip }}</th>
           <th>{{ t.login_history_col_device }}</th>
-          <th class="text-center">{{ t.login_history_col_status }}</th>
+          <th class="text-center" style="width:110px;">{{ t.login_history_col_status }}</th>
         </tr>
       </thead>
       <tbody>
+        {% set _row_offset = (page - 1) * per_page %}
         {% for ev in events %}
         {% set ua = ev.user_agent or '' %}
-        {% set browser = 'Chrome' if 'Chrome' in ua else ('Firefox' if 'Firefox' in ua else ('Safari' if 'Safari' in ua else ('Edge' if 'Edge' in ua else ''))) %}
-        <tr class="{{ 'table-danger table-danger-subtle' if not ev.success else '' }}"
+        {% set browser =
+            'Chrome'  if ('Chrome' in ua and 'Edg' not in ua) else
+            ('Edge'   if 'Edg' in ua else
+            ('Firefox' if 'Firefox' in ua else
+            ('Safari'  if 'Safari' in ua else ''))) %}
+        {% set os =
+            'Windows' if 'Windows' in ua else
+            ('Mac'    if 'Mac' in ua else
+            ('Linux'  if 'Linux' in ua else
+            ('Android' if 'Android' in ua else
+            ('iOS'    if 'iPhone' in ua or 'iPad' in ua else '')))) %}
+        {% set is_mobile = 'Mobile' in ua or 'Android' in ua or 'iPhone' in ua or 'iPad' in ua %}
+        {% set role = ev.user_role or '' %}
+        {% set role_color =
+            '#dc2626' if role == 'super_admin' else
+            ('#b45309' if role == 'admin' else
+            ('#0369a1' if role == 'warehouse' else
+            ('#7e22ce' if role == 'viewer' else '#64748b'))) %}
+        {% set initials = (ev.user_name or '?')[:2] | upper %}
+
+        <tr class="{{ 'lh-failed-row' if not ev.success else '' }}"
+            style="{{ 'border-right:3px solid #dc2626;' if not ev.success else '' }}"
             data-lh-row="1"
-            data-q="{{ ((ev.user_name or '') ~ ' ' ~ (ev.ip_address or '') ~ ' ' ~ browser) | lower }}">
-          <td class="font-monospace text-nowrap">
-            {{ (ev.timestamp | localtime).strftime('%d/%m/%Y') }}
+            data-q="{{ ((ev.user_name or '') ~ ' ' ~ (ev.ip_address or '') ~ ' ' ~ browser ~ ' ' ~ os) | lower }}">
+
+          {# Row number #}
+          <td class="text-center text-muted font-monospace" style="font-size:.75rem;">
+            {{ _row_offset + loop.index }}
           </td>
-          <td class="font-monospace text-muted text-nowrap">
-            {{ (ev.timestamp | localtime).strftime('%H:%M:%S') }}
-          </td>
-          <td class="fw-semibold"><span data-hl>{{ ev.user_name or '—' }}</span></td>
+
+          {# User + role #}
           <td>
-            {% set role = ev.user_role or '' %}
-            {% if role == 'super_admin' %}
-              <span class="badge" style="background:#dc2626;">{{ t.role_super_admin }}</span>
-            {% elif role == 'admin' %}
-              <span class="badge" style="background:#b45309;">{{ t.role_admin }}</span>
-            {% elif role == 'warehouse' %}
-              <span class="badge" style="background:#0369a1;">{{ t.role_warehouse }}</span>
-            {% elif role == 'viewer' %}
-              <span class="badge" style="background:#7e22ce;">{{ t.role_viewer }}</span>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
+            <div class="d-flex align-items-center gap-2">
+              <div style="width:32px;height:32px;border-radius:50%;background:{{ role_color }};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.72rem;font-weight:700;color:#fff;">
+                {{ initials }}
+              </div>
+              <div>
+                <div class="fw-semibold lh-1 mb-1"><span data-hl>{{ ev.user_name or '—' }}</span></div>
+                {% if role == 'super_admin' %}
+                  <span class="badge" style="background:#dc2626;font-size:.65rem;">{{ t.role_super_admin }}</span>
+                {% elif role == 'admin' %}
+                  <span class="badge" style="background:#b45309;font-size:.65rem;">{{ t.role_admin }}</span>
+                {% elif role == 'warehouse' %}
+                  <span class="badge" style="background:#0369a1;font-size:.65rem;">{{ t.role_warehouse }}</span>
+                {% elif role == 'viewer' %}
+                  <span class="badge" style="background:#7e22ce;font-size:.65rem;">{{ t.role_viewer }}</span>
+                {% else %}
+                  <span class="text-muted" style="font-size:.7rem;">—</span>
+                {% endif %}
+              </div>
+            </div>
           </td>
-          <td class="font-monospace text-muted"><span data-hl>{{ ev.ip_address or '—' }}</span></td>
-          <td class="text-muted" style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-              title="{{ ua }}">
-            {% if 'Mobile' in ua or 'Android' in ua or 'iPhone' in ua %}
-              <i class="bi bi-phone me-1"></i>
-            {% else %}
-              <i class="bi bi-display me-1"></i>
-            {% endif %}
-            {% if 'Chrome' in ua %}Chrome
-            {% elif 'Firefox' in ua %}Firefox
-            {% elif 'Safari' in ua %}Safari
-            {% elif 'Edge' in ua %}Edge
-            {% else %}{{ ua[:30] }}{% endif %}
+
+          {# Date + time stacked #}
+          <td class="text-nowrap">
+            <div class="font-monospace fw-semibold" style="font-size:.82rem;">{{ (ev.timestamp | localtime).strftime('%d/%m/%Y') }}</div>
+            <div class="font-monospace text-muted" style="font-size:.75rem;">{{ (ev.timestamp | localtime).strftime('%H:%M:%S') }}</div>
           </td>
+
+          {# IP with copy #}
+          <td class="lh-ip-cell" data-ip="{{ ev.ip_address or '' }}">
+            <div class="d-flex align-items-center gap-1">
+              <span class="font-monospace text-muted" data-hl>{{ ev.ip_address or '—' }}</span>
+              <button type="button" class="lh-copy-btn btn btn-link p-0 border-0 text-muted"
+                      style="opacity:0;transition:opacity .15s;font-size:.75rem;line-height:1;"
+                      title="העתק IP" data-ip="{{ ev.ip_address or '' }}">
+                <i class="bi bi-copy"></i>
+              </button>
+            </div>
+          </td>
+
+          {# Device #}
+          <td class="text-muted" style="max-width:180px;">
+            <div class="d-flex align-items-center gap-1" title="{{ ua }}">
+              {% if is_mobile %}
+                <i class="bi bi-phone" style="font-size:.85rem;"></i>
+              {% else %}
+                <i class="bi bi-display" style="font-size:.85rem;"></i>
+              {% endif %}
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;">
+                {% if browser %}{{ browser }}{% endif %}{% if os and browser %} · {% endif %}{% if os %}{{ os }}{% endif %}
+                {% if not browser and not os %}{{ ua[:25] }}{% if ua|length > 25 %}…{% endif %}{% endif %}
+              </span>
+            </div>
+          </td>
+
+          {# Status #}
           <td class="text-center">
             {% if ev.success %}
-              <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>{{ t.login_history_success }}</span>
+              <span class="badge rounded-pill" style="background:#dcfce7;color:#15803d;font-size:.78rem;padding:5px 10px;">
+                <i class="bi bi-check-lg me-1"></i>{{ t.login_history_success }}
+              </span>
             {% else %}
-              <span class="badge bg-danger"><i class="bi bi-x-lg me-1"></i>{{ t.login_history_failed }}</span>
+              <span class="badge rounded-pill" style="background:#fee2e2;color:#991b1b;font-size:.78rem;padding:5px 10px;">
+                <i class="bi bi-x-lg me-1"></i>{{ t.login_history_failed }}
+              </span>
             {% endif %}
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="text-center text-muted py-5">
+          <td colspan="6" class="text-center text-muted py-5">
             <i class="bi bi-journal-x fs-2 d-block mb-2 opacity-25"></i>
             {{ t.login_history_empty }}
           </td>
@@ -168,25 +370,60 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-  var searchInput  = document.getElementById('lhSearch');
-  var searchClear  = document.getElementById('lhSearchClear');
-  var countEl      = document.querySelector('.lh-count');
+
+  // ── Chart ──────────────────────────────────────────────────────────────────
+  var chartData = {{ chart_data | tojson }};
+  var ctx = document.getElementById('loginChart');
+  if (ctx && chartData.length) {
+    // Fill missing days
+    var filled = {};
+    for (var i = 13; i >= 0; i--) {
+      var d = new Date(); d.setDate(d.getDate() - i);
+      var key = d.toISOString().slice(0, 10);
+      filled[key] = { success: 0, failed: 0 };
+    }
+    chartData.forEach(function(r) { if (filled[r._id]) { filled[r._id].success = r.success; filled[r._id].failed = r.failed; } });
+    var labels   = Object.keys(filled).map(function(k) { return k.slice(5).replace('-', '/'); });
+    var succArr  = Object.values(filled).map(function(v) { return v.success; });
+    var failArr  = Object.values(filled).map(function(v) { return v.failed; });
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'הצלחה', data: succArr, backgroundColor: 'rgba(22,163,74,.75)', borderRadius: 3, borderSkipped: false },
+          { label: 'כישלון', data: failArr, backgroundColor: 'rgba(220,38,38,.75)', borderRadius: 3, borderSkipped: false },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: { stacked: true, beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, precision: 0 } }
+        }
+      }
+    });
+  }
+
+  // ── Search / filter ────────────────────────────────────────────────────────
+  var searchInput = document.getElementById('lhSearch');
+  var searchClear = document.getElementById('lhSearchClear');
 
   var hlCache = new Map();
   function getHlCells(row) {
     if (hlCache.has(row)) return hlCache.get(row);
     var cells = [];
-    row.querySelectorAll('[data-hl]').forEach(function (el) {
-      cells.push({ el: el, orig: el.textContent });
-    });
+    row.querySelectorAll('[data-hl]').forEach(function (el) { cells.push({ el: el, orig: el.textContent }); });
     hlCache.set(row, cells);
     return cells;
   }
-  function esc(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function applyHL(row, q) {
     getHlCells(row).forEach(function (item) {
       if (!q) { item.el.textContent = item.orig; return; }
@@ -197,47 +434,32 @@
       while (i !== -1) {
         html += esc(t.slice(pos, i));
         html += '<mark class="srch-hl">' + esc(t.slice(i, i + q.length)) + '</mark>';
-        pos = i + q.length;
-        i = tl.indexOf(ql, pos);
+        pos = i + q.length; i = tl.indexOf(ql, pos);
       }
       item.el.innerHTML = html + esc(t.slice(pos));
     });
   }
-
   var fading = new Set();
   function setVisible(row, show) {
     if (show) {
       fading.delete(row);
-      if (row.style.display === 'none') {
-        row.style.display = '';
-        row.style.opacity = '0';
-        requestAnimationFrame(function () { row.style.opacity = '1'; });
-      }
+      if (row.style.display === 'none') { row.style.display = ''; row.style.opacity = '0'; requestAnimationFrame(function () { row.style.opacity = '1'; }); }
     } else {
       if (row.style.display === 'none') return;
-      row.style.opacity = '0';
-      fading.add(row);
-      setTimeout(function () {
-        if (fading.has(row)) { row.style.display = 'none'; fading.delete(row); }
-      }, 130);
+      row.style.opacity = '0'; fading.add(row);
+      setTimeout(function () { if (fading.has(row)) { row.style.display = 'none'; fading.delete(row); } }, 130);
     }
   }
-
   function filterRows() {
-    var q  = searchInput ? searchInput.value.trim() : '';
+    var q = searchInput ? searchInput.value.trim() : '';
     var ql = q.toLowerCase();
-    var total = 0;
     document.querySelectorAll('tr[data-lh-row]').forEach(function (row) {
       var text = row.getAttribute('data-q') || '';
       var show = !ql || text.indexOf(ql) !== -1;
       setVisible(row, show);
       applyHL(row, show ? q : '');
-      if (show) total++;
     });
-    if (searchClear) {
-      searchClear.style.opacity       = q ? '1' : '0';
-      searchClear.style.pointerEvents = q ? 'auto' : 'none';
-    }
+    if (searchClear) { searchClear.style.opacity = q ? '1' : '0'; searchClear.style.pointerEvents = q ? 'auto' : 'none'; }
     if (searchInput) searchInput.classList.toggle('is-active', !!q);
     try {
       var url = new URL(window.location.href);
@@ -245,26 +467,87 @@
       history.replaceState(null, '', url.toString());
     } catch (_) {}
   }
-
   if (searchInput) {
     searchInput.addEventListener('input', filterRows);
-    searchInput.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { this.value = ''; filterRows(); this.blur(); }
-    });
+    searchInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') { this.value = ''; filterRows(); this.blur(); } });
     if (searchInput.value) filterRows();
   }
-  if (searchClear) {
-    searchClear.addEventListener('click', function () {
-      searchInput.value = ''; searchInput.focus(); filterRows();
-    });
-  }
+  if (searchClear) { searchClear.addEventListener('click', function () { searchInput.value = ''; searchInput.focus(); filterRows(); }); }
   document.addEventListener('keydown', function (e) {
     if (e.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
-      e.preventDefault();
-      if (searchInput) { searchInput.focus(); searchInput.select(); }
+      e.preventDefault(); if (searchInput) { searchInput.focus(); searchInput.select(); }
     }
   });
+
+  // ── Copy IP ────────────────────────────────────────────────────────────────
+  document.querySelectorAll('.lh-ip-cell').forEach(function(cell) {
+    var btn = cell.querySelector('.lh-copy-btn');
+    if (!btn) return;
+    cell.addEventListener('mouseenter', function() { btn.style.opacity = '1'; });
+    cell.addEventListener('mouseleave', function() { btn.style.opacity = '0'; });
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var ip = btn.getAttribute('data-ip');
+      if (!ip) return;
+      navigator.clipboard.writeText(ip).then(function() {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg" style="color:#16a34a;"></i>';
+        setTimeout(function() { btn.innerHTML = orig; }, 1500);
+      }).catch(function() {});
+    });
+  });
+
+  // ── Export CSV ─────────────────────────────────────────────────────────────
+  document.getElementById('csvExportBtn').addEventListener('click', function() {
+    var rows = [['#','משתמש','תפקיד','תאריך','שעה','IP','מכשיר','סטטוס']];
+    document.querySelectorAll('tr[data-lh-row="1"]').forEach(function(tr) {
+      if (tr.style.display === 'none') return;
+      var cells = tr.querySelectorAll('td');
+      if (cells.length < 6) return;
+      var num    = cells[0].textContent.trim();
+      var user   = cells[1].querySelector('[data-hl]') ? cells[1].querySelector('[data-hl]').textContent.trim() : '';
+      var role   = cells[1].querySelector('.badge') ? cells[1].querySelector('.badge').textContent.trim() : '';
+      var dates  = cells[2].querySelectorAll('div');
+      var date   = dates[0] ? dates[0].textContent.trim() : '';
+      var time   = dates[1] ? dates[1].textContent.trim() : '';
+      var ip     = cells[3].querySelector('[data-hl]') ? cells[3].querySelector('[data-hl]').textContent.trim() : '';
+      var device = cells[4].textContent.trim().replace(/\s+/g, ' ');
+      var status = cells[5].textContent.trim().replace(/\s+/g, ' ');
+      rows.push([num, user, role, date, time, ip, device, status]);
+    });
+    var csv = rows.map(function(r) {
+      return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
+    }).join('\r\n');
+    var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'login-history-' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+  });
+
+  // ── Auto-refresh ───────────────────────────────────────────────────────────
+  var refreshTimer = null;
+  var refreshBtn   = document.getElementById('autoRefreshBtn');
+  var refreshIcon  = document.getElementById('autoRefreshIcon');
+  var refreshOn    = false;
+  refreshBtn.addEventListener('click', function() {
+    refreshOn = !refreshOn;
+    if (refreshOn) {
+      refreshBtn.classList.replace('btn-outline-secondary', 'btn-success');
+      refreshIcon.style.animation = 'spin 1.5s linear infinite';
+      refreshTimer = setInterval(function() { location.reload(); }, 30000);
+    } else {
+      refreshBtn.classList.replace('btn-success', 'btn-outline-secondary');
+      refreshIcon.style.animation = '';
+      clearInterval(refreshTimer);
+    }
+  });
+
 })();
 </script>
+<style>
+@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+.lh-failed-row td { background: rgba(220,38,38,.03) !important; }
+tr { transition: opacity .13s ease; }
+</style>
 {% endblock %}
-

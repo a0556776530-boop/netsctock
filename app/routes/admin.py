@@ -391,6 +391,68 @@ def login_history():
     events = list(col.find(filt).sort([('_id', -1)]).skip((page - 1) * per_page).limit(per_page))
     pages  = max(1, (total + per_page - 1) // per_page)
 
+    from datetime import timedelta as _td
+    _now = datetime.utcnow()
+
+    # ── KPI stats (scoped to current filter) ──────────────────────────────────
+    _stats_raw = list(col.aggregate([
+        {'$match': filt},
+        {'$group': {
+            '_id':          None,
+            'total':        {'$sum': 1},
+            'success_cnt':  {'$sum': {'$cond': ['$success', 1, 0]}},
+            'failed_cnt':   {'$sum': {'$cond': ['$success', 0, 1]}},
+            'unique_ips':   {'$addToSet': '$ip_address'},
+            'unique_users': {'$addToSet': '$user_name'},
+        }}
+    ]))
+    _s = _stats_raw[0] if _stats_raw else {}
+    _total_s   = _s.get('total', 0)
+    _success_s = _s.get('success_cnt', 0)
+    _failed_s  = _s.get('failed_cnt', 0)
+    _rate      = round(_success_s * 100 / _total_s, 1) if _total_s else 0
+    stats = {
+        'total':        _total_s,
+        'success':      _success_s,
+        'failed':       _failed_s,
+        'rate':         _rate,
+        'unique_ips':   len(_s.get('unique_ips', [])),
+        'unique_users': len(_s.get('unique_users', [])),
+    }
+
+    # ── Chart data — last 14 days ──────────────────────────────────────────────
+    _chart_raw = list(col.aggregate([
+        {'$match': {'timestamp': {'$gte': _now - _td(days=14)}}},
+        {'$group': {
+            '_id':     {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
+            'success': {'$sum': {'$cond': ['$success', 1, 0]}},
+            'failed':  {'$sum': {'$cond': ['$success', 0, 1]}},
+        }},
+        {'$sort': {'_id': 1}},
+    ]))
+    chart_data = _chart_raw
+
+    # ── Security alerts — IPs with ≥5 failures in last 24 h ───────────────────
+    security_alerts = list(col.aggregate([
+        {'$match': {'success': False, 'timestamp': {'$gte': _now - _td(hours=24)}}},
+        {'$group': {
+            '_id':   '$ip_address',
+            'count': {'$sum': 1},
+            'users': {'$addToSet': '$user_name'},
+        }},
+        {'$match': {'count': {'$gte': 5}}},
+        {'$sort': {'count': -1}},
+        {'$limit': 5},
+    ]))
+
+    # ── Top failed users — last 7 days ────────────────────────────────────────
+    top_failed = list(col.aggregate([
+        {'$match': {'success': False, 'timestamp': {'$gte': _now - _td(days=7)}}},
+        {'$group': {'_id': '$user_name', 'count': {'$sum': 1}}},
+        {'$sort': {'count': -1}},
+        {'$limit': 3},
+    ]))
+
     resp = make_response(render_template(
         'admin/login_history.html',
         events=events,
@@ -402,6 +464,10 @@ def login_history():
         success_filter=success_filter,
         date_from=date_from,
         date_to=date_to,
+        stats=stats,
+        chart_data=chart_data,
+        security_alerts=security_alerts,
+        top_failed=top_failed,
     ))
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     resp.headers['Pragma'] = 'no-cache'
