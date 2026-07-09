@@ -4,11 +4,16 @@
 
 {% block content %}
 
+{% set _base_url = url_for('admin.login_history') %}
+{% set _kpi_style = 'text-decoration:none;color:inherit;display:block;height:100%;transition:transform .15s,box-shadow .15s;' %}
+
 {# ── KPI Cards ── #}
 <div class="row g-3 mb-3">
-  {# Total #}
+  {# Total — clears all filters #}
   <div class="col-6 col-md">
-    <div class="card border-0 shadow-sm h-100">
+    <a href="{{ _base_url }}" style="{{ _kpi_style }}"
+       class="card border-0 shadow-sm h-100 kpi-card {{ 'kpi-active' if not success_filter and not user_filter and not date_from and not date_to }}"
+       title="הצג הכל">
       <div class="card-body d-flex align-items-center gap-3 py-3">
         <div style="width:48px;height:48px;border-radius:12px;background:rgba(13,110,253,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="bi bi-person-lines-fill fs-5" style="color:#0d6efd;"></i>
@@ -18,14 +23,16 @@
           <div class="text-muted small mt-1">סה"כ כניסות</div>
         </div>
       </div>
-    </div>
+    </a>
   </div>
 
-  {# Success rate #}
+  {# Success rate — filter success=1 #}
   {% set rate_color = '#16a34a' if stats.rate >= 95 else ('#b45309' if stats.rate >= 85 else '#dc2626') %}
   {% set rate_bg    = 'rgba(22,163,74,.12)' if stats.rate >= 95 else ('rgba(180,83,9,.12)' if stats.rate >= 85 else 'rgba(220,38,38,.12)') %}
   <div class="col-6 col-md">
-    <div class="card border-0 shadow-sm h-100">
+    <a href="{{ _base_url }}?success=1" style="{{ _kpi_style }}"
+       class="card border-0 shadow-sm h-100 kpi-card {{ 'kpi-active' if success_filter == '1' }}"
+       title="הצג כניסות מוצלחות בלבד">
       <div class="card-body d-flex align-items-center gap-3 py-3">
         <div style="width:48px;height:48px;border-radius:12px;background:{{ rate_bg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="bi bi-shield-check fs-5" style="color:{{ rate_color }};"></i>
@@ -35,12 +42,14 @@
           <div class="text-muted small mt-1">אחוז הצלחה</div>
         </div>
       </div>
-    </div>
+    </a>
   </div>
 
-  {# Failed #}
+  {# Failed — filter success=0 #}
   <div class="col-6 col-md">
-    <div class="card border-0 shadow-sm h-100">
+    <a href="{{ _base_url }}?success=0" style="{{ _kpi_style }}"
+       class="card border-0 shadow-sm h-100 kpi-card {{ 'kpi-active' if success_filter == '0' }}"
+       title="הצג כניסות כושלות בלבד">
       <div class="card-body d-flex align-items-center gap-3 py-3">
         <div style="width:48px;height:48px;border-radius:12px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="bi bi-x-circle-fill fs-5" style="color:#dc2626;"></i>
@@ -50,10 +59,10 @@
           <div class="text-muted small mt-1">כניסות כושלות</div>
         </div>
       </div>
-    </div>
+    </a>
   </div>
 
-  {# Unique IPs #}
+  {# Unique IPs — not filterable, just display #}
   <div class="col-6 col-md">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body d-flex align-items-center gap-3 py-3">
@@ -68,7 +77,7 @@
     </div>
   </div>
 
-  {# Unique users #}
+  {# Unique users — not filterable, just display #}
   <div class="col-6 col-md">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body d-flex align-items-center gap-3 py-3">
@@ -287,10 +296,17 @@
             <div class="font-monospace text-muted" style="font-size:.75rem;">{{ (ev.timestamp | localtime).strftime('%H:%M:%S') }}</div>
           </td>
 
-          {# IP with copy #}
+          {# IP with filter + copy #}
           <td class="lh-ip-cell" data-ip="{{ ev.ip_address or '' }}">
             <div class="d-flex align-items-center gap-1">
-              <span class="font-monospace text-muted" data-hl>{{ ev.ip_address or '—' }}</span>
+              {% if ev.ip_address %}
+              <a href="{{ _base_url }}?user={{ user_filter }}&success={{ success_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&ip={{ ev.ip_address }}"
+                 class="font-monospace lh-ip-link" data-hl
+                 title="סנן לפי IP זה"
+                 style="color:inherit;text-decoration:none;">{{ ev.ip_address }}</a>
+              {% else %}
+              <span class="font-monospace text-muted" data-hl>—</span>
+              {% endif %}
               <button type="button" class="lh-copy-btn btn btn-link p-0 border-0 text-muted"
                       style="opacity:0;transition:opacity .15s;font-size:.75rem;line-height:1;"
                       title="העתק IP" data-ip="{{ ev.ip_address or '' }}">
@@ -549,5 +565,9 @@
 @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 .lh-failed-row td { background: rgba(220,38,38,.03) !important; }
 tr { transition: opacity .13s ease; }
+.kpi-card { cursor:pointer; }
+.kpi-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.12) !important; }
+.kpi-card.kpi-active { outline:2px solid #0d6efd; outline-offset:2px; }
+.lh-ip-link:hover { text-decoration:underline !important; color:#0d6efd !important; }
 </style>
 {% endblock %}

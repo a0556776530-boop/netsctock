@@ -367,6 +367,7 @@ def login_history():
     success_filter = request.args.get('success', '')
     date_from      = request.args.get('date_from', '')
     date_to        = request.args.get('date_to', '')
+    ip_filter      = request.args.get('ip', '').strip()
 
     filt = {}
     if user_filter:
@@ -376,6 +377,8 @@ def login_history():
         filt['success'] = True
     elif success_filter == '0':
         filt['success'] = False
+    if ip_filter:
+        filt['ip_address'] = ip_filter
     if date_from:
         try:
             filt.setdefault('timestamp', {})['$gte'] = datetime.strptime(date_from, '%Y-%m-%d')
@@ -464,6 +467,7 @@ def login_history():
         success_filter=success_filter,
         date_from=date_from,
         date_to=date_to,
+        ip_filter=ip_filter,
         stats=stats,
         chart_data=chart_data,
         security_alerts=security_alerts,
