@@ -910,7 +910,7 @@
       'info':      ['#e0f2fe','#0369a1'],
     };
 
-    function show(row, e) {
+    function show(row) {
       var raw = row.getAttribute('data-preview');
       if (!raw) return;
       var d;
@@ -1015,19 +1015,29 @@
       });
       specsWrap.style.display = specsRow.children.length ? '' : 'none';
 
-      // Position
+      // Position — anchored to trigger row, not mouse
       pop.style.display = 'block';
-      position(e);
+      position(row);
     }
 
-    function position(e) {
-      var pw = pop.offsetWidth  || 360;
-      var ph = pop.offsetHeight || 320;
-      var vw = window.innerWidth, vh = window.innerHeight;
-      var x  = e.clientX + 16;
-      var y  = e.clientY + 16;
-      if (x + pw > vw - 8) x = e.clientX - pw - 8;
-      if (y + ph > vh - 8) y = e.clientY - ph - 8;
+    function position(row) {
+      var rect = row.getBoundingClientRect();
+      var pw   = pop.offsetWidth  || 360;
+      var ph   = pop.offsetHeight || 320;
+      var vw   = window.innerWidth;
+      var vh   = window.innerHeight;
+
+      // Default: appear to the right of the row, aligned to its top
+      var x = rect.right + 12;
+      var y = rect.top;
+
+      // Flip left if not enough room on the right
+      if (x + pw > vw - 8) x = rect.left - pw - 12;
+
+      // Flip up if not enough room below
+      if (y + ph > vh - 8) y = vh - ph - 8;
+      if (y < 8) y = 8;
+
       pop.style.left = x + 'px';
       pop.style.top  = y + 'px';
     }
@@ -1037,12 +1047,9 @@
     document.querySelectorAll('td[data-hover-cell]').forEach(function (cell) {
       var row = cell.closest('tr');
       cell.style.cursor = 'default';
-      cell.addEventListener('mouseenter', function (e) {
+      cell.addEventListener('mouseenter', function () {
         clearTimeout(hideTimer);
-        show(row, e);
-      });
-      cell.addEventListener('mousemove', function (e) {
-        if (pop.style.display !== 'none') position(e);
+        show(row);
       });
       cell.addEventListener('mouseleave', function () {
         hideTimer = setTimeout(hide, 150);
