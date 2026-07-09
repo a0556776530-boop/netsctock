@@ -1015,26 +1015,27 @@
       });
       specsWrap.style.display = specsRow.children.length ? '' : 'none';
 
-      // Position — anchored to trigger row, not mouse
+      // Position — anchored to trigger cell, flush to its side
       pop.style.display = 'block';
-      position(row);
+      position(_triggerCell);
     }
 
-    function position(row) {
-      var rect = row.getBoundingClientRect();
+    var _triggerCell = null;
+
+    function position(cell) {
+      var rect = cell.getBoundingClientRect();
       var pw   = pop.offsetWidth  || 360;
       var ph   = pop.offsetHeight || 320;
       var vw   = window.innerWidth;
       var vh   = window.innerHeight;
 
-      // Horizontal: center on the row, keep inside viewport
-      var x = rect.left + (rect.width / 2) - (pw / 2);
-      if (x + pw > vw - 8) x = vw - pw - 8;
-      if (x < 8) x = 8;
+      // Prefer left side (RTL — more space to the left); fallback to right
+      var x = rect.left - pw;
+      if (x < 0) x = rect.right;
 
-      // Vertical: below the row if room, else above
-      var y = rect.bottom + 6;
-      if (y + ph > vh - 8) y = rect.top - ph - 6;
+      // Vertical: align top of popover with top of cell
+      var y = rect.top;
+      if (y + ph > vh - 8) y = vh - ph - 8;
       if (y < 8) y = 8;
 
       pop.style.left = x + 'px';
@@ -1048,6 +1049,7 @@
       cell.style.cursor = 'default';
       cell.addEventListener('mouseenter', function () {
         clearTimeout(hideTimer);
+        _triggerCell = cell;
         show(row);
       });
       cell.addEventListener('mouseleave', function () {
