@@ -9,12 +9,13 @@ class LoginEvent(me.Document):
         'strict': False,
         'index_background': True,
         'indexes': [
-            '-timestamp',
             'user_name',
             'ip_address',
             # Compound indexes for dedup queries in login_recorder.py
             ('user', 'ip_address', 'success', '-timestamp'),
             ('ip_address', 'user_agent', 'success', '-timestamp'),
+            # TTL — auto-delete records older than 90 days
+            {'fields': ['timestamp'], 'expireAfterSeconds': 7776000},
         ],
     }
 

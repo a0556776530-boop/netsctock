@@ -163,6 +163,13 @@ def create_app(config_class=Config):
     from .seed import register_commands
     register_commands(app)
 
+    # Ensure login_events indexes (incl. TTL) exist on the live collection
+    try:
+        from .models.login_event import LoginEvent
+        LoginEvent.ensure_indexes()
+    except Exception:
+        pass
+
     @app.after_request
     def set_security_headers(response):
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
