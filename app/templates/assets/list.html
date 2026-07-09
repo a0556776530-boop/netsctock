@@ -1027,15 +1027,14 @@
       var vw   = window.innerWidth;
       var vh   = window.innerHeight;
 
-      // Default: appear to the right of the row, aligned to its top
-      var x = rect.right + 12;
-      var y = rect.top;
+      // Horizontal: center on the row, keep inside viewport
+      var x = rect.left + (rect.width / 2) - (pw / 2);
+      if (x + pw > vw - 8) x = vw - pw - 8;
+      if (x < 8) x = 8;
 
-      // Flip left if not enough room on the right
-      if (x + pw > vw - 8) x = rect.left - pw - 12;
-
-      // Flip up if not enough room below
-      if (y + ph > vh - 8) y = vh - ph - 8;
+      // Vertical: below the row if room, else above
+      var y = rect.bottom + 6;
+      if (y + ph > vh - 8) y = rect.top - ph - 6;
       if (y < 8) y = 8;
 
       pop.style.left = x + 'px';
