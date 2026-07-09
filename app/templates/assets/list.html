@@ -569,10 +569,11 @@
     overflow:hidden;
   ">
     <img id="imgLightboxImg" src="" alt="" style="
-      width:90vw; height:calc(100vh - 120px);
+      max-width:90vw; max-height:calc(100vh - 120px);
+      width:auto; height:auto;
       object-fit:contain;
       mix-blend-mode:multiply;
-      filter:contrast(1.1) saturate(1.05) brightness(1.02);
+      image-rendering:auto;
     ">
   </div>
 
@@ -1071,11 +1072,24 @@
     var lightboxClose = document.getElementById('imgLightboxClose');
 
     function openLightbox(src) {
+      lightboxImg.style.width  = '';
+      lightboxImg.style.height = '';
       lightboxImg.src = src;
       var nameEl = document.getElementById('imgLightboxName');
       if (nameEl) nameEl.textContent = document.getElementById('popSN').textContent || '';
       lightbox.style.display = 'flex';
       document.body.style.overflow = 'hidden';
+
+      lightboxImg.onload = function () {
+        var nw = lightboxImg.naturalWidth  || 256;
+        var nh = lightboxImg.naturalHeight || 256;
+        var maxW = window.innerWidth  * 0.9;
+        var maxH = (window.innerHeight - 120) * 0.92;
+        // Scale to fill viewport but never stretch more than 4× natural size
+        var scale = Math.min(maxW / nw, maxH / nh, 4);
+        lightboxImg.style.width  = Math.round(nw * scale) + 'px';
+        lightboxImg.style.height = Math.round(nh * scale) + 'px';
+      };
     }
     function closeLightbox() {
       lightbox.style.display = 'none';
