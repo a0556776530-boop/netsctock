@@ -230,11 +230,15 @@ def dashboard():
         if is_low or is_neg:
             red_line_count += 1
             if len(low_stock_assets) < 10:
-                a._after     = after
-                a._threshold = threshold
-                a._committed = committed
-                a._purchased = purchased
-                low_stock_assets.append(a)
+                # Plain namespace, not the Document: ad-hoc attributes (_after
+                # etc.) don't survive the cache's pickling, which 500s every
+                # cached render of this page.
+                from types import SimpleNamespace
+                low_stock_assets.append(SimpleNamespace(
+                    id=a.id, component_id=a.component_id,
+                    serial_number=a.serial_number, quantity=stock,
+                    _after=after, _threshold=threshold,
+                    _committed=committed, _purchased=purchased))
 
     low_stock_assets.sort(key=lambda a: a._after)
 
