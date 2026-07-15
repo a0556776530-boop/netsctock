@@ -154,8 +154,7 @@
       fetch('/api/ping', { credentials: 'include', cache: 'no-store' })
         .then(function(r) {
           if (r.ok) {
-            statusEl.textContent = 'מוכן!';
-            setTimeout(function() { window.location.href = '/?ready=1'; }, 200);
+            window.location.href = '/?ready=1';
           } else if (r.status === 401 || r.status === 302) {
             window.location.href = '/auth/login';
           } else {
@@ -166,13 +165,7 @@
     }
 
     function retry() {
-      if (attempts > 30) {
-        statusEl.textContent = 'בעיית חיבור — מנסה שוב…';
-        setTimeout(check, 4000);
-      } else {
-        if (attempts > 5) statusEl.textContent = 'השרת מתעורר, רגע…';
-        setTimeout(check, 1500);
-      }
+      setTimeout(check, attempts > 30 ? 4000 : 1500);
     }
 
     // Start checking after a moment
