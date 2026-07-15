@@ -25,19 +25,19 @@
   <meta name="theme-color" content="#1e293b">
   {% block extra_head %}{% endblock %}
   <style>
-  /* Window control buttons */
+  /* Window control buttons — Chrome/Windows style */
+  #winControls { gap:0; }
   .wc-btn {
-    width:16px; height:16px; border-radius:50%; border:none; cursor:pointer;
-    display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;
-    transition:filter .15s, transform .1s;
+    width:38px; height:32px; border:none; border-radius:0; background:transparent;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    padding:0; flex-shrink:0; transition:background .1s;
   }
-  .wc-btn i { font-size:.6rem; color:rgba(0,0,0,.55); opacity:0; transition:opacity .15s; }
-  #winControls:hover .wc-btn i { opacity:1; }
-  .wc-red    { background:#ff5f57; }
-  .wc-yellow { background:#ffbd2e; }
-  .wc-green  { background:#28c840; }
-  .wc-btn:hover  { filter:brightness(.85); transform:scale(1.15); }
-  .wc-btn:active { transform:scale(.92); }
+  .wc-btn i { font-size:.78rem; color:#444; line-height:1; }
+  .wc-yellow:hover, .wc-green:hover { background:rgba(0,0,0,.08); }
+  .wc-red:hover    { background:#e81123; }
+  .wc-red:hover i  { color:#fff; }
+  .wc-btn:active   { background:rgba(0,0,0,.15); }
+  .wc-red:active   { background:#bf0f1e; }
   /* Minimized state */
   body.ns-minimized main,
   body.ns-minimized footer   { display:none !important; }
@@ -249,8 +249,8 @@
         </span>
         <!-- Window controls -->
         <div class="d-flex align-items-center gap-1 ms-3" id="winControls">
-          <button id="wc-min"   title="מזעור"    class="wc-btn wc-yellow"><i class="bi bi-dash-square"></i></button>
-          <button id="wc-max"   title="הגדל מסך" class="wc-btn wc-green"><i class="bi bi-fullscreen"></i></button>
+          <button id="wc-min"   title="מזעור"    class="wc-btn wc-yellow"><i class="bi bi-dash-lg"></i></button>
+          <button id="wc-max"   title="הגדל מסך" class="wc-btn wc-green"><i class="bi bi-square"></i></button>
           <button id="wc-close" title="סגור"     class="wc-btn wc-red"><i class="bi bi-x-lg"></i></button>
         </div>
       </div>
@@ -397,7 +397,7 @@ setInterval(function() {
     _minimized = !_minimized;
     document.body.classList.toggle('ns-minimized', _minimized);
     var icon = winMin.querySelector('i');
-    if (icon) icon.className = _minimized ? 'bi bi-window-fullscreen' : 'bi bi-dash-square';
+    if (icon) icon.className = _minimized ? 'bi bi-square-fill' : 'bi bi-dash-lg';
     winMin.title = _minimized ? 'שחזר' : 'מזעור';
   });
 
