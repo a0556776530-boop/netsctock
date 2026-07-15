@@ -1,4 +1,4 @@
-const CACHE = 'netstock-v2';
+const CACHE = 'netstock-v3';
 const PRECACHE = [
   '/static/loading.html',
   '/static/css/style.css',
@@ -24,17 +24,15 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // Navigation to '/' — race server vs 1.5s timeout
-  if (e.request.mode === 'navigate' && url.pathname === '/') {
+  // Navigation to '/' — immediately show loading screen from cache
+  // loading.html polls /api/ping and redirects to /?ready=1 when server is up
+  if (e.request.mode === 'navigate' && url.pathname === '/' && !url.searchParams.has('ready')) {
     e.respondWith(
-      Promise.race([
-        fetch(e.request, { credentials: 'include' }),
-        new Promise(resolve => setTimeout(() => resolve(null), 1500)),
-      ]).then(result => {
-        if (result) return result;
-        // Server too slow — serve loading page from cache
-        return caches.match('/static/loading.html');
-      }).catch(() => caches.match('/static/loading.html'))
+      caches.match('/static/loading.html').then(cached => {
+        if (cached) return cached;
+        // Fallback: pass through if cache miss (first load before SW installs)
+        return fetch(e.request, { credentials: 'include' });
+      })
     );
     return;
   }

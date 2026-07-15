@@ -155,7 +155,7 @@
         .then(function(r) {
           if (r.ok) {
             statusEl.textContent = 'מוכן!';
-            setTimeout(function() { window.location.href = '/'; }, 200);
+            setTimeout(function() { window.location.href = '/?ready=1'; }, 200);
           } else if (r.status === 401 || r.status === 302) {
             window.location.href = '/auth/login';
           } else {
