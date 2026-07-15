@@ -2,7 +2,8 @@ import json
 from datetime import date, timedelta, datetime
 from urllib.parse import urlparse
 
-from flask import Blueprint, render_template, jsonify, redirect, request, session, url_for
+from flask import Blueprint, render_template, jsonify, redirect, request, session, url_for, send_from_directory
+import os as _os
 from flask_login import login_required, current_user
 from app.utils.cache import cache
 
@@ -19,6 +20,15 @@ _STATUS_LABELS = {
     'in_use': 'In Use', 'dismantled': 'Dismantled', 'in_storage': 'In Storage',
     'assigned': 'Assigned', 'faulty': 'Faulty', 'retired': 'Deleted',
 }
+
+
+@main_bp.route('/sw.js')
+def service_worker():
+    sw_dir = _os.path.join(_os.path.dirname(__file__), '..', 'static', 'js')
+    resp = send_from_directory(sw_dir, 'sw.js', mimetype='application/javascript')
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 @main_bp.route('/set-lang/<code>')
