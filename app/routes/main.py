@@ -24,8 +24,12 @@ _STATUS_LABELS = {
 
 @main_bp.route('/sw.js')
 def service_worker():
-    sw_dir = _os.path.join(_os.path.dirname(__file__), '..', 'static', 'js')
-    resp = send_from_directory(sw_dir, 'sw.js', mimetype='application/javascript')
+    from flask import current_app
+    resp = send_from_directory(
+        _os.path.join(current_app.root_path, 'static', 'js'),
+        'sw.js',
+        mimetype='application/javascript'
+    )
     resp.headers['Service-Worker-Allowed'] = '/'
     resp.headers['Cache-Control'] = 'no-cache'
     return resp
