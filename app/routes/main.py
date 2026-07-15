@@ -168,11 +168,6 @@ def dashboard():
     if current_user.is_warehouse:
         return redirect(url_for('estimates.list_estimates'))
 
-    _cache_key = 'dashboard_data'
-    _cached = cache.get(_cache_key)
-    if _cached:
-        return render_template('dashboard.html', **_cached)
-
     from mongoengine import Q
     from app.models.estimate import Estimate
     from app.models.purchase import Purchase
@@ -346,5 +341,4 @@ def dashboard():
         status_chart=json.dumps(status_chart),
         activity_chart=json.dumps(activity_chart),
     )
-    cache.set(_cache_key, _ctx, timeout=90)
     return render_template('dashboard.html', **_ctx)
