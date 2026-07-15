@@ -19,7 +19,6 @@
         <tr>
           <th>{{ t.col_name }}</th>
           <th>{{ t.col_role }}</th>
-          <th class="text-center">{{ t.col_assigned_assets }}</th>
           <th class="text-center">{{ t.col_open_tasks_hdr }}</th>
           <th>{{ t.col_created }}</th>
           <th></th>
@@ -51,7 +50,6 @@
               {% endif %}
             </div>
           </td>
-          <td class="text-center small">{{ user_stats[user.id].assets }}</td>
           <td class="text-center small">{{ user_stats[user.id].tasks }}</td>
           <td class="small text-muted">{{ user.created_at.strftime('%d %b %Y') if user.created_at else '—' }}</td>
           <td class="text-end text-nowrap">
