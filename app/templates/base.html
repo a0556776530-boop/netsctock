@@ -24,26 +24,6 @@
   <meta name="apple-mobile-web-app-title" content="NetStock">
   <meta name="theme-color" content="#1e293b">
   {% block extra_head %}{% endblock %}
-  <style>
-  /* Window control buttons — Chrome/Windows style */
-  #winControls { gap:0; }
-  .wc-btn {
-    width:38px; height:32px; border:none; border-radius:0; background:transparent;
-    cursor:pointer; display:flex; align-items:center; justify-content:center;
-    padding:0; flex-shrink:0; transition:background .1s;
-  }
-  .wc-btn i { font-size:.78rem; color:#444; line-height:1; }
-  .wc-yellow:hover, .wc-green:hover { background:rgba(0,0,0,.08); }
-  .wc-red:hover    { background:#e81123; }
-  .wc-red:hover i  { color:#fff; }
-  .wc-btn:active   { background:rgba(0,0,0,.15); }
-  .wc-red:active   { background:#bf0f1e; }
-  /* Minimized state */
-  body.ns-minimized main,
-  body.ns-minimized footer   { display:none !important; }
-  body.ns-minimized #sidebar { display:none !important; }
-  body.ns-minimized .flex-grow-1 { min-height:unset !important; }
-  </style>
   {% if current_user.is_authenticated %}
   <script>
     window.APP_ME_ID       = {{ current_user.id | string | tojson }};
@@ -247,12 +227,7 @@
         <span class="small text-muted">
           <i class="bi bi-calendar3"></i> {{ now.strftime('%d %b %Y') }}
         </span>
-        <!-- Window controls -->
-        <div class="d-flex align-items-center gap-1 ms-3" id="winControls">
-          <button id="wc-min"   title="מזעור"    class="wc-btn wc-yellow"><i class="bi bi-dash-lg"></i></button>
-          <button id="wc-max"   title="הגדל מסך" class="wc-btn wc-green"><i class="bi bi-square"></i></button>
-          <button id="wc-close" title="סגור"     class="wc-btn wc-red"><i class="bi bi-x-lg"></i></button>
-        </div>
+
       </div>
     </header>
 
@@ -382,44 +357,6 @@ setInterval(function() {
     submenu.addEventListener('show.bs.collapse', function() { chevron.style.transform = 'rotate(180deg)'; });
     submenu.addEventListener('hide.bs.collapse', function() { chevron.style.transform = 'rotate(0deg)'; });
   }
-})();
-</script>
-<script>
-(function () {
-  var winClose = document.getElementById('wc-close');
-  var winMin   = document.getElementById('wc-min');
-  var winMax   = document.getElementById('wc-max');
-
-  if (winClose) winClose.addEventListener('click', function () { window.close(); });
-
-  var _minimized = false;
-  if (winMin) winMin.addEventListener('click', function () {
-    _minimized = !_minimized;
-    document.body.classList.toggle('ns-minimized', _minimized);
-    var icon = winMin.querySelector('i');
-    if (icon) icon.className = _minimized ? 'bi bi-square-fill' : 'bi bi-dash-lg';
-    winMin.title = _minimized ? 'שחזר' : 'מזעור';
-  });
-
-  if (winMax) winMax.addEventListener('click', function () {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen && document.exitFullscreen();
-    }
-  });
-
-  document.addEventListener('fullscreenchange', function () {
-    if (!winMax) return;
-    var icon = winMax.querySelector('i');
-    if (document.fullscreenElement) {
-      if (icon) icon.className = 'bi bi-fullscreen-exit';
-      winMax.title = 'שחזר לחלון';
-    } else {
-      if (icon) icon.className = 'bi bi-fullscreen';
-      winMax.title = 'הגדל מסך';
-    }
-  });
 })();
 </script>
 {% block scripts %}{% endblock %}
