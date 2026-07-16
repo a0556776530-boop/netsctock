@@ -1,9 +1,10 @@
-const CACHE = 'netstock-v5';
+const CACHE = 'netstock-v6';
 const PRECACHE = [
   '/static/loading.html',
   '/static/css/style.css',
   '/static/js/app.js',
   '/static/img/logo.png',
+  '/static/video/poster.jpg',
 ];
 
 self.addEventListener('install', e => {
