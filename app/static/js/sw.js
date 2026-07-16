@@ -1,4 +1,4 @@
-const CACHE = 'netstock-v8';
+const CACHE = 'netstock-v9';
 const PRECACHE = [
   '/static/loading.html',
   '/static/css/style.css',
@@ -7,6 +7,11 @@ const PRECACHE = [
   '/static/video/poster.jpg',
   '/static/video/intro.mp4',
 ];
+
+// Key used to store the "server is warm" timestamp inside the cache
+const WARM_KEY = '__server_warm__';
+// How long a warm confirmation stays valid (10 minutes)
+const WARM_TTL = 10 * 60 * 1000;
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -22,21 +27,54 @@ self.addEventListener('activate', e => {
   );
 });
 
+async function isServerWarm() {
+  try {
+    const c = await caches.open(CACHE);
+    const r = await c.match(WARM_KEY);
+    if (!r) return false;
+    const ts = parseInt(await r.text(), 10);
+    return (Date.now() - ts) < WARM_TTL;
+  } catch { return false; }
+}
+
+async function markServerWarm() {
+  try {
+    const c = await caches.open(CACHE);
+    await c.put(WARM_KEY, new Response(String(Date.now()), {
+      headers: { 'Content-Type': 'text/plain' }
+    }));
+  } catch {}
+}
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // Navigation to '/' — try the real server first (warm = fast).
-  // Only fall back to loading.html if the server doesn't respond within 2s (cold start / Render sleep).
-  if (e.request.mode === 'navigate' && url.pathname === '/' && !url.searchParams.has('ready')) {
+  // /?ready=1 — loading.html confirmed server is up; mark warm and let through
+  if (e.request.mode === 'navigate' && url.pathname === '/' && url.searchParams.has('ready')) {
+    markServerWarm();
+    return; // browser handles normally
+  }
+
+  // Navigation to '/' (dashboard)
+  if (e.request.mode === 'navigate' && url.pathname === '/') {
     e.respondWith(
-      Promise.race([
-        fetch(e.request.clone(), { credentials: 'include' }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
-      ]).catch(() =>
-        caches.match('/static/loading.html')
-          .then(cached => cached || fetch(e.request, { credentials: 'include' }))
-      )
+      isServerWarm().then(warm => {
+        if (warm) {
+          // Server was recently confirmed alive — go straight to dashboard
+          return fetch(e.request, { credentials: 'include' });
+        }
+        // Unknown state (first open / long idle) — race: server vs 2s timeout
+        return Promise.race([
+          fetch(e.request.clone(), { credentials: 'include' })
+            .then(resp => { markServerWarm(); return resp; }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('cold')), 2000))
+        ]).catch(() =>
+          // Server didn't respond in time — show loading splash
+          caches.match('/static/loading.html')
+            .then(cached => cached || fetch(e.request, { credentials: 'include' }))
+        );
+      })
     );
     return;
   }
