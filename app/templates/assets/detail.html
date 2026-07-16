@@ -112,6 +112,42 @@
 
 </div>
 
+{# ── מפרט טכני ───────────────────────────────────────────────────────────── #}
+{% if asset.specs %}
+<div class="card border-0 shadow-sm mt-3">
+  <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex align-items-center gap-2">
+    <i class="bi bi-cpu text-primary"></i>
+    <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing:.07em;">מפרט טכני</h6>
+    <span class="badge bg-primary bg-opacity-10 text-primary ms-1" style="font-size:.68rem;">Cisco</span>
+  </div>
+  <div class="card-body pt-2">
+    {% if asset.specs.get('תיאור') %}
+    <p class="small text-muted mb-3" style="line-height:1.6;">{{ asset.specs['תיאור'] }}</p>
+    {% endif %}
+    {% set skip_keys = ['תיאור', 'שימושים_עיקריים'] %}
+    {% set display_specs = [] %}
+    {% for k, v in asset.specs.items() if k not in skip_keys and v %}
+      {% set _ = display_specs.append((k, v)) %}
+    {% endfor %}
+    {% if display_specs %}
+    <table class="table table-sm table-borderless mb-0 small">
+      {% for k, v in display_specs %}
+      <tr>
+        <td class="text-muted fw-semibold" style="width:45%;white-space:nowrap;">{{ k.replace('_', ' ') }}</td>
+        <td class="font-monospace">{{ v }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    {% if asset.specs.get('שימושים_עיקריים') %}
+    <div class="mt-2 pt-2 border-top small text-muted">
+      <span class="fw-semibold">שימושים עיקריים: </span>{{ asset.specs['שימושים_עיקריים'] }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 {# ── הזמנות רכש ──────────────────────────────────────────────────────────── #}
 {% set STATUS_BG = {
   'BOM Transferred':             '#475569',
