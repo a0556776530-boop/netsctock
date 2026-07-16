@@ -1,4 +1,4 @@
-const CACHE = 'netstock-v4';
+const CACHE = 'netstock-v5';
 const PRECACHE = [
   '/static/loading.html',
   '/static/css/style.css',

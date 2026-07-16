@@ -8,7 +8,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #1e293b;
+      background: #0f1623;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -18,33 +18,39 @@
       overflow: hidden;
     }
 
-    /* Animated background particles */
-    .bg {
+    /* Fullscreen video background */
+    .video-bg {
       position: fixed;
       inset: 0;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    .particle {
-      position: absolute;
-      border-radius: 50%;
-      background: rgba(0, 212, 255, 0.06);
-      animation: float linear infinite;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
     }
 
-    @keyframes float {
-      0%   { transform: translateY(110vh) scale(0); opacity: 0; }
-      10%  { opacity: 1; }
-      90%  { opacity: 1; }
-      100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+    /* Dark overlay so text stays readable */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 15, 30, 0.52);
+      z-index: 1;
+    }
+
+    /* All UI sits above video */
+    .ui {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     /* Logo */
-    .logo-wrap {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      animation: fadeIn 0.5s ease;
+    .logo-img {
+      width: 200px;
+      max-width: 60vw;
+      filter: drop-shadow(0 0 24px rgba(0, 212, 255, 0.45));
+      animation: fadeIn 0.6s ease, glow 2.5s ease-in-out 0.6s infinite;
     }
 
     @keyframes fadeIn {
@@ -52,37 +58,30 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    .logo-img {
-      width: 200px;
-      max-width: 60vw;
-      filter: drop-shadow(0 0 24px rgba(0, 212, 255, 0.35));
-      animation: glow 2.5s ease-in-out infinite;
-    }
-
     @keyframes glow {
-      0%, 100% { filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.3)); }
-      50%       { filter: drop-shadow(0 0 40px rgba(0, 212, 255, 0.65)); }
+      0%, 100% { filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.35)); }
+      50%       { filter: drop-shadow(0 0 44px rgba(0, 212, 255, 0.7)); }
     }
 
     .tagline {
       color: #00d4ff;
       font-size: 0.7rem;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.22em;
       font-weight: 500;
-      margin-top: 6px;
+      margin-top: 8px;
       text-transform: uppercase;
+      opacity: 0;
+      animation: fadeIn 0.6s ease 0.3s forwards;
     }
 
     /* Progress bar */
     .progress-wrap {
-      margin-top: 48px;
+      margin-top: 52px;
       width: 180px;
       height: 3px;
-      background: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.1);
       border-radius: 99px;
       overflow: hidden;
-      position: relative;
-      z-index: 1;
     }
 
     .progress-bar {
@@ -102,52 +101,36 @@
     }
 
     .status {
-      margin-top: 20px;
-      color: rgba(255,255,255,0.3);
+      margin-top: 18px;
+      color: rgba(255,255,255,0.5);
       font-size: 0.72rem;
-      letter-spacing: 0.05em;
-      position: relative;
-      z-index: 1;
+      letter-spacing: 0.06em;
     }
   </style>
 </head>
 <body>
 
-  <!-- Floating particles -->
-  <div class="bg" id="bg"></div>
+  <!-- Video background -->
+  <video class="video-bg" autoplay muted loop playsinline preload="auto">
+    <source src="/static/video/intro.mp4" type="video/mp4">
+  </video>
 
-  <!-- Logo -->
-  <div class="logo-wrap">
+  <!-- Dark overlay -->
+  <div class="overlay"></div>
+
+  <!-- UI overlay -->
+  <div class="ui">
     <img src="/static/img/logo.png" alt="NetStock" class="logo-img">
     <div class="tagline">Track · Optimize · Scale</div>
-  </div>
 
-  <!-- Progress -->
-  <div class="progress-wrap">
-    <div class="progress-bar"></div>
+    <div class="progress-wrap">
+      <div class="progress-bar"></div>
+    </div>
+    <div class="status" id="status">מתחבר…</div>
   </div>
-  <div class="status" id="status">מתחבר…</div>
 
   <script>
-    // Generate particles
-    var bg = document.getElementById('bg');
-    for (var i = 0; i < 18; i++) {
-      var p = document.createElement('div');
-      p.className = 'particle';
-      var size = 20 + Math.random() * 80;
-      p.style.cssText = [
-        'width:' + size + 'px',
-        'height:' + size + 'px',
-        'left:' + Math.random() * 100 + '%',
-        'animation-duration:' + (8 + Math.random() * 14) + 's',
-        'animation-delay:' + (Math.random() * 10) + 's',
-      ].join(';');
-      bg.appendChild(p);
-    }
-
-    // Poll server until ready, then redirect
     var attempts = 0;
-    var statusEl = document.getElementById('status');
 
     function check() {
       attempts++;
@@ -168,7 +151,6 @@
       setTimeout(check, attempts > 30 ? 4000 : 1500);
     }
 
-    // Start checking after a moment
     setTimeout(check, 800);
   </script>
 </body>
