@@ -63,15 +63,6 @@ class AssetForm(FlaskForm):
         self.asset_type_id.choices = _type_choices()
 
 
-class DismantleForm(FlaskForm):
-    from_site_id = SelectField('Dismantled From', coerce=str, validators=[Optional()])
-    notes        = TextAreaField('Notes', validators=[Optional()])
-    submit       = SubmitField('Confirm Dismantle')
-
-    def populate_choices(self):
-        self.from_site_id.choices = _site_choices()
-
-
 class AssignForm(FlaskForm):
     assigned_to_id = SelectField('Assign To',      coerce=str, validators=[DataRequired()])
     to_site_id     = SelectField('Deploy to Site', coerce=str, validators=[Optional()])
@@ -99,10 +90,6 @@ class ReturnForm(FlaskForm):
 
     def populate_choices(self):
         self.to_site_id.choices = _site_choices()
-
-
-class RetireForm(FlaskForm):
-    submit = SubmitField('Retire Asset')
 
 
 # ── List ─────────────────────────────────────────────────────────────────────
@@ -295,9 +282,6 @@ def detail(id):
     asset  = get_or_404(Asset, id)
     events = list(AssetEvent.objects(asset=asset).order_by('-event_date').select_related())
 
-    retire_form = RetireForm(prefix='retire')
-    localize_form(retire_form, t, submit_key='form_retire_asset')
-
     all_purchases    = list(Purchase.objects(items__asset=asset))
     open_purchases   = [p for p in all_purchases if p.status in ACTIVE_STATUSES]
     closed_purchases = [p for p in all_purchases if p.status == 'Order Received in Warehouse']
@@ -305,7 +289,6 @@ def detail(id):
     return render_template(
         'assets/detail.html',
         asset=asset, events=events,
-        retire_form=retire_form,
         open_purchases=open_purchases,
         closed_purchases=closed_purchases,
     )
@@ -360,30 +343,6 @@ def edit(id):
 
 
 # ── Actions ──────────────────────────────────────────────────────────────────
-
-@assets_bp.route('/<id>/dismantle', methods=['POST'])
-@login_required
-def dismantle(id):
-    if not current_user.can_edit:
-        abort(403)
-    t = getattr(g, 't', {})
-    asset = get_or_404(Asset, id)
-    form  = DismantleForm(prefix='dismantle')
-    form.populate_choices()
-
-    if form.validate_on_submit():
-        from_site = Site.objects(id=form.from_site_id.data).first() if form.from_site_id.data else asset.current_site
-        asset.status         = 'dismantled'
-        asset.assignee       = None
-        asset.current_site   = None
-        asset.save()
-        log_event(asset, 'dismantled', current_user, from_site=from_site,
-                  notes=(form.notes.data or '').strip() or None)
-        flash(t.get('flash_dismantled', '{sn} marked as dismantled.').format(sn=asset.serial_number), 'warning')
-    else:
-        flash(t.get('flash_form_error', 'Form error. Please try again.'), 'danger')
-
-    return redirect(url_for('assets.detail', id=str(asset.id)))
 
 
 @assets_bp.route('/<id>/assign', methods=['POST'])
@@ -466,19 +425,6 @@ def return_asset(id):
     return redirect(url_for('assets.detail', id=str(asset.id)))
 
 
-@assets_bp.route('/<id>/retire', methods=['POST'])
-@login_required
-def retire(id):
-    if not current_user.can_edit:
-        abort(403)
-    t = getattr(g, 't', {})
-    asset = get_or_404(Asset, id)
-    asset.status   = 'retired'
-    asset.assignee = None
-    asset.save()
-    log_event(asset, 'retired', current_user)
-    flash(t.get('flash_retired', '{sn} retired from service.').format(sn=asset.serial_number), 'secondary')
-    return redirect(url_for('assets.detail', id=str(asset.id)))
 
 
 @assets_bp.route('/<id>/qty', methods=['POST'])

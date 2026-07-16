@@ -4,18 +4,18 @@
 
 {% block content %}
 {% set status_icons = {
-  'in_use': 'bi-check-circle-fill', 'dismantled': 'bi-tools',
+  'in_use': 'bi-check-circle-fill',
   'in_storage': 'bi-box-seam', 'assigned': 'bi-person-check-fill',
-  'faulty': 'bi-exclamation-triangle-fill', 'retired': 'bi-archive-fill',
+  'faulty': 'bi-exclamation-triangle-fill',
 } %}
 {% set status_labels = {
-  'in_use': t.status_in_use, 'dismantled': t.status_dismantled,
+  'in_use': t.status_in_use,
   'in_storage': t.status_in_storage, 'assigned': t.status_assigned,
-  'faulty': t.status_faulty, 'retired': t.status_retired,
+  'faulty': t.status_faulty,
 } %}
 {% set status_colors = {
-  'in_use':'success','dismantled':'warning','in_storage':'info',
-  'assigned':'primary','faulty':'danger','retired':'secondary',
+  'in_use':'success','in_storage':'info',
+  'assigned':'primary','faulty':'danger',
 } %}
 
 <!-- ── KPI Cards ─────────────────────────────────────────────────────── -->

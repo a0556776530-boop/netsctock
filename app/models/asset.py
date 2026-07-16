@@ -28,14 +28,14 @@ class Asset(me.Document):
         ],
     }
 
-    STATUSES = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
+    STATUSES = ['in_use', 'in_storage', 'assigned', 'faulty']
     STATUS_LABELS = {
-        'in_use': 'בשימוש', 'dismantled': 'פורק', 'in_storage': 'באחסון',
-        'assigned': 'מוקצה', 'faulty': 'פגום', 'retired': 'מחיקת פריט',
+        'in_use': 'בשימוש', 'in_storage': 'באחסון',
+        'assigned': 'מוקצה', 'faulty': 'פגום',
     }
     STATUS_COLORS = {
-        'in_use': 'success', 'dismantled': 'warning', 'in_storage': 'info',
-        'assigned': 'primary', 'faulty': 'danger', 'retired': 'secondary',
+        'in_use': 'success', 'in_storage': 'info',
+        'assigned': 'primary', 'faulty': 'danger',
     }
 
     component_id   = me.StringField(max_length=50)
