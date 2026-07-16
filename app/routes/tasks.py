@@ -6,6 +6,7 @@ from wtforms.validators import DataRequired, Optional, Length
 
 from app.models.task import Task
 from app.utils.mongo_helpers import get_or_404
+from app.utils.activity import log_activity
 
 tasks_bp = Blueprint('tasks', __name__, url_prefix='/tasks')
 
@@ -66,6 +67,7 @@ def new_task():
             notes=(form.notes.data or '').strip() or None,
         )
         task.save()
+        log_activity(current_user, 'task_created', f'יצר משימה: {task.title}')
         flash(t.get('flash_task_created', 'Task created successfully.'), 'success')
         return redirect(url_for('tasks.list_tasks'))
 
@@ -113,6 +115,7 @@ def mark_done(id):
     task = get_or_404(Task, id)
     task.status = 'done'
     task.save()
+    log_activity(current_user, 'task_completed', f'סיים משימה: {task.title}')
     flash(f'"{task.title}" marked as done.', 'success')
     return redirect(request.referrer or url_for('tasks.list_tasks'))
 
@@ -125,6 +128,7 @@ def reopen(id):
     task = get_or_404(Task, id)
     task.status = 'in_progress'
     task.save()
+    log_activity(current_user, 'task_reopened', f'פתח מחדש משימה: {task.title}')
     flash(f'"{task.title}" reopened.', 'info')
     return redirect(request.referrer or url_for('tasks.list_tasks'))
 

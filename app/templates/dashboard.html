@@ -105,25 +105,44 @@
 
 </div>
 
-<!-- ── Charts Row ────────────────────────────────────────────────────── -->
+<!-- ── Activity Feed ──────────────────────────────────────────────────── -->
 <div class="row g-3 mb-4">
-
-  <!-- Activity chart -->
-  <div class="col-12 col-md-8">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-transparent fw-semibold small border-0 pt-3">
-        <i class="bi bi-activity me-1 text-primary"></i>{{ t.activity_chart_title }}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent fw-semibold small border-0 pt-3 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-activity me-1 text-primary"></i>פעילות אחרונה במערכת</span>
+        <span class="badge bg-primary bg-opacity-10 text-primary">{{ activity_feed | length }} פעולות</span>
       </div>
-      <div class="card-body pt-0">
-        <canvas id="activityChart" style="max-height:200px; width:100%;"></canvas>
+      <div class="card-body p-0" style="max-height:340px; overflow-y:auto;">
+        {% if activity_feed %}
+        <ul class="list-group list-group-flush">
+          {% for entry in activity_feed %}
+          <li class="list-group-item d-flex align-items-start gap-3 py-2 px-3">
+            <div class="flex-shrink-0 mt-1">
+              <span class="badge rounded-pill bg-{{ entry.color }} bg-opacity-15 p-2" style="line-height:1;">
+                <i class="bi {{ entry.icon }} text-{{ entry.color }}" style="font-size:.95rem;"></i>
+              </span>
+            </div>
+            <div class="flex-grow-1 overflow-hidden">
+              <div class="small fw-semibold text-truncate">{{ entry.description }}</div>
+              <div class="x-small text-muted mt-1">
+                <span class="badge bg-secondary bg-opacity-15 text-secondary fw-normal me-1">{{ entry.user_name }}</span>
+                <span class="text-muted" data-ts="{{ entry.created_at.isoformat() }}">
+                  {{ entry.created_at.strftime('%d/%m %H:%M') }}
+                </span>
+              </div>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted text-center small py-4">
+          <i class="bi bi-hourglass me-1"></i>עדיין אין פעילות רשומה — תתחיל להשתמש במערכת
+        </p>
+        {% endif %}
       </div>
     </div>
   </div>
-
-  <!-- Placeholder col-4 -->
-  <div class="col-12 col-md-4">
-  </div>
-
 </div>
 
 <!-- ── Purchases Pipeline + Expiring ────────────────────────────────── -->
@@ -320,38 +339,21 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
-Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-Chart.defaults.font.size   = 12;
-
-const activityData = {{ activity_chart | safe }};
-
-const actEl = document.getElementById('activityChart');
-if (actEl) {
-  new Chart(actEl, {
-    type: 'line',
-    data: {
-      labels:   activityData.labels,
-      datasets: [{
-        data:            activityData.data,
-        borderColor:     '#0d6efd',
-        backgroundColor: '#0d6efd18',
-        fill:            true,
-        tension:         0.35,
-        pointRadius:     3,
-        pointBackgroundColor: '#0d6efd',
-      }],
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxRotation: 0, font: { size: 10 } } },
-        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f0f0f0' } },
-      },
-    },
+(function() {
+  var now = Date.now();
+  document.querySelectorAll('[data-ts]').forEach(function(el) {
+    var ts = new Date(el.dataset.ts + 'Z');
+    var diff = Math.floor((now - ts) / 1000);
+    var text;
+    if (diff < 60)       text = 'עכשיו';
+    else if (diff < 3600) text = 'לפני ' + Math.floor(diff/60) + ' דק\'';
+    else if (diff < 86400) text = 'לפני ' + Math.floor(diff/3600) + ' ש\'';
+    else                   text = el.textContent.trim();
+    el.textContent = text;
+    el.title = ts.toLocaleString('he-IL');
   });
-}
+})();
 </script>
 <style>
 .kpi-card { transition: transform .15s, box-shadow .15s; }

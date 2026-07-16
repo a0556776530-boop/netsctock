@@ -170,6 +170,12 @@ def create_app(config_class=Config):
     except Exception:
         pass
 
+    try:
+        from .models.activity import ActivityLog
+        ActivityLog.ensure_indexes()
+    except Exception:
+        pass
+
     @app.after_request
     def set_security_headers(response):
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')

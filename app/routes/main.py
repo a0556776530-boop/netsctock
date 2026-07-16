@@ -9,16 +9,17 @@ from app.utils.cache import cache
 
 from app.models.asset import Asset, AssetEvent, AssetType
 from app.models.task import Task
+from app.models.activity import ActivityLog
 
 main_bp = Blueprint('main', __name__)
 
 _STATUS_COLORS = {
-    'in_use': '#198754', 'dismantled': '#ffc107', 'in_storage': '#0dcaf0',
-    'assigned': '#0d6efd', 'faulty': '#dc3545', 'retired': '#adb5bd',
+    'in_use': '#198754', 'in_storage': '#0dcaf0',
+    'assigned': '#0d6efd', 'faulty': '#dc3545',
 }
 _STATUS_LABELS = {
-    'in_use': 'In Use', 'dismantled': 'Dismantled', 'in_storage': 'In Storage',
-    'assigned': 'Assigned', 'faulty': 'Faulty', 'retired': 'Deleted',
+    'in_use': 'In Use', 'in_storage': 'In Storage',
+    'assigned': 'Assigned', 'faulty': 'Faulty',
 }
 
 
@@ -303,25 +304,15 @@ def dashboard():
         all_users.append({'user': u, 'status': status, 'diff_min': diff_min})
 
     # ── Charts ────────────────────────────────────────────────────────────────
-    all_statuses = ['in_use', 'dismantled', 'in_storage', 'assigned', 'faulty', 'retired']
+    all_statuses = ['in_use', 'in_storage', 'assigned', 'faulty']
     status_chart = {
         'labels': [_STATUS_LABELS[s] for s in all_statuses],
         'data':   [status_counts.get(s, 0) for s in all_statuses],
         'colors': [_STATUS_COLORS[s] for s in all_statuses],
     }
 
-    day_start_14 = datetime.combine(today - timedelta(days=13), datetime.min.time())
-    pipeline_activity = [
-        {'$match': {'event_date': {'$gte': day_start_14}}},
-        {'$group': {'_id': {'$dateToString': {'format': '%Y-%m-%d', 'date': '$event_date'}}, 'count': {'$sum': 1}}},
-    ]
-    activity_by_day = {r['_id']: r['count'] for r in AssetEvent._get_collection().aggregate(pipeline_activity)}
-    activity_labels, activity_data = [], []
-    for i in range(13, -1, -1):
-        day = today - timedelta(days=i)
-        activity_labels.append(day.strftime('%d %b'))
-        activity_data.append(activity_by_day.get(day.strftime('%Y-%m-%d'), 0))
-    activity_chart = {'labels': activity_labels, 'data': activity_data}
+    # ── Activity feed (last 50 across all modules) ────────────────────────────
+    activity_feed = list(ActivityLog.objects.order_by('-created_at').limit(50))
 
     _ctx = dict(
         total_assets=total_assets,
@@ -339,6 +330,6 @@ def dashboard():
         now_utc=now_utc,
         today=today,
         status_chart=json.dumps(status_chart),
-        activity_chart=json.dumps(activity_chart),
+        activity_feed=activity_feed,
     )
     return render_template('dashboard.html', **_ctx)
