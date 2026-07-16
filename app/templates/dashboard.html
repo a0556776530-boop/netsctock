@@ -126,7 +126,7 @@
             <div class="flex-grow-1 overflow-hidden">
               <div class="small fw-semibold text-truncate">{{ entry.description }}</div>
               <div class="x-small text-muted mt-1">
-                <span class="badge bg-secondary bg-opacity-15 text-secondary fw-normal me-1">{{ entry.user_name }}</span>
+                <span class="me-1">{{ entry.user_name }}</span>
                 <span class="text-muted" data-ts="{{ entry.created_at.isoformat() }}">
                   {{ entry.created_at.strftime('%d/%m %H:%M') }}
                 </span>
