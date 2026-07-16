@@ -1,4 +1,4 @@
-const CACHE = 'netstock-v7';
+const CACHE = 'netstock-v8';
 const PRECACHE = [
   '/static/loading.html',
   '/static/css/style.css',
@@ -26,15 +26,17 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // Navigation to '/' — immediately show loading screen from cache
-  // loading.html polls /api/ping and redirects to /?ready=1 when server is up
+  // Navigation to '/' — try the real server first (warm = fast).
+  // Only fall back to loading.html if the server doesn't respond within 2s (cold start / Render sleep).
   if (e.request.mode === 'navigate' && url.pathname === '/' && !url.searchParams.has('ready')) {
     e.respondWith(
-      caches.match('/static/loading.html').then(cached => {
-        if (cached) return cached;
-        // Fallback: pass through if cache miss (first load before SW installs)
-        return fetch(e.request, { credentials: 'include' });
-      })
+      Promise.race([
+        fetch(e.request.clone(), { credentials: 'include' }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+      ]).catch(() =>
+        caches.match('/static/loading.html')
+          .then(cached => cached || fetch(e.request, { credentials: 'include' }))
+      )
     );
     return;
   }
