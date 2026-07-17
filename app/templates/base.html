@@ -197,8 +197,46 @@
       <a href="{{ url_for('auth.logout') }}" class="nav-link text-secondary small">
         <i class="bi bi-box-arrow-right me-1"></i>{{ t.nav_logout }}
       </a>
+      <button id="pwaInstallBtn"
+              class="d-none w-100 border-0 bg-transparent text-start mt-2 px-0 py-1"
+              style="cursor:pointer; color:#38bdf8; font-size:.82rem; letter-spacing:.01em;"
+              onclick="pwaInstall()">
+        <i class="bi bi-download me-1"></i>התקן אפליקציה
+      </button>
     </div>
   </nav>
+
+  <!-- iOS install instructions modal -->
+  <div class="modal fade" id="iosInstallModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content rounded-4 shadow-lg">
+        <div class="modal-header border-0 pb-0">
+          <div class="d-flex align-items-center gap-2">
+            <img src="{{ url_for('static', filename='img/icon-192.png') }}" width="36" height="36"
+                 style="border-radius:8px;" alt="NetStock">
+            <div>
+              <div class="fw-bold" style="font-size:.95rem;">התקן NetStock</div>
+              <div class="text-muted" style="font-size:.75rem;">הוסף למסך הבית</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body pt-3">
+          <ol class="ps-3 mb-0" style="font-size:.88rem; line-height:2;">
+            <li>לחץ על <strong>
+              <i class="bi bi-box-arrow-up" style="font-size:1rem;"></i> שתף
+            </strong> בתחתית הדפדפן</li>
+            <li>גלול מטה ובחר <strong>הוסף למסך הבית</strong></li>
+            <li>לחץ <strong>הוסף</strong> — זהו!</li>
+          </ol>
+          <div class="mt-3 p-2 rounded-3 text-center" style="background:#f0f9ff; font-size:.78rem; color:#0369a1;">
+            <i class="bi bi-info-circle me-1"></i>
+            האפליקציה תיפתח ללא סרגל דפדפן, כמו אפליקציה אמיתית
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Main content -->
   <div class="flex-grow-1 d-flex flex-column min-vh-100">
@@ -357,6 +395,58 @@ setInterval(function() {
     submenu.addEventListener('show.bs.collapse', function() { chevron.style.transform = 'rotate(180deg)'; });
     submenu.addEventListener('hide.bs.collapse', function() { chevron.style.transform = 'rotate(0deg)'; });
   }
+})();
+</script>
+<script>
+(function () {
+  // Don't show if already running as installed PWA
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  // Don't show if user permanently dismissed
+  if (localStorage.getItem('pwa_dismissed') === '1') return;
+
+  var btn            = document.getElementById('pwaInstallBtn');
+  var deferredPrompt = null;
+  var isIOS          = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  var isSafari       = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+  // Chrome / Edge / Samsung / Firefox Android → native prompt
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (btn) btn.classList.remove('d-none');
+  });
+
+  // iOS Safari — always show manual instructions button
+  if (isIOS && isSafari && btn) {
+    btn.classList.remove('d-none');
+  }
+
+  // After install completes — hide the button
+  window.addEventListener('appinstalled', function () {
+    if (btn) btn.classList.add('d-none');
+    localStorage.setItem('pwa_dismissed', '1');
+  });
+
+  window.pwaInstall = function () {
+    if (deferredPrompt) {
+      // Chrome / Edge / Android — trigger native install sheet
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function (result) {
+        deferredPrompt = null;
+        if (result.outcome === 'accepted') {
+          if (btn) btn.classList.add('d-none');
+          localStorage.setItem('pwa_dismissed', '1');
+        }
+      });
+    } else if (isIOS) {
+      // iOS — show step-by-step modal
+      var modal = new bootstrap.Modal(document.getElementById('iosInstallModal'));
+      modal.show();
+    } else {
+      // Any other browser — open install instructions in new tab
+      alert('לפתיחת תפריט ההתקנה: לחץ על תפריט הדפדפן ← "התקן אפליקציה" / "הוסף למסך הבית"');
+    }
+  };
 })();
 </script>
 {% block scripts %}{% endblock %}
