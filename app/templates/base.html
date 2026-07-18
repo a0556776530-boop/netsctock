@@ -296,7 +296,12 @@
 <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function() {
+    // Tell SW the server is up — prevents loading screen on internal navigation
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'SERVER_WARM' });
+    }
+  }).catch(function(){});
 }
 </script>
 <script>
