@@ -1,11 +1,11 @@
-const CACHE = 'netstock-v13';
+const CACHE = 'netstock-v14';
 const PRECACHE = [
   '/static/loading.html',
   '/static/css/style.css',
   '/static/js/app.js',
   '/static/img/logo.png',
   '/static/video/poster.jpg',
-  '/static/video/intro.mp4',
+  // intro.mp4 (14MB) is NOT precached — too large for install; cached on first play instead
 ];
 
 self.addEventListener('install', e => {
