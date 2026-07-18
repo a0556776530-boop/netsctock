@@ -1,4 +1,4 @@
-const CACHE = 'netstock-v12';
+const CACHE = 'netstock-v13';
 const PRECACHE = [
   '/static/loading.html',
   '/static/css/style.css',
@@ -26,16 +26,20 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // Navigation to '/' — try server first (3s). If no response → cold start → show loading screen.
+  // Navigation to '/'
   if (e.request.mode === 'navigate' && url.pathname === '/') {
+    const referrer   = e.request.referrer || '';
+    const fromInside = referrer && referrer.startsWith(self.location.origin);
+
+    if (fromInside) {
+      // Coming from within the app — pass straight through, no splash
+      return;
+    }
+
+    // Fresh open (PWA icon / browser / bookmark) — always show the intro
     e.respondWith(
-      Promise.race([
-        fetch(e.request.clone(), { credentials: 'include' }),
-        new Promise((_, reject) => setTimeout(reject, 3000))
-      ]).catch(() =>
-        caches.match('/static/loading.html')
-          .then(c => c || fetch(e.request, { credentials: 'include' }))
-      )
+      caches.match('/static/loading.html')
+        .then(c => c || fetch(e.request, { credentials: 'include' }))
     );
     return;
   }
