@@ -1,7 +1,4 @@
-const CACHE    = 'netstock-v11';
-const WARM_KEY = '__warm__';
-const WARM_TTL = 10 * 60 * 1000; // 10 minutes
-
+const CACHE = 'netstock-v12';
 const PRECACHE = [
   '/static/loading.html',
   '/static/css/style.css',
@@ -25,57 +22,20 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Pages send this message when they successfully load → server is up
-self.addEventListener('message', e => {
-  if (e.data && e.data.type === 'SERVER_WARM') markWarm();
-});
-
-async function isWarm() {
-  try {
-    const c = await caches.open(CACHE);
-    const r = await c.match(WARM_KEY);
-    if (!r) return false;
-    return (Date.now() - parseInt(await r.text(), 10)) < WARM_TTL;
-  } catch { return false; }
-}
-
-async function markWarm() {
-  try {
-    const c = await caches.open(CACHE);
-    await c.put(WARM_KEY, new Response(String(Date.now()), {
-      headers: { 'Content-Type': 'text/plain' }
-    }));
-  } catch {}
-}
-
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // /?ready=1 — loading.html confirmed server alive
-  if (e.request.mode === 'navigate' && url.pathname === '/' && url.searchParams.has('ready')) {
-    markWarm();
-    return;
-  }
-
-  // Navigation to '/'
+  // Navigation to '/' — try server first (3s). If no response → cold start → show loading screen.
   if (e.request.mode === 'navigate' && url.pathname === '/') {
     e.respondWith(
-      isWarm().then(warm => {
-        if (warm) {
-          // Server was recently confirmed alive — pass straight through
-          return fetch(e.request, { credentials: 'include' });
-        }
-        // Cold start: race server vs 3s timeout
-        return Promise.race([
-          fetch(e.request.clone(), { credentials: 'include' })
-            .then(resp => { markWarm(); return resp; }),
-          new Promise((_, reject) => setTimeout(() => reject(), 3000))
-        ]).catch(() =>
-          caches.match('/static/loading.html')
-            .then(c => c || fetch(e.request, { credentials: 'include' }))
-        );
-      })
+      Promise.race([
+        fetch(e.request.clone(), { credentials: 'include' }),
+        new Promise((_, reject) => setTimeout(reject, 3000))
+      ]).catch(() =>
+        caches.match('/static/loading.html')
+          .then(c => c || fetch(e.request, { credentials: 'include' }))
+      )
     );
     return;
   }
