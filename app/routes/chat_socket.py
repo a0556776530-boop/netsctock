@@ -17,7 +17,7 @@ from app import socketio
 from app.models.chat_message import ChatMessage, _private_room
 from app.models.chat_group   import ChatGroup
 from app.models.user         import User
-from app.routes.chat         import _can_access_room, _is_online, _ONLINE_MINS
+from app.routes.chat         import _can_access_room, _is_online, _ONLINE_SECS
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
