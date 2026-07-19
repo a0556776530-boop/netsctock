@@ -417,17 +417,35 @@
             }
 
           } else if (ds !== null) {
-            // Inactive more than 60 minutes → absolute clock time
-            var t   = new Date(Date.now() - ds * 1000);
-            var hh  = String(t.getHours()).padStart(2, '0');
-            var mm  = String(t.getMinutes()).padStart(2, '0');
+            // Inactive more than 60 minutes → time if today, date if older
+            var t     = new Date(Date.now() - ds * 1000);
+            var today = new Date();
+            var hh    = String(t.getHours()).padStart(2, '0');
+            var mm_   = String(t.getMinutes()).padStart(2, '0');
+            var sameDay = t.getDate() === today.getDate()
+                       && t.getMonth() === today.getMonth()
+                       && t.getFullYear() === today.getFullYear();
+            var yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+            var wasYesterday = t.getDate() === yesterday.getDate()
+                            && t.getMonth() === yesterday.getMonth()
+                            && t.getFullYear() === yesterday.getFullYear();
+            var whenTxt;
+            if (sameDay) {
+              whenTxt = isHe ? ('בשעה ' + hh + ':' + mm_) : ('at ' + hh + ':' + mm_);
+            } else if (wasYesterday) {
+              whenTxt = isHe ? ('אתמול ' + hh + ':' + mm_) : ('yesterday ' + hh + ':' + mm_);
+            } else {
+              var dd = String(t.getDate()).padStart(2, '0');
+              var mo = String(t.getMonth() + 1).padStart(2, '0');
+              whenTxt = dd + '/' + mo + (t.getFullYear() !== today.getFullYear() ? '/' + t.getFullYear() : '');
+            }
             dot.style.background = '#9ca3af';
             if (isHe) {
               txt.innerHTML = '<span class="text-muted">לא פעיל</span>'
-                + ' <span class="text-muted x-small">— נראה לאחרונה בשעה ' + hh + ':' + mm + '</span>';
+                + ' <span class="text-muted x-small">— נראה לאחרונה ' + whenTxt + '</span>';
             } else {
               txt.innerHTML = '<span class="text-muted">Inactive</span>'
-                + ' <span class="text-muted x-small">— last seen at ' + hh + ':' + mm + '</span>';
+                + ' <span class="text-muted x-small">— last seen ' + whenTxt + '</span>';
             }
 
           } else {
