@@ -51,6 +51,13 @@ def set_lang(code):
 @main_bp.route('/api/ping')
 @login_required
 def ping():
+    from datetime import datetime
+    from app.models.user import User
+    now = datetime.utcnow()
+    ls  = current_user.last_seen
+    if ls is None or (now - ls).total_seconds() > 15:
+        User.objects(id=current_user.id).update_one(set__last_seen=now)
+        current_user.last_seen = now
     return jsonify({'ok': True})
 
 
