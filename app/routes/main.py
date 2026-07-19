@@ -105,7 +105,7 @@ def user_activity_api():
     for u in User.objects.order_by('-last_seen'):
         if u.last_seen:
             diff = (now_utc - u.last_seen).total_seconds()
-            if diff < 15:
+            if diff < 35:
                 status = 'online'
             elif diff < 600:
                 status = 'away'
@@ -291,9 +291,9 @@ def dashboard():
     for u in User.objects.only('id', 'name', 'last_seen', 'role', 'last_login').order_by('-last_seen'):
         if u.last_seen:
             diff = (now_utc - u.last_seen).total_seconds()
-            if diff < 300:
+            if diff < 35:
                 status = 'online'
-            elif diff < 1800:
+            elif diff < 600:
                 status = 'away'
             else:
                 status = 'offline'

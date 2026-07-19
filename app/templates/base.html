@@ -300,10 +300,30 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 <script>
-// Heartbeat every 30s — paused when tab is hidden to save server load
-setInterval(function() {
-  if (!document.hidden) fetch('/api/ping');
-}, 30000);
+// ── Presence heartbeat ────────────────────────────────────────────────────────
+// Sends /api/ping every 20s ONLY when:
+//   1. Tab is visible (not hidden/backgrounded)
+//   2. User interacted with the page in the last 90 seconds
+// This ensures "online" = truly active in the app right now.
+(function() {
+  var _lastActivity = Date.now();
+  ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(function(e) {
+    document.addEventListener(e, function() { _lastActivity = Date.now(); }, { passive: true });
+  });
+
+  function _ping() {
+    if (!document.hidden && (Date.now() - _lastActivity) < 90000) {
+      fetch('/api/ping');
+    }
+  }
+
+  setInterval(_ping, 20000);
+
+  // Ping immediately when user switches back to this tab
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) _ping();
+  });
+})();
 
 // ── Chat notifications ────────────────────────────────────────────────────────
 (function() {

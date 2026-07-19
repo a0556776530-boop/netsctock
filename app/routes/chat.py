@@ -81,7 +81,7 @@ def _send_push_notifications(recipient_id: str, sender_name: str, text: str, roo
 
 _MAX_HISTORY  = 40
 _MAX_FILE_B   = 50 * 1024 * 1024  # 50 MB
-_ONLINE_MINS  = 0.75  # 45 seconds
+_ONLINE_SECS  = 35   # online = active in last 35s (heartbeat every 20s + buffer)
 _REACTIONS    = ['👍', '❤️', '🔥', '✅', '😂', '😮']
 
 _CHANNELS = []  # predefined channels removed — only groups and DMs remain
@@ -103,7 +103,7 @@ def _can_access_room(user_id, room_key):
 def _is_online(user):
     if not user.last_seen:
         return False
-    return (datetime.utcnow() - user.last_seen) < timedelta(minutes=_ONLINE_MINS)
+    return (datetime.utcnow() - user.last_seen) < timedelta(seconds=_ONLINE_SECS)
 
 
 def _file_type(mime):
@@ -469,7 +469,7 @@ def api_send():
                     grp_obj2 = ChatGroup.objects(id=room_key[4:]).first()
                     member_ids = [str(m) for m in (grp_obj2.members if grp_obj2 else [])] if room_key.startswith('grp_') else []
                 else:
-                    cutoff = datetime.utcnow() - timedelta(minutes=_ONLINE_MINS)
+                    cutoff = datetime.utcnow() - timedelta(seconds=_ONLINE_SECS)
                     member_ids = [
                         str(u.id) for u in User.objects(
                             last_seen__lt=cutoff,
