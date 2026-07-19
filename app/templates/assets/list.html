@@ -999,27 +999,19 @@
       var specsTbl  = document.getElementById('popSpecsTable');
       specsTbl.innerHTML = '';
       var s = d.specs || {};
-      var specDefs = [
-        { key: 'rj45_ports',  label: 'יציאות RJ45', suffix: '' },
-        { key: 'sfp_ports',   label: 'יציאות SFP',  suffix: '' },
-        { key: 'poe',         label: 'PoE',          suffix: '' },
-        { key: 'power_watts', label: 'הספק',         suffix: 'W' },
-        { key: 'rack_units',  label: 'גובה',         suffix: 'U' },
-        { key: 'depth_mm',    label: 'עומק',         suffix: 'mm' },
-      ];
+      var skipKeys = { 'תיאור': true, 'שימושים_עיקריים': true };
       var hasSpec = false;
-      specDefs.forEach(function(def) {
-        var val = s[def.key];
-        if (val === undefined || val === null || val === '') return;
+      Object.keys(s).forEach(function(k) {
+        if (skipKeys[k] || !s[k]) return;
         hasSpec = true;
         var tr = document.createElement('tr');
         tr.style.cssText = 'border-top:1px solid #f1f5f9;';
         var tdL = document.createElement('td');
-        tdL.style.cssText = 'padding:5px 14px; color:#64748b; width:55%;';
-        tdL.textContent = def.label;
+        tdL.style.cssText = 'padding:5px 14px; color:#64748b; width:50%;';
+        tdL.textContent = k.replace(/_/g, ' ');
         var tdV = document.createElement('td');
-        tdV.style.cssText = 'padding:5px 14px; font-weight:600; color:#1e293b; direction:ltr; text-align:left;';
-        tdV.textContent = val + (def.suffix ? ' ' + def.suffix : '');
+        tdV.style.cssText = 'padding:5px 14px; font-weight:600; color:#1e293b;';
+        tdV.textContent = s[k];
         tr.appendChild(tdL);
         tr.appendChild(tdV);
         specsTbl.appendChild(tr);
