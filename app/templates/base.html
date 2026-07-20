@@ -308,7 +308,10 @@ if ('serviceWorker' in navigator) {
 // So pinging whenever the tab is visible is safe: chat/AJAX won't keep users "online".
 (function() {
   function _ping() {
-    if (!document.hidden) fetch('/api/ping');
+    if (document.hidden) return;
+    fetch('/api/ping').then(function(r) {
+      if (r.redirected) window.location.href = r.url;
+    });
   }
   setInterval(_ping, 20000);
   document.addEventListener('visibilitychange', function() {
