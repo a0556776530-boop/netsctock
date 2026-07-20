@@ -181,9 +181,12 @@ def edit_user(id):
                     flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
                 else:
                     user.password_hash = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+                    user.session_version = (user.session_version or 0) + 1
                     user.save()
-                    flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
-                    return redirect(url_for('main.dashboard'), 303)
+                    from flask_login import logout_user
+                    logout_user()
+                    flash(t.get('flash_password_changed', 'Password changed successfully. Please log in again.'), 'success')
+                    return redirect(url_for('auth.login'), 303)
             return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
         # Editing another user (non-super) — name + role only, no password
         form = EditUserForm()

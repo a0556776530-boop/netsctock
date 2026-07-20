@@ -102,7 +102,9 @@ def change_password():
             ).decode('utf-8')
             current_user.session_version = (current_user.session_version or 0) + 1
             current_user.save()
-            flash(t.get('flash_password_changed', 'Password changed successfully.'), 'success')
-            return redirect(url_for('main.dashboard'), 303)
+            from flask_login import logout_user
+            logout_user()
+            flash(t.get('flash_password_changed', 'Password changed successfully. Please log in again.'), 'success')
+            return redirect(url_for('auth.login'), 303)
         return redirect(url_for('auth.change_password'), 303)
     return render_template('auth/change_password.html', form=form)
