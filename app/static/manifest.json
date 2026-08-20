@@ -3,6 +3,7 @@
   "short_name": "NetStock",
   "start_url": "/",
   "display": "standalone",
+  "launch_handler": { "client_mode": "navigate-existing" },
   "background_color": "#1e293b",
   "theme_color": "#1e293b",
   "icons": [
