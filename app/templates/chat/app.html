@@ -25,7 +25,8 @@
       <div class="chat-sidebar-me">
         <div class="chat-upload-wrap" id="chatMyAvatarWrap">
           {% if current_user.profile_photo %}
-          <img src="{{ current_user.profile_photo }}" class="chat-avatar-photo sm" alt="{{ current_user.name }}">
+          <img src="{{ current_user.profile_photo }}" class="chat-avatar-photo sm" alt="{{ current_user.name }}"
+               style="cursor:zoom-in;" id="chatMyOwnPhoto">
           {% else %}
           <div class="role-avatar-sm role-{{ current_user.role or 'user' }}">{{ current_user.name[0] | upper }}</div>
           {% endif %}
@@ -242,4 +243,18 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/chat.js') }}?v=20260628f"></script>
+<script>
+(function () {
+  var ownPhoto = document.getElementById('chatMyOwnPhoto');
+  if (!ownPhoto) return;
+  ownPhoto.addEventListener('click', function () {
+    var lb    = document.getElementById('chatLightbox');
+    var lbImg = document.getElementById('chatLightboxImg');
+    if (lb && lbImg) {
+      lbImg.src = ownPhoto.src;
+      lb.classList.add('show');
+    }
+  });
+})();
+</script>
 {% endblock %}
