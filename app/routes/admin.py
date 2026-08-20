@@ -169,8 +169,21 @@ def edit_user(id):
         # Cannot edit super_admin accounts
         if user.is_super_admin:
             abort(403)
-        # Editing own account — password only
+        # Editing own account — password + profile photo
         if user.id == current_user.id:
+            # Save profile photo regardless of password form
+            photo_data = request.form.get('profile_photo_data', '').strip()
+            if photo_data == 'REMOVE':
+                user.profile_photo = None
+                user.save()
+                from app.models.user import _user_cache
+                _user_cache.pop(str(user.id), None)
+            elif photo_data:
+                user.profile_photo = photo_data
+                user.save()
+                from app.models.user import _user_cache
+                _user_cache.pop(str(user.id), None)
+
             form = ChangeOwnPasswordForm()
             if form.validate_on_submit():
                 if not bcrypt.check_password_hash(user.password_hash, form.current_password.data):
