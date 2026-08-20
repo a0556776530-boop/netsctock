@@ -279,14 +279,14 @@
                 data-group="{{ group_label }}"
                 data-q="{{ ((asset.component_id or '') ~ ' ' ~ asset.serial_number ~ ' ' ~ (asset.model or '') ~ ' ' ~ (asset.manufacturer or '') ~ ' ' ~ (asset.barcode or '')) | lower }}"
                 data-status="{{ asset.status }}"
-                data-type="{{ asset.asset_type.id if asset.asset_type else '' }}"
+                data-type="{{ asset._resolved_type_id }}"
                 style="{{ 'background-color:#fff5f5;' if is_low else '' }}"
                 data-preview='{{ {
                   "id":           asset.component_id or "",
                   "sn":           asset.serial_number,
                   "model":        asset.model or "",
                   "manufacturer": asset.manufacturer or "",
-                  "type":         asset.asset_type.name if asset.asset_type else "",
+                  "type":         asset._resolved_type_name,
                   "status":       asset.status_label,
                   "status_color": asset.status_color,
                   "qty":          asset.quantity if asset.quantity is not none else "",

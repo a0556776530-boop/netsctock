@@ -203,12 +203,36 @@ def list_assets():
     else:
         assets = list(qs.select_related())
 
+    # Build type lookup from cached list — avoids per-asset reference dereference
+    _type_name_map = {str(t.id): t.name for t in asset_types}
+
     by_type = defaultdict(list)
     for asset in assets:
-        try:
-            type_name = asset.asset_type.name if asset.asset_type else 'Other'
-        except Exception:
+        raw = asset._data.get('asset_type')
+        if raw is None:
             type_name = 'Other'
+            asset._resolved_type_id   = ''
+            asset._resolved_type_name = 'Other'
+        else:
+            try:
+                if hasattr(raw, 'name'):  # Already resolved AssetType object
+                    type_name = raw.name
+                    asset._resolved_type_id   = str(raw.pk)
+                    asset._resolved_type_name = raw.name
+                elif hasattr(raw, 'id'):  # DBRef
+                    tid = str(raw.id)
+                    type_name = _type_name_map.get(tid, 'Other')
+                    asset._resolved_type_id   = tid
+                    asset._resolved_type_name = type_name
+                else:                     # bare ObjectId
+                    tid = str(raw)
+                    type_name = _type_name_map.get(tid, 'Other')
+                    asset._resolved_type_id   = tid
+                    asset._resolved_type_name = type_name
+            except Exception:
+                type_name = 'Other'
+                asset._resolved_type_id   = ''
+                asset._resolved_type_name = 'Other'
         by_type[type_name].append(asset)
 
     grouped_assets = []
