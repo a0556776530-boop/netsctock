@@ -30,15 +30,15 @@ class Estimate(me.Document):
             'warehouse_status',
             'allocation_number',
             '-created_at',
-            ('status', 'record_type'),               # most common combined filter
-            ('status', 'record_type', 'valid_until'), # expiring allocations query
+            ('status', 'record_type'),
+            ('status', 'record_type', 'valid_until'),
         ],
     }
 
     allocation_number  = me.IntField(unique=True, sparse=True)
     status             = me.StringField(default='pending')
-    record_type        = me.StringField(default='allocation')  # 'allocation' | 'estimate'
-    warehouse_status   = me.StringField(default='pending')     # 'pending' | 'received' | 'completed'
+    record_type        = me.StringField(default='allocation')
+    warehouse_status   = me.StringField(default='pending')
     warehouse_completed_at = me.DateTimeField()
     task_name          = me.StringField(max_length=200, required=True)
     project_name       = me.StringField(max_length=200)
@@ -47,6 +47,7 @@ class Estimate(me.Document):
     usd_rate           = me.FloatField(default=3.0)
     maintenance_factor = me.FloatField(default=1.7)
     total_nis          = me.FloatField()
+    total_usd          = me.FloatField()   # stored so list view doesn't need items
     created_by         = me.ReferenceField('User')
     created_at         = me.DateTimeField(default=datetime.utcnow)
     withdrawn_at       = me.DateTimeField()
@@ -55,13 +56,15 @@ class Estimate(me.Document):
     items = me.EmbeddedDocumentListField(EstimateItem)
 
     @property
-    def total_usd(self):
-        return sum((item.unit_price_usd or 0) * item.quantity for item in self.items)
-
-    @property
     def formatted_total_usd(self):
-        t = self.total_usd
-        return '${:,.2f}'.format(t) if t else '—'
+        v = self.total_usd
+        if v is None:
+            # fallback: compute from items (only if items are loaded)
+            try:
+                v = sum((item.unit_price_usd or 0) * item.quantity for item in self.items)
+            except Exception:
+                return '—'
+        return '${:,.2f}'.format(v) if v else '—'
 
     @property
     def formatted_total(self):

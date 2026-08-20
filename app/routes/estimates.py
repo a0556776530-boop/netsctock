@@ -14,8 +14,20 @@ from app.models.pool import Pool, PoolTransaction
 from app.models.settings import AppSetting
 from app.utils.mongo_helpers import get_or_404
 from app.utils.activity import log_activity
+from app import cache
 
 estimates_bp = Blueprint('estimates', __name__, url_prefix='/estimates')
+
+# Fields needed for list views — excludes heavy 'items' embedded list
+_LIST_FIELDS = (
+    'allocation_number', 'task_name', 'project_name',
+    'created_date', 'valid_until', 'total_nis', 'total_usd',
+    'status', 'record_type', 'warehouse_status',
+)
+
+def _invalidate_list_cache():
+    cache.delete('est_list_pending')
+    cache.delete('est_list_budget')
 
 
 def _dense_max_allocation():
@@ -65,12 +77,14 @@ def _next_allocation_number():
 @estimates_bp.route('/')
 @login_required
 def list_estimates():
-    # Show allocations (legacy docs without record_type are treated as allocations)
-    estimates = list(
-        Estimate.objects(
-            Q(status='pending') & Q(record_type__ne='estimate') & Q(warehouse_status__ne='completed')
-        ).order_by('-created_at')
-    )
+    estimates = cache.get('est_list_pending')
+    if estimates is None:
+        estimates = list(
+            Estimate.objects(
+                Q(status='pending') & Q(record_type__ne='estimate') & Q(warehouse_status__ne='completed')
+            ).order_by('-created_at').only(*_LIST_FIELDS)
+        )
+        cache.set('est_list_pending', estimates, timeout=30)
     return render_template('estimates/list.html', estimates=estimates)
 
 
@@ -79,8 +93,12 @@ def list_estimates():
 def list_budget_estimates():
     if not current_user.is_super_admin:
         abort(403)
-    t = getattr(g, 't', {})
-    estimates = list(Estimate.objects(record_type='estimate').order_by('-created_at'))
+    estimates = cache.get('est_list_budget')
+    if estimates is None:
+        estimates = list(
+            Estimate.objects(record_type='estimate').order_by('-created_at').only(*_LIST_FIELDS)
+        )
+        cache.set('est_list_budget', estimates, timeout=30)
     return render_template('estimates/budget_list.html', estimates=estimates)
 
 
@@ -225,6 +243,7 @@ def new_estimate():
             return _rerender('לא ניתן לשמור הצעה ללא פריטים. הוסף לפחות פריט אחד.', _form_data)
 
         estimate.total_nis = round(total_nis, 2)
+        estimate.total_usd = round(sum((item.unit_price_usd or 0) * item.quantity for item in estimate.items), 2)
         try:
             estimate.save()
         except NotUniqueError:
@@ -234,6 +253,7 @@ def new_estimate():
             except NotUniqueError:
                 flash('מספר הקצאה נתפס במקביל. נסה שוב.', 'danger')
                 return redirect(url_for('estimates.new_estimate'))
+        _invalidate_list_cache()
 
         if selected_pool:
             amount = round(total_nis, 2) if selected_pool.currency == 'ILS' else round(total_nis / float(usd_rate), 2)
@@ -299,6 +319,7 @@ def withdraw(id):
     israel_tz = timezone(timedelta(hours=3))
     estimate.withdrawn_at = datetime.now(israel_tz).replace(tzinfo=None)
     estimate.save()
+    _invalidate_list_cache()
     log_activity(current_user, 'estimate_withdrawn', f'העביר הקצאה להיסטוריה: {estimate.task_name}')
     flash(f'Assignment {estimate.allocation_number} marked as ongoing and moved to History.', 'success')
     return redirect(url_for('estimates.detail', id=str(estimate.id)))
@@ -316,6 +337,7 @@ def restore(id):
     estimate.status       = 'pending'
     estimate.withdrawn_at = None
     estimate.save()
+    _invalidate_list_cache()
     flash(f'Assignment {estimate.allocation_number} restored to Pending.', 'success')
     return redirect(url_for('estimates.detail', id=str(estimate.id)))
 
@@ -382,6 +404,7 @@ def edit(id):
 
         estimate.pool      = Pool.objects(id=pool_id, is_active=True).first() if pool_id else None
         estimate.total_nis = round(total_nis, 2)
+        estimate.total_usd = round(sum((item.unit_price_usd or 0) * item.quantity for item in estimate.items), 2)
         try:
             estimate.save()
         except NotUniqueError:
@@ -391,6 +414,7 @@ def edit(id):
             except NotUniqueError:
                 flash('מספר הקצאה נתפס במקביל. נסה שוב.', 'danger')
                 return redirect(url_for('estimates.edit', id=str(estimate.id)))
+        _invalidate_list_cache()
         log_activity(current_user, 'estimate_edited', f'עדכן הקצאה: {estimate.task_name}')
         flash('Estimate updated successfully.', 'success')
         return redirect(url_for('estimates.detail', id=str(estimate.id)))
@@ -525,5 +549,6 @@ def delete(id):
     estimate = get_or_404(Estimate, id)
     name = estimate.task_name
     estimate.delete()
+    _invalidate_list_cache()
     flash(f'Estimate "{name}" deleted.', 'info')
     return redirect(url_for('estimates.list_estimates'))
