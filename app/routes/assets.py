@@ -526,31 +526,34 @@ def export_csv():
     ws.title = 'מלאי'
     ws.sheet_view.rightToLeft = True
 
-    headers = ['מקט רכיב', 'מקט יצרן', 'כמות במחסן']
+    headers = ['מקט יצרן', 'מקט רכיב', 'כמות במחסן']
     ws.append(headers)
 
     # Style header row
     header_fill = PatternFill('solid', fgColor='1e293b')
     header_font = Font(bold=True, color='FFFFFF', size=11)
+    center = Alignment(horizontal='center', vertical='center')
     for cell in ws[1]:
         cell.fill = header_fill
         cell.font = header_font
-        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.alignment = center
 
     # Data rows
     for a in Asset.objects.order_by('serial_number').only('serial_number', 'component_id', 'quantity'):
         ws.append([
-            a.serial_number or '',
             a.component_id or '',
+            a.serial_number or '',
             a.quantity if a.quantity is not None else 0,
         ])
 
-    # Auto-fit column widths
+    # Center all data cells + auto-fit columns
     for col in ws.columns:
         max_len = max((len(str(cell.value or '')) for cell in col), default=10)
-        ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 6, 40)
+        for cell in col[1:]:
+            cell.alignment = center
 
-    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[1].height = 24
 
     buf = io.BytesIO()
     wb.save(buf)
