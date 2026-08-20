@@ -513,6 +513,38 @@ _SERIAL_COLS = (
 _QTY_COLS = ('stock qty', 'stockqty', 'כמות', 'quantity', 'qty')
 
 
+@assets_bp.route('/export-csv')
+@login_required
+def export_csv():
+    import csv as _csv
+    import io
+    from flask import Response
+    output = io.StringIO()
+    writer = _csv.writer(output)
+    writer.writerow(['מקט רכיב', 'שם מוצר', 'יצרן', 'קטגוריה', 'סטטוס', 'כמות', 'סף מינימום', 'מחיר USD'])
+    for a in Asset.objects.order_by('serial_number').select_related(max_depth=1):
+        try:
+            cat = a.asset_type.name if a.asset_type else ''
+        except Exception:
+            cat = ''
+        writer.writerow([
+            a.serial_number or '',
+            a.model or '',
+            a.manufacturer or '',
+            cat,
+            a.status or '',
+            a.quantity if a.quantity is not None else '',
+            a.min_threshold if a.min_threshold is not None else '',
+            a.price_usd if a.price_usd else '',
+        ])
+    bom = '﻿'
+    return Response(
+        (bom + output.getvalue()).encode('utf-8'),
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': 'attachment; filename="netstock_inventory.csv"'}
+    )
+
+
 @assets_bp.route('/import-qty/template')
 @login_required
 def import_qty_template():
