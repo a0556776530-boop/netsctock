@@ -463,6 +463,71 @@ if ('serviceWorker' in navigator) {
 </script>
 {% block scripts %}{% endblock %}
 
+<!-- Page navigation progress bar -->
+<style>
+  #navProgress {
+    position: fixed; top: 0; left: 0; right: 0; height: 3px;
+    background: #3b82f6; z-index: 99998;
+    transform: scaleX(0); transform-origin: left;
+    transition: transform .12s ease, opacity .3s ease;
+    opacity: 0;
+  }
+  #navProgress.running { opacity: 1; }
+  @keyframes _navIndeterminate {
+    0%   { transform: scaleX(0.05); margin-left: 0; }
+    50%  { transform: scaleX(0.45); margin-left: 30%; }
+    100% { transform: scaleX(0.05); margin-left: 95%; }
+  }
+</style>
+<div id="navProgress"></div>
+<script>
+(function () {
+  var bar = document.getElementById('navProgress');
+  var timer;
+
+  function startNav() {
+    clearTimeout(timer);
+    bar.classList.add('running');
+    bar.style.animation = '_navIndeterminate 1.1s ease-in-out infinite';
+    bar.style.transition = 'opacity .3s ease';
+  }
+
+  function stopNav() {
+    bar.style.animation = 'none';
+    bar.style.transform = 'scaleX(1)';
+    bar.style.transition = 'transform .15s ease, opacity .3s ease';
+    timer = setTimeout(function () {
+      bar.style.opacity = '0';
+      setTimeout(function () {
+        bar.classList.remove('running');
+        bar.style.transform = 'scaleX(0)';
+        bar.style.animation = '';
+      }, 320);
+    }, 100);
+  }
+
+  // Trigger on sidebar nav-link clicks (not buttons, not forms)
+  document.getElementById('sidebar').addEventListener('click', function (e) {
+    var a = e.target.closest('a[href]');
+    if (!a) return;
+    var href = a.getAttribute('href');
+    // Skip anchor-only, external, or javascript: links
+    if (!href || href.startsWith('#') || href.startsWith('javascript') || a.target === '_blank') return;
+    startNav();
+  });
+
+  // Also catch the back button in the header
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[onclick*="history.back"]');
+    if (btn) startNav();
+  });
+
+  // Stop when page is loaded (handles back/forward cache too)
+  window.addEventListener('pageshow', stopNav);
+  window.addEventListener('load', stopNav);
+})();
+</script>
+
 <!-- Boss key overlays — images lazy-loaded on first keypress (saves ~1.45MB per page load) -->
 <style>
   .bosskey { display:none; position:fixed; inset:0; z-index:99999; cursor:pointer; }
