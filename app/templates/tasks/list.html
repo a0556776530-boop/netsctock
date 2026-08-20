@@ -54,7 +54,8 @@
           </td>
           <td class="small">{{ task.assignee_name or '—' }}</td>
           <td>
-            <span class="small text-{{ task.status_color }}">{{ task.status_label }}</span>
+            {% set _sk = 'task_status_' ~ task.status %}
+            <span class="small text-{{ task.status_color }}">{{ t.get(_sk, task.status_label) }}</span>
           </td>
           <td class="text-end text-nowrap">
             {% if current_user.can_edit %}
