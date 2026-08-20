@@ -1,4 +1,14 @@
 // Push notifications only — no fetch interception
+
+// Force this SW to activate immediately, replacing any old broken SW
+self.addEventListener('install', function (e) {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function (e) {
+  e.waitUntil(clients.claim());
+});
+
 self.addEventListener('push', function (e) {
   var data = {};
   try { data = e.data.json(); } catch (_) {}

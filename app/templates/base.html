@@ -29,9 +29,9 @@
     window.APP_ME_ID       = {{ current_user.id | string | tojson }};
     window.VAPID_PUBLIC_KEY= {{ config.VAPID_PUBLIC_KEY | tojson }};
   </script>
-  <!-- Socket.IO: needed for chat + real-time notifications on all pages -->
+  <!-- Socket.IO: defer so it never blocks page rendering -->
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"
-          crossorigin="anonymous"></script>
+          defer crossorigin="anonymous"></script>
   {% endif %}
 </head>
 <body>
@@ -464,28 +464,68 @@ if ('serviceWorker' in navigator) {
 </script>
 {% block scripts %}{% endblock %}
 
-<!-- Prefetch nav links on hover for faster navigation -->
+<!-- Navigation progress bar + prefetch -->
+<style>
+#_navBar {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px;
+  z-index: 999999; pointer-events: none;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa, #00d4ff);
+  background-size: 200% 100%;
+  transform-origin: left center; transform: scaleX(0);
+  opacity: 0;
+  transition: transform .5s ease, opacity .3s ease;
+  animation: _navShimmer 1.8s linear infinite;
+}
+@keyframes _navShimmer {
+  0%   { background-position: 0 0; }
+  100% { background-position: -200% 0; }
+}
+</style>
+<div id="_navBar"></div>
 <script>
 (function () {
-  var _prefetched = {};
-  var _hoverTimer;
-  var sidebar = document.getElementById('sidebar');
-  if (!sidebar) return;
-  sidebar.addEventListener('mouseover', function (e) {
+  var bar   = document.getElementById('_navBar');
+  var timer = null;
+
+  function showBar() {
+    if (!bar) return;
+    bar.style.opacity    = '1';
+    bar.style.transform  = 'scaleX(0.4)';
+    clearTimeout(timer);
+    timer = setTimeout(function () { bar.style.transform = 'scaleX(0.75)'; }, 400);
+  }
+
+  // Show bar immediately on any internal link click
+  document.addEventListener('click', function (e) {
     var a = e.target.closest('a[href]');
     if (!a) return;
     var h = a.getAttribute('href');
     if (!h || h[0] === '#' || h.startsWith('javascript') || a.target === '_blank') return;
-    clearTimeout(_hoverTimer);
-    _hoverTimer = setTimeout(function () {
-      if (_prefetched[h]) return;
-      _prefetched[h] = true;
-      var l = document.createElement('link');
-      l.rel = 'prefetch'; l.href = h;
-      document.head.appendChild(l);
-    }, 80);
-  }, { passive: true });
-  sidebar.addEventListener('mouseout', function () { clearTimeout(_hoverTimer); }, { passive: true });
+    if (a.href && a.href.indexOf(location.hostname) === -1) return;
+    showBar();
+  }, true);
+
+  // Prefetch sidebar links on hover (120ms delay)
+  var _fetched = {}, _hoverTimer;
+  var sidebar  = document.getElementById('sidebar');
+  if (sidebar) {
+    sidebar.addEventListener('mouseover', function (e) {
+      var a = e.target.closest('a[href]');
+      if (!a) return;
+      var h = a.getAttribute('href');
+      if (!h || h[0] === '#' || h.startsWith('javascript') || a.target === '_blank') return;
+      if (h.indexOf('logout') !== -1 || h.indexOf('set-lang') !== -1) return;
+      clearTimeout(_hoverTimer);
+      _hoverTimer = setTimeout(function () {
+        if (_fetched[h]) return;
+        _fetched[h] = true;
+        var l = document.createElement('link');
+        l.rel = 'prefetch'; l.href = h;
+        document.head.appendChild(l);
+      }, 120);
+    }, { passive: true });
+    sidebar.addEventListener('mouseout', function () { clearTimeout(_hoverTimer); }, { passive: true });
+  }
 })();
 </script>
 

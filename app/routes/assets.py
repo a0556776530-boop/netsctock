@@ -29,6 +29,53 @@ CATEGORY_ORDER = [
 CATEGORY_LABELS = {c: c for c in CATEGORY_ORDER}
 
 
+@cache.memoize(timeout=45)
+def _assets_aggregations():
+    from app.models.estimate import Estimate
+    from app.models.purchase import Purchase, ACTIVE_STATUSES
+
+    commitments = {str(r['_id']): r['total']
+                   for r in Estimate._get_collection().aggregate([
+                       {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
+                       {'$unwind': '$items'},
+                       {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+                       {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
+                   ])}
+
+    in_purchase = {str(r['_id']): r['total']
+                   for r in Purchase._get_collection().aggregate([
+                       {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
+                       {'$unwind': '$items'},
+                       {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+                       {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
+                   ])}
+
+    open_order_counts = {str(r['_id']): r['count']
+                         for r in Purchase._get_collection().aggregate([
+                             {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
+                             {'$unwind': '$items'},
+                             {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+                             {'$group': {'_id': {'asset': '$items.asset', 'purchase': '$_id'}}},
+                             {'$group': {'_id': '$_id.asset', 'count': {'$sum': 1}}},
+                         ])}
+
+    closed_order_counts = {str(r['_id']): r['count']
+                           for r in Purchase._get_collection().aggregate([
+                               {'$match': {'status': 'Order Received in Warehouse'}},
+                               {'$unwind': '$items'},
+                               {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+                               {'$group': {'_id': {'asset': '$items.asset', 'purchase': '$_id'}}},
+                               {'$group': {'_id': '$_id.asset', 'count': {'$sum': 1}}},
+                           ])}
+
+    return dict(
+        commitments=commitments,
+        in_purchase=in_purchase,
+        open_order_counts=open_order_counts,
+        closed_order_counts=closed_order_counts,
+    )
+
+
 @cache.memoize(timeout=60)
 def _site_choices():
     return [('', '— None —')] + [(str(s.id), s.name) for s in Site.objects.only('id', 'name').order_by('name')]
@@ -158,49 +205,12 @@ def list_assets():
     from app.models.settings import AppSetting
     global_settings = json.dumps(AppSetting.all_as_dict())
 
-    # Commitments — single aggregation, no Python loops
-    from app.models.estimate import Estimate
-    from app.models.purchase import Purchase
-    _commit_pipeline = [
-        {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
-        {'$unwind': '$items'},
-        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
-        {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
-    ]
-    commitments = {str(r['_id']): r['total']
-                   for r in Estimate._get_collection().aggregate(_commit_pipeline)}
-
-    # In Purchase — single aggregation (active orders only)
-    from app.models.purchase import ACTIVE_STATUSES
-    _purchase_pipeline = [
-        {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
-        {'$unwind': '$items'},
-        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
-        {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
-    ]
-    in_purchase = {str(r['_id']): r['total']
-                   for r in Purchase._get_collection().aggregate(_purchase_pipeline)}
-
-    # Purchase order counts per asset (open / closed) for hover popover
-    _open_count_pipeline = [
-        {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
-        {'$unwind': '$items'},
-        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
-        {'$group': {'_id': {'asset': '$items.asset', 'purchase': '$_id'}}},
-        {'$group': {'_id': '$_id.asset', 'count': {'$sum': 1}}},
-    ]
-    open_order_counts = {str(r['_id']): r['count']
-                         for r in Purchase._get_collection().aggregate(_open_count_pipeline)}
-
-    _closed_count_pipeline = [
-        {'$match': {'status': 'Order Received in Warehouse'}},
-        {'$unwind': '$items'},
-        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
-        {'$group': {'_id': {'asset': '$items.asset', 'purchase': '$_id'}}},
-        {'$group': {'_id': '$_id.asset', 'count': {'$sum': 1}}},
-    ]
-    closed_order_counts = {str(r['_id']): r['count']
-                           for r in Purchase._get_collection().aggregate(_closed_count_pipeline)}
+    # Commitments + purchase aggregations — cached 45s (same for all filter combos)
+    _agg = _assets_aggregations()
+    commitments       = _agg['commitments']
+    in_purchase       = _agg['in_purchase']
+    open_order_counts = _agg['open_order_counts']
+    closed_order_counts = _agg['closed_order_counts']
 
     return render_template(
         'assets/list.html',
