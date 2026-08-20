@@ -15,15 +15,14 @@
             <!-- Asset ID -->
             <div class="col-md-6">
               {{ form.component_id.label(class="form-label fw-semibold") }}
-              {{ form.component_id(class="form-control font-monospace",
-                                   placeholder="{{ t.ph_component_id }}") }}
+              {{ form.component_id(class="form-control font-monospace") }}
             </div>
 
             <!-- Serial Number (Mfr. Part No.) -->
             <div class="col-md-6">
               {{ form.serial_number.label(class="form-label fw-semibold") }}
               {{ form.serial_number(class="form-control text-uppercase" + (" is-invalid" if form.serial_number.errors else ""),
-                                    placeholder="e.g. FTX1234A5BC", id="serialInput") }}
+                                    id="serialInput") }}
               {% for e in form.serial_number.errors %}
                 <div class="invalid-feedback d-block">{{ e }}</div>
               {% endfor %}
@@ -40,19 +39,19 @@
             <!-- Description (model field) -->
             <div class="col-md-6">
               {{ form.model.label(class="form-label fw-semibold") }}
-              {{ form.model(class="form-control", placeholder="e.g. GLC-SX-MMD") }}
+              {{ form.model(class="form-control") }}
             </div>
 
             <!-- Manufacturer -->
             <div class="col-md-6">
               {{ form.manufacturer.label(class="form-label fw-semibold") }}
-              {{ form.manufacturer(class="form-control", placeholder="e.g. Cisco") }}
+              {{ form.manufacturer(class="form-control") }}
             </div>
 
             <!-- Notes -->
             <div class="col-12">
               {{ form.notes.label(class="form-label fw-semibold") }}
-              {{ form.notes(class="form-control", rows=3, placeholder="Any additional information…") }}
+              {{ form.notes(class="form-control", rows=3) }}
             </div>
 
             <!-- Asset Photo -->
@@ -134,8 +133,7 @@
             <!-- Min Threshold (Red Line) -->
             <div class="col-md-4">
               {{ form.min_threshold.label(class="form-label fw-semibold") }}
-              {{ form.min_threshold(class="form-control", type="text", inputmode="numeric",
-                                    placeholder="e.g. 5") }}
+              {{ form.min_threshold(class="form-control", type="text", inputmode="numeric") }}
             </div>
           </div>
 
