@@ -8,7 +8,7 @@ import os as _os
 from flask_login import login_required, current_user
 from app.utils.cache import cache
 
-from app.models.asset import Asset, AssetEvent, AssetType
+from app.models.asset import Asset
 from app.models.task import Task
 from app.models.activity import ActivityLog
 
@@ -171,6 +171,23 @@ def save_settings():
     return jsonify({'ok': True})
 
 
+@cache.memoize(timeout=30)
+def _activity_feed():
+    return list(ActivityLog.objects.order_by('-created_at').limit(30))
+
+
+@cache.memoize(timeout=45)
+def _expiring_estimates():
+    from mongoengine import Q
+    from app.models.estimate import Estimate
+    from datetime import date, timedelta
+    today = date.today()
+    cutoff = today + timedelta(days=7)
+    return list(Estimate.objects(
+        Q(status='pending') & Q(record_type__ne='estimate') & Q(valid_until__lte=cutoff)
+    ).order_by('valid_until').limit(8))
+
+
 @cache.memoize(timeout=60)
 def _dashboard_data():
     """All heavy dashboard computations — cached 60s, returns primitive types only."""
@@ -267,8 +284,6 @@ def dashboard():
     if current_user.is_warehouse:
         return redirect(url_for('estimates.list_estimates'))
 
-    from mongoengine import Q
-    from app.models.estimate import Estimate
     from app.models.user import User
 
     today   = date.today()
@@ -287,24 +302,9 @@ def dashboard():
         ) for x in _d['low_stock_raw']
     ]
 
-    # ── Live data (fast queries, no need to cache) ────────────────────────────
-    recent_events = []
-    for event in AssetEvent.objects.order_by('-event_date').limit(30).select_related(max_depth=1):
-        try:
-            _ = event.performed_by_user.name
-            _ = event.asset.serial_number
-            recent_events.append(event)
-        except Exception:
-            continue
-        if len(recent_events) >= 8:
-            break
-
-    cutoff = today + timedelta(days=7)
-    expiring_estimates = list(
-        Estimate.objects(
-            Q(status='pending') & Q(record_type__ne='estimate') & Q(valid_until__lte=cutoff)
-        ).order_by('valid_until').limit(8)
-    )
+    # ── Live data ─────────────────────────────────────────────────────────────
+    expiring_estimates = _expiring_estimates()
+    activity_feed      = _activity_feed()
 
     all_users = []
     for u in User.objects.only('id', 'name', 'last_seen', 'role', 'last_login').order_by('-last_seen'):
@@ -315,8 +315,6 @@ def dashboard():
         else:
             status, diff_min = 'never', None
         all_users.append({'user': u, 'status': status, 'diff_min': diff_min})
-
-    activity_feed = list(ActivityLog.objects.order_by('-created_at').limit(30))
 
     # ── Charts ────────────────────────────────────────────────────────────────
     sc = _d['status_counts']
@@ -337,7 +335,6 @@ def dashboard():
         red_line_count=_d['red_line_count'],
         purchases_pipeline=_d['purchases_pipeline'],
         top_committed=_d['top_committed_raw'],
-        recent_events=recent_events,
         expiring_estimates=expiring_estimates,
         all_users=all_users,
         activity_feed=activity_feed,
