@@ -33,9 +33,7 @@
           </td>
           <td class="small">{{ task.assignee_name or '—' }}</td>
           <td>
-            <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25">
-              {{ t.done_badge }}
-            </span>
+            <span class="small text-muted">{{ t.done_badge }}</span>
           </td>
           <td class="text-end text-nowrap">
             {% if current_user.can_edit %}
