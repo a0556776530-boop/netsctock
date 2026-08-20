@@ -16,3 +16,4 @@ maxminddb==2.6.2
 tzdata
 Flask-Caching==2.3.0
 pywebpush>=1.14.0,<2.0.0
+openpyxl==3.1.5

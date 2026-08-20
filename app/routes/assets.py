@@ -516,23 +516,49 @@ _QTY_COLS = ('stock qty', 'stockqty', 'כמות', 'quantity', 'qty')
 @assets_bp.route('/export-csv')
 @login_required
 def export_csv():
-    import csv as _csv
     import io
     from flask import Response
-    output = io.StringIO()
-    writer = _csv.writer(output)
-    writer.writerow(['מקט רכיב', 'מקט יצרן', 'כמות במחסן'])
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'מלאי'
+    ws.sheet_view.rightToLeft = True
+
+    headers = ['מקט רכיב', 'מקט יצרן', 'כמות במחסן']
+    ws.append(headers)
+
+    # Style header row
+    header_fill = PatternFill('solid', fgColor='1e293b')
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Data rows
     for a in Asset.objects.order_by('serial_number').only('serial_number', 'component_id', 'quantity'):
-        writer.writerow([
+        ws.append([
             a.serial_number or '',
             a.component_id or '',
             a.quantity if a.quantity is not None else 0,
         ])
-    bom = '﻿'
+
+    # Auto-fit column widths
+    for col in ws.columns:
+        max_len = max((len(str(cell.value or '')) for cell in col), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
+
+    ws.row_dimensions[1].height = 22
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
     return Response(
-        (bom + output.getvalue()).encode('utf-8'),
-        mimetype='text/csv; charset=utf-8',
-        headers={'Content-Disposition': 'attachment; filename="netstock_inventory.csv"'}
+        buf.read(),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': 'attachment; filename="netstock_inventory.xlsx"'}
     )
 
 
