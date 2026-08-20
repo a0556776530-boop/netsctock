@@ -1044,7 +1044,7 @@ TRANSLATIONS = {
         'ph_notes_optional': 'פרטים נוספים...',
         # Task status choices
         'task_status_pending': 'ממתין',
-        'task_status_in_progress': 'בביצוע',
+        'task_status_in_progress': 'בתהליך',
         'task_status_done': 'הושלם',
         # Form labels — Auth
         'form_email': 'אימייל',
