@@ -526,7 +526,7 @@ def export_csv():
     ws.title = 'מלאי'
     ws.sheet_view.rightToLeft = True
 
-    headers = ['מקט יצרן', 'מקט רכיב', 'כמות במחסן']
+    headers = ['מקט רכיב', 'מקט יצרן', 'כמות במחסן']
     ws.append(headers)
 
     # Style header row
@@ -541,8 +541,8 @@ def export_csv():
     # Data rows
     for a in Asset.objects.order_by('serial_number').only('serial_number', 'component_id', 'quantity'):
         ws.append([
-            a.component_id or '',
             a.serial_number or '',
+            a.component_id or '',
             a.quantity if a.quantity is not None else 0,
         ])
 
