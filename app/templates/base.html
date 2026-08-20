@@ -534,26 +534,27 @@ if ('serviceWorker' in navigator) {
 
 <script>
 (function () {
-  var loader  = document.getElementById('pageLoader');
-  var showing = false;
+  var loader = document.getElementById('pageLoader');
 
-  function show() {
-    if (showing) return;
-    showing = true;
+  /* ── Show ONLY on page reload (F5 / Ctrl+R / Ctrl+Shift+R) ────── */
+  var isReload = false;
+  try {
+    var _nav = performance.getEntriesByType('navigation')[0];
+    isReload = _nav ? _nav.type === 'reload' : performance.navigation.type === 1;
+  } catch (e) {}
+
+  if (isReload && loader) {
     loader.style.display = 'flex';
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { loader.classList.add('visible'); });
     });
+    window.addEventListener('load', function () {
+      loader.classList.remove('visible');
+      setTimeout(function () { loader.style.display = 'none'; }, 220);
+    });
   }
 
-  function hide() {
-    if (!showing) return;
-    showing = false;
-    loader.classList.remove('visible');
-    setTimeout(function () { loader.style.display = 'none'; }, 200);
-  }
-
-  /* ── Prefetch on hover ─────────────────────────────────────────── */
+  /* ── Prefetch on hover (keeps navigation fast) ─────────────────── */
   var _prefetched = {};
   function prefetch(href) {
     if (_prefetched[href]) return;
@@ -574,27 +575,6 @@ if ('serviceWorker' in navigator) {
     _hoverTimer = setTimeout(function () { prefetch(h); }, 80);
   }, { passive: true });
   sidebar.addEventListener('mouseout', function () { clearTimeout(_hoverTimer); }, { passive: true });
-
-  /* ── Show loader on nav clicks ─────────────────────────────────── */
-  sidebar.addEventListener('click', function (e) {
-    var a = e.target.closest('a[href]');
-    if (!a) return;
-    var h = a.getAttribute('href');
-    if (!h || h[0] === '#' || h.startsWith('javascript') || a.target === '_blank') return;
-    show();
-  });
-
-  /* ── Show on back button ───────────────────────────────────────── */
-  document.addEventListener('click', function (e) {
-    if (e.target.closest('button[onclick*="history.back"]')) show();
-  });
-
-  /* ── Show on F5 / browser refresh ─────────────────────────────── */
-  window.addEventListener('beforeunload', show);
-
-  /* ── Hide when page ready ──────────────────────────────────────── */
-  window.addEventListener('pageshow', hide);
-  window.addEventListener('load',     hide);
 })();
 </script>
 
