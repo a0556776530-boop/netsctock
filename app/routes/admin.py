@@ -253,14 +253,20 @@ def edit_user(id):
         user.name = form.name.data.strip()
         user.role = form.role.data
 
-        # Profile photo — base64 data URI sent from JS
+        user.save()
+
+    # Profile photo — saved regardless of password/name form result
+    if request.method == 'POST':
         photo_data = request.form.get('profile_photo_data', '').strip()
         if photo_data == 'REMOVE':
             user.profile_photo = None
+            user.save()
         elif photo_data:
             user.profile_photo = photo_data
-
-        user.save()
+            user.save()
+        if photo_data:
+            from app.models.user import _user_cache
+            _user_cache.pop(str(user.id), None)
 
         # Bust all conversation caches so photo update is visible in chat
         if photo_data:
