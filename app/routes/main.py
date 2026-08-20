@@ -1,4 +1,5 @@
 import json
+import types
 from datetime import date, timedelta, datetime
 from urllib.parse import urlparse
 
@@ -170,6 +171,96 @@ def save_settings():
     return jsonify({'ok': True})
 
 
+@cache.memoize(timeout=60)
+def _dashboard_data():
+    """All heavy dashboard computations — cached 60s, returns primitive types only."""
+    from mongoengine import Q
+    from app.models.estimate import Estimate
+    from app.models.purchase import Purchase, ACTIVE_STATUSES, STATUSES as PURCHASE_STATUSES
+
+    total_assets             = Asset.objects.count()
+    open_tasks_count         = Task.objects(status__ne='done').count()
+    pending_allocations_count= Estimate.objects(Q(status='pending') & Q(record_type__ne='estimate')).count()
+    open_purchases_count     = Purchase.objects(status__in=ACTIVE_STATUSES).count()
+
+    status_counts = {r['_id']: r['count']
+                     for r in Asset._get_collection().aggregate([
+                         {'$group': {'_id': '$status', 'count': {'$sum': 1}}}]) if r['_id']}
+
+    dash_commitments = {str(r['_id']): r['total']
+                        for r in Estimate._get_collection().aggregate([
+                            {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
+                            {'$unwind': '$items'},
+                            {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+                            {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
+                        ])}
+
+    dash_in_purchase = {str(r['_id']): r['total']
+                        for r in Purchase._get_collection().aggregate([
+                            {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
+                            {'$unwind': '$items'},
+                            {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+                            {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
+                        ])}
+
+    # Low stock — use projection only, store as dicts (picklable)
+    low_stock_raw = []
+    red_line_count = 0
+    for a in Asset.objects(quantity__exists=True, quantity__ne=None).only(
+        'id', 'component_id', 'serial_number', 'model', 'quantity', 'min_threshold', 'price_usd'
+    ):
+        stock     = a.quantity or 0
+        committed = dash_commitments.get(str(a.id), 0)
+        purchased = dash_in_purchase.get(str(a.id), 0)
+        after     = stock + purchased - committed
+        threshold = a.min_threshold if (a.min_threshold is not None and a.min_threshold > 0) else None
+        if (threshold is not None and after <= threshold) or after < 0:
+            red_line_count += 1
+            if len(low_stock_raw) < 10:
+                low_stock_raw.append(dict(
+                    id=str(a.id), component_id=a.component_id, serial_number=a.serial_number,
+                    model=a.model, quantity=a.quantity, price_usd=a.price_usd,
+                    after=after, threshold=threshold, committed=committed, purchased=purchased,
+                ))
+    low_stock_raw.sort(key=lambda x: x['after'])
+
+    purchase_status_counts = {r['_id']: r['count']
+                              for r in Purchase._get_collection().aggregate([
+                                  {'$group': {'_id': '$status', 'count': {'$sum': 1}}}]) if r['_id']}
+    purchases_pipeline = [(s, purchase_status_counts.get(s, 0)) for s in PURCHASE_STATUSES]
+
+    _rows = list(Estimate._get_collection().aggregate([
+        {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
+        {'$unwind': '$items'},
+        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
+        {'$group': {'_id': '$items.asset', 'committed': {'$sum': '$items.quantity'}}},
+        {'$sort': {'committed': -1}},
+        {'$limit': 6},
+    ]))
+    _asset_ids  = [r['_id'] for r in _rows if r.get('_id')]
+    _assets_map = {
+        str(a.id): dict(serial_number=a.serial_number, model=a.model,
+                        quantity=a.quantity, component_id=a.component_id)
+        for a in Asset.objects(id__in=_asset_ids).only('serial_number', 'model', 'quantity', 'component_id')
+    }
+    top_committed_raw = [
+        {'asset': _assets_map[str(r['_id'])], 'committed': r['committed']}
+        for r in _rows if r.get('_id') and str(r['_id']) in _assets_map
+    ]
+
+    return dict(
+        total_assets=total_assets,
+        open_tasks_count=open_tasks_count,
+        pending_allocations_count=pending_allocations_count,
+        open_purchases_count=open_purchases_count,
+        status_counts=status_counts,
+        low_stock_raw=low_stock_raw,
+        red_line_count=red_line_count,
+        purchases_pipeline=purchases_pipeline,
+        top_committed_raw=top_committed_raw,
+    )
+
+
 @main_bp.route('/')
 @login_required
 def dashboard():
@@ -178,29 +269,27 @@ def dashboard():
 
     from mongoengine import Q
     from app.models.estimate import Estimate
-    from app.models.purchase import Purchase
     from app.models.user import User
 
-    today = date.today()
+    today   = date.today()
+    now_utc = datetime.utcnow()
 
-    # ── Core counts ───────────────────────────────────────────────────────────
-    from app.models.purchase import ACTIVE_STATUSES
-    total_assets = Asset.objects.count()
-    open_tasks_count = Task.objects(status__ne='done').count()
-    pending_allocations_count = Estimate.objects(
-        Q(status='pending') & Q(record_type__ne='estimate')
-    ).count()
-    open_purchases_count = Purchase.objects(
-        status__in=ACTIVE_STATUSES
-    ).count()
+    # ── Heavy data from cache (counts + aggregations) ─────────────────────────
+    _d = _dashboard_data()
 
-    # ── Status counts ─────────────────────────────────────────────────────────
-    pipeline_status = [{'$group': {'_id': '$status', 'count': {'$sum': 1}}}]
-    status_counts = {r['_id']: r['count'] for r in Asset._get_collection().aggregate(pipeline_status) if r['_id']}
+    # low_stock_assets: wrap dicts in SimpleNamespace so templates use dot notation
+    low_stock_assets = [
+        types.SimpleNamespace(
+            id=x['id'], component_id=x['component_id'], serial_number=x['serial_number'],
+            model=x['model'], quantity=x['quantity'], price_usd=x['price_usd'],
+            _after=x['after'], _threshold=x['threshold'],
+            _committed=x['committed'], _purchased=x['purchased'],
+        ) for x in _d['low_stock_raw']
+    ]
 
-    # ── Recent events ─────────────────────────────────────────────────────────
+    # ── Live data (fast queries, no need to cache) ────────────────────────────
     recent_events = []
-    for event in AssetEvent.objects.order_by('-event_date').limit(50).select_related(max_depth=1):
+    for event in AssetEvent.objects.order_by('-event_date').limit(30).select_related(max_depth=1):
         try:
             _ = event.performed_by_user.name
             _ = event.asset.serial_number
@@ -210,52 +299,6 @@ def dashboard():
         if len(recent_events) >= 8:
             break
 
-    # ── Commitments + in-purchase (same logic as assets list) ────────────────
-    _commit_pipeline = [
-        {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
-        {'$unwind': '$items'},
-        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
-        {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
-    ]
-    dash_commitments = {str(r['_id']): r['total']
-                        for r in Estimate._get_collection().aggregate(_commit_pipeline)}
-
-    _purchase_pipeline = [
-        {'$match': {'status': {'$in': ACTIVE_STATUSES}}},
-        {'$unwind': '$items'},
-        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
-        {'$group': {'_id': '$items.asset', 'total': {'$sum': '$items.quantity'}}},
-    ]
-    dash_in_purchase = {str(r['_id']): r['total']
-                        for r in Purchase._get_collection().aggregate(_purchase_pipeline)}
-
-    # ── Low stock — after commitments, only assets with min_threshold set ─────
-    low_stock_assets = []
-    red_line_count   = 0
-    for a in Asset.objects(quantity__exists=True, quantity__ne=None).only(
-        'component_id', 'serial_number', 'model', 'quantity', 'min_threshold', 'price_usd'
-    ):
-        stock     = a.quantity or 0
-        committed = dash_commitments.get(str(a.id), 0)
-        purchased = dash_in_purchase.get(str(a.id), 0)
-        after     = stock + purchased - committed
-        threshold = a.min_threshold if (a.min_threshold is not None and a.min_threshold > 0) else None
-
-        is_low = threshold is not None and after <= threshold
-        is_neg = after < 0
-
-        if is_low or is_neg:
-            red_line_count += 1
-            if len(low_stock_assets) < 10:
-                a._after     = after
-                a._threshold = threshold
-                a._committed = committed
-                a._purchased = purchased
-                low_stock_assets.append(a)
-
-    low_stock_assets.sort(key=lambda a: a._after)
-
-    # ── Expiring allocations (expired or within 14 days) ─────────────────────
     cutoff = today + timedelta(days=7)
     expiring_estimates = list(
         Estimate.objects(
@@ -263,80 +306,42 @@ def dashboard():
         ).order_by('valid_until').limit(8)
     )
 
-    # ── Purchases by status (pipeline) ───────────────────────────────────────
-    from app.models.purchase import STATUSES as PURCHASE_STATUSES
-    _p_agg = Purchase._get_collection().aggregate([{'$group': {'_id': '$status', 'count': {'$sum': 1}}}])
-    purchase_status_counts = {r['_id']: r['count'] for r in _p_agg if r['_id']}
-    purchases_pipeline = [(s, purchase_status_counts.get(s, 0)) for s in PURCHASE_STATUSES]
-
-    # ── Top committed assets (server-side aggregation) ────────────────────────
-    _commit_pipeline = [
-        {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
-        {'$unwind': '$items'},
-        {'$match': {'items.asset': {'$exists': True, '$ne': None}}},
-        {'$group': {'_id': '$items.asset', 'committed': {'$sum': '$items.quantity'}}},
-        {'$sort': {'committed': -1}},
-        {'$limit': 6},
-    ]
-    # Batch fetch all assets in one query instead of N individual queries
-    _rows       = list(Estimate._get_collection().aggregate(_commit_pipeline))
-    _asset_ids  = [r['_id'] for r in _rows if r.get('_id')]
-    _assets_map = {
-        a.id: a for a in Asset.objects(id__in=_asset_ids).only(
-            'serial_number', 'model', 'quantity', 'component_id'
-        )
-    }
-    top_committed = [
-        {'asset': _assets_map[r['_id']], 'committed': r['committed']}
-        for r in _rows
-        if r.get('_id') and r['_id'] in _assets_map
-    ]
-
-    # ── Users activity ───────────────────────────────────────────────────────
-    now_utc = datetime.utcnow()
     all_users = []
     for u in User.objects.only('id', 'name', 'last_seen', 'role', 'last_login').order_by('-last_seen'):
         if u.last_seen:
-            diff = (now_utc - u.last_seen).total_seconds()
-            if diff < 35:
-                status = 'online'
-            elif diff < 600:
-                status = 'away'
-            else:
-                status = 'offline'
+            diff     = (now_utc - u.last_seen).total_seconds()
+            status   = 'online' if diff < 35 else ('away' if diff < 600 else 'offline')
             diff_min = int(diff / 60)
         else:
-            status = 'never'
-            diff_min = None
+            status, diff_min = 'never', None
         all_users.append({'user': u, 'status': status, 'diff_min': diff_min})
 
+    activity_feed = list(ActivityLog.objects.order_by('-created_at').limit(30))
+
     # ── Charts ────────────────────────────────────────────────────────────────
+    sc = _d['status_counts']
     all_statuses = ['in_use', 'in_storage', 'assigned', 'faulty']
-    status_chart = {
+    status_chart = json.dumps({
         'labels': [_STATUS_LABELS[s] for s in all_statuses],
-        'data':   [status_counts.get(s, 0) for s in all_statuses],
+        'data':   [sc.get(s, 0) for s in all_statuses],
         'colors': [_STATUS_COLORS[s] for s in all_statuses],
-    }
+    })
 
-    # ── Activity feed (last 50 across all modules) ────────────────────────────
-    activity_feed = list(ActivityLog.objects.order_by('-created_at').limit(50))
-
-    _ctx = dict(
-        total_assets=total_assets,
-        status_counts=status_counts,
-        recent_events=recent_events,
-        open_tasks_count=open_tasks_count,
-        pending_allocations_count=pending_allocations_count,
-        open_purchases_count=open_purchases_count,
+    return render_template('dashboard.html',
+        total_assets=_d['total_assets'],
+        status_counts=sc,
+        open_tasks_count=_d['open_tasks_count'],
+        pending_allocations_count=_d['pending_allocations_count'],
+        open_purchases_count=_d['open_purchases_count'],
         low_stock_assets=low_stock_assets,
-        red_line_count=red_line_count,
+        red_line_count=_d['red_line_count'],
+        purchases_pipeline=_d['purchases_pipeline'],
+        top_committed=_d['top_committed_raw'],
+        recent_events=recent_events,
         expiring_estimates=expiring_estimates,
-        purchases_pipeline=purchases_pipeline,
-        top_committed=top_committed,
         all_users=all_users,
+        activity_feed=activity_feed,
         now_utc=now_utc,
         today=today,
-        status_chart=json.dumps(status_chart),
-        activity_feed=activity_feed,
+        status_chart=status_chart,
     )
-    return render_template('dashboard.html', **_ctx)

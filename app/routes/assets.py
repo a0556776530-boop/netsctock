@@ -76,6 +76,26 @@ def _assets_aggregations():
     )
 
 
+@cache.memoize(timeout=120)
+def _all_asset_types_sorted():
+    all_types = list(AssetType.objects)
+    return sorted(all_types,
+                  key=lambda t: CATEGORY_ORDER.index(t.name) if t.name in CATEGORY_ORDER else len(CATEGORY_ORDER))
+
+
+@cache.memoize(timeout=60)
+def _global_settings_json():
+    from app.models.settings import AppSetting
+    return AppSetting.all_as_dict()
+
+
+@cache.memoize(timeout=45)
+def _fetch_assets_unfiltered(sort_field, order):
+    """Full assets list with select_related — cached 45s when no filter applied."""
+    qs = Asset.objects.order_by(sort_field if order == 'asc' else f'-{sort_field}')
+    return list(qs.select_related())
+
+
 @cache.memoize(timeout=60)
 def _site_choices():
     return [('', '— None —')] + [(str(s.id), s.name) for s in Site.objects.only('id', 'name').order_by('name')]
@@ -178,7 +198,10 @@ def list_assets():
     sort_field = sort_map.get(sort, 'created_at')
     qs = qs.order_by(sort_field if order == 'asc' else f'-{sort_field}')
 
-    assets = list(qs.select_related())
+    if not q and not status_filter and not type_filter:
+        assets = _fetch_assets_unfiltered(sort_field, order)
+    else:
+        assets = list(qs.select_related())
 
     by_type = defaultdict(list)
     for asset in assets:
@@ -198,12 +221,8 @@ def list_assets():
         if cat not in seen:
             grouped_assets.append((cat, items))
 
-    all_types   = list(AssetType.objects)
-    asset_types = sorted(all_types,
-                         key=lambda t: CATEGORY_ORDER.index(t.name) if t.name in CATEGORY_ORDER else len(CATEGORY_ORDER))
-
-    from app.models.settings import AppSetting
-    global_settings = json.dumps(AppSetting.all_as_dict())
+    asset_types   = _all_asset_types_sorted()
+    global_settings = json.dumps(_global_settings_json())
 
     # Commitments + purchase aggregations — cached 45s (same for all filter combos)
     _agg = _assets_aggregations()
