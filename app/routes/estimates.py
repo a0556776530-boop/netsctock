@@ -84,7 +84,7 @@ def list_estimates():
                 Q(status='pending') & Q(record_type__ne='estimate') & Q(warehouse_status__ne='completed')
             ).order_by('-created_at').only(*_LIST_FIELDS)
         )
-        cache.set('est_list_pending', estimates, timeout=30)
+        cache.set('est_list_pending', estimates, timeout=45)
     return render_template('estimates/list.html', estimates=estimates)
 
 
@@ -98,7 +98,7 @@ def list_budget_estimates():
         estimates = list(
             Estimate.objects(record_type='estimate').order_by('-created_at').only(*_LIST_FIELDS)
         )
-        cache.set('est_list_budget', estimates, timeout=30)
+        cache.set('est_list_budget', estimates, timeout=45)
     return render_template('estimates/budget_list.html', estimates=estimates)
 
 
