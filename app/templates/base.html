@@ -506,23 +506,46 @@ if ('serviceWorker' in navigator) {
     }, 100);
   }
 
-  // Trigger on sidebar nav-link clicks (not buttons, not forms)
-  document.getElementById('sidebar').addEventListener('click', function (e) {
+  var _prefetched = {};
+
+  function prefetch(href) {
+    if (_prefetched[href]) return;
+    _prefetched[href] = true;
+    var link = document.createElement('link');
+    link.rel  = 'prefetch';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
+  var sidebar = document.getElementById('sidebar');
+
+  // Prefetch on hover (100ms delay to skip accidental passes)
+  var _hoverTimer;
+  sidebar.addEventListener('mouseover', function (e) {
     var a = e.target.closest('a[href]');
     if (!a) return;
     var href = a.getAttribute('href');
-    // Skip anchor-only, external, or javascript: links
+    if (!href || href.startsWith('#') || href.startsWith('javascript') || a.target === '_blank') return;
+    clearTimeout(_hoverTimer);
+    _hoverTimer = setTimeout(function () { prefetch(href); }, 80);
+  }, { passive: true });
+  sidebar.addEventListener('mouseout', function () { clearTimeout(_hoverTimer); }, { passive: true });
+
+  // Trigger progress bar on click
+  sidebar.addEventListener('click', function (e) {
+    var a = e.target.closest('a[href]');
+    if (!a) return;
+    var href = a.getAttribute('href');
     if (!href || href.startsWith('#') || href.startsWith('javascript') || a.target === '_blank') return;
     startNav();
   });
 
-  // Also catch the back button in the header
+  // Back button
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('button[onclick*="history.back"]');
     if (btn) startNav();
   });
 
-  // Stop when page is loaded (handles back/forward cache too)
   window.addEventListener('pageshow', stopNav);
   window.addEventListener('load', stopNav);
 })();
