@@ -46,6 +46,9 @@ self.addEventListener('fetch', function (e) {
   // Only handle GET requests
   if (req.method !== 'GET') return;
 
+  // Never intercept HTML page navigation — browser handles it directly
+  if (e.request.mode === 'navigate') return;
+
   // Skip API, Socket.IO polling, and auth endpoints — always network
   if (url.includes('/api/') || url.includes('/socket.io') || url.includes('/auth/')) return;
 

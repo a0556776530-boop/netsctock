@@ -471,8 +471,9 @@ if ('serviceWorker' in navigator) {
     background: #0f172a;
     align-items: center; justify-content: center; flex-direction: column;
     opacity: 0; transition: opacity .18s ease;
+    pointer-events: none;
   }
-  #pageLoader.visible { opacity: 1; }
+  #pageLoader.visible { opacity: 1; pointer-events: auto; }
 
   .pl-ring-wrap {
     position: relative; width: 120px; height: 120px;
@@ -543,15 +544,25 @@ if ('serviceWorker' in navigator) {
     isReload = _nav ? _nav.type === 'reload' : performance.navigation.type === 1;
   } catch (e) {}
 
+  function hideLoader() {
+    if (!loader) return;
+    loader.classList.remove('visible');
+    setTimeout(function () { loader.style.display = 'none'; }, 220);
+  }
+
   if (isReload && loader) {
     loader.style.display = 'flex';
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { loader.classList.add('visible'); });
     });
-    window.addEventListener('load', function () {
-      loader.classList.remove('visible');
-      setTimeout(function () { loader.style.display = 'none'; }, 220);
-    });
+    // Hide when page is ready
+    if (document.readyState === 'complete') {
+      hideLoader();
+    } else {
+      window.addEventListener('load', hideLoader, { once: true });
+    }
+    // Safety net: force-hide after 5s no matter what
+    setTimeout(hideLoader, 5000);
   }
 
   /* ── Prefetch on hover (keeps navigation fast) ─────────────────── */
