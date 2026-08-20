@@ -521,11 +521,11 @@ def export_csv():
     from flask import Response
     output = io.StringIO()
     writer = _csv.writer(output)
-    writer.writerow(['מקט רכיב', 'שם מוצר', 'כמות במחסן'])
-    for a in Asset.objects.order_by('serial_number').only('serial_number', 'model', 'quantity'):
+    writer.writerow(['מקט רכיב', 'מקט יצרן', 'כמות במחסן'])
+    for a in Asset.objects.order_by('serial_number').only('serial_number', 'component_id', 'quantity'):
         writer.writerow([
             a.serial_number or '',
-            a.model or '',
+            a.component_id or '',
             a.quantity if a.quantity is not None else 0,
         ])
     bom = '﻿'
