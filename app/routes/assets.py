@@ -203,6 +203,9 @@ def list_assets():
     else:
         assets = list(qs.select_related())
 
+    asset_types  = _all_asset_types_sorted()
+    global_settings = json.dumps(_global_settings_json())
+
     # Build type lookup from cached list — avoids per-asset reference dereference
     _type_name_map = {str(t.id): t.name for t in asset_types}
 
@@ -244,9 +247,6 @@ def list_assets():
     for cat, items in by_type.items():
         if cat not in seen:
             grouped_assets.append((cat, items))
-
-    asset_types   = _all_asset_types_sorted()
-    global_settings = json.dumps(_global_settings_json())
 
     # Commitments + purchase aggregations — cached 45s (same for all filter combos)
     _agg = _assets_aggregations()
