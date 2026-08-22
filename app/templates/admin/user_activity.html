@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}פעילות — {{ target_user.name }}{% endblock %}
+{% block page_title %}פעילות משתמש{% endblock %}
+
+{% block content %}
+
+{# ── Header card ── #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
+    {% if target_user.role == 'super_admin' %}
+    <div class="role-avatar role-super"><i class="bi bi-shield-fill-check"></i></div>
+    {% elif target_user.role == 'admin' %}
+    <div class="role-avatar role-admin"><i class="bi bi-crown-fill"></i></div>
+    {% elif target_user.role == 'warehouse' %}
+    <div class="role-avatar role-tech"><i class="bi bi-box-seam-fill"></i></div>
+    {% else %}
+    <div class="role-avatar role-viewer"><i class="bi bi-eye-fill"></i></div>
+    {% endif %}
+    <div class="flex-grow-1">
+      <div class="fw-bold fs-5 lh-1">{{ target_user.name }}</div>
+      <div class="text-muted small mt-1">
+        {% if target_user.role == 'super_admin' %}{{ t.role_super_admin }}
+        {% elif target_user.role == 'admin' %}{{ t.role_admin }}
+        {% elif target_user.role == 'warehouse' %}{{ t.role_warehouse }}
+        {% else %}{{ t.role_viewer }}{% endif %}
+      </div>
+    </div>
+    <div class="text-end">
+      <div class="fs-3 fw-bold text-primary lh-1">{{ total }}</div>
+      <div class="text-muted small mt-1">פעולות מתועדות</div>
+    </div>
+    <div class="d-flex gap-2 ms-3">
+      <span class="badge bg-info bg-opacity-15 text-info py-2 px-3">
+        <i class="bi bi-eye me-1"></i>{{ visit_count }} ביקורי עמוד
+      </span>
+      <span class="badge bg-success bg-opacity-15 text-success py-2 px-3">
+        <i class="bi bi-lightning-charge me-1"></i>{{ action_count }} פעולות
+      </span>
+    </div>
+  </div>
+</div>
+
+{# ── Legend ── #}
+<div class="d-flex gap-3 mb-3 small text-muted px-1">
+  <span><span class="badge bg-info bg-opacity-15 text-info me-1"><i class="bi bi-eye"></i></span> ביקור עמוד</span>
+  <span><span class="badge bg-success bg-opacity-15 text-success me-1"><i class="bi bi-lightning-charge"></i></span> פעולה במערכת</span>
+</div>
+
+{# ── Timeline ── #}
+{% if grouped %}
+  {% for group in grouped %}
+  <div class="mb-4">
+
+    {# Day header #}
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <div class="fw-semibold small text-muted text-uppercase" style="letter-spacing:.06em;">
+        <i class="bi bi-calendar3 me-1"></i>
+        {{ group.date.strftime('%A, %d %B %Y') }}
+      </div>
+      <div class="flex-grow-1" style="height:1px;background:var(--bs-border-color);"></div>
+      <span class="badge bg-secondary bg-opacity-15 text-secondary">{{ group.items | length }}</span>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <ul class="list-group list-group-flush">
+        {% set ns = namespace(prev_session='') %}
+        {% for item in group.items %}
+
+          {# Session break marker #}
+          {% if item.kind == 'visit' and item.session_id and item.session_id != ns.prev_session and ns.prev_session != '' %}
+          <li class="list-group-item py-1 px-3" style="background:var(--bs-light);">
+            <span class="x-small text-muted fst-italic">
+              <i class="bi bi-arrow-bar-down me-1"></i>ביקור חדש
+            </span>
+          </li>
+          {% endif %}
+          {% if item.kind == 'visit' %}{% set ns.prev_session = item.session_id %}{% endif %}
+
+          <li class="list-group-item d-flex align-items-center gap-3 py-2 px-3
+                     {% if item.kind == 'action' %}activity-action{% endif %}">
+
+            {# Icon #}
+            <div class="flex-shrink-0">
+              {% if item.kind == 'visit' %}
+              <span class="badge rounded-circle p-2" style="background:rgba(13,202,240,.12);">
+                <i class="bi bi-eye text-info" style="font-size:.85rem;"></i>
+              </span>
+              {% else %}
+              <span class="badge rounded-circle p-2 bg-{{ item.color }} bg-opacity-15">
+                <i class="bi {{ item.icon }} text-{{ item.color }}" style="font-size:.85rem;"></i>
+              </span>
+              {% endif %}
+            </div>
+
+            {# Content #}
+            <div class="flex-grow-1 overflow-hidden">
+              <div class="small fw-{{ 'semibold' if item.kind == 'action' else 'normal' }} text-truncate">
+                {{ item.text }}
+              </div>
+              {% if item.path and item.kind == 'visit' %}
+              <div class="x-small text-muted font-monospace">{{ item.path }}</div>
+              {% endif %}
+            </div>
+
+            {# Time #}
+            <div class="text-nowrap text-muted flex-shrink-0" style="font-size:.75rem;">
+              {{ item.ts.strftime('%H:%M:%S') }}
+            </div>
+
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+  </div>
+  {% endfor %}
+
+{% else %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-hourglass fs-2 d-block mb-2 opacity-25"></i>
+    אין פעילות מתועדת עדיין עבור משתמש זה.
+    <div class="small mt-1">הנתונים יופיעו כאן מהביקור הבא.</div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+.activity-action { border-right: 3px solid rgba(25,135,84,.3); }
+[dir="ltr"] .activity-action { border-right: none; border-left: 3px solid rgba(25,135,84,.3); }
+.x-small { font-size: .72rem; }
+</style>
+{% endblock %}

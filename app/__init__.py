@@ -170,6 +170,44 @@ def create_app(config_class=Config):
     except Exception:
         pass
 
+    try:
+        from .models.page_visit import PageVisit
+        PageVisit.ensure_indexes()
+    except Exception:
+        pass
+
+    @app.before_request
+    def _log_page_visit():
+        from flask import request, session
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            return
+        if request.method != 'GET':
+            return
+        endpoint = request.endpoint or ''
+        from .models.page_visit import PAGE_NAMES
+        if endpoint not in PAGE_NAMES:
+            return
+        try:
+            import uuid as _uuid
+            from .models.page_visit import PageVisit
+            sid = session.get('_psid')
+            if not sid:
+                sid = _uuid.uuid4().hex[:20]
+                session['_psid'] = sid
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+            PageVisit(
+                user_id=str(current_user.id),
+                user_name=current_user.name,
+                user_role=getattr(current_user, 'role', ''),
+                path=request.path,
+                page_name=PAGE_NAMES[endpoint],
+                ip_address=ip,
+                session_id=sid,
+            ).save()
+        except Exception:
+            pass
+
     @app.after_request
     def set_security_headers(response):
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')

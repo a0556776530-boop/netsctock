@@ -327,6 +327,71 @@ def reset_password(id):
     return render_template('admin/reset_password.html', form=form, user=user)
 
 
+# ── User activity timeline (super_admin only) ─────────────────────────────────
+
+@admin_bp.route('/users/<id>/activity')
+@login_required
+def user_activity(id):
+    _super_admin_required()
+    from zoneinfo import ZoneInfo
+    from datetime import timezone as _tz
+    from itertools import groupby
+    from app.models.page_visit import PageVisit
+    from app.models.activity import ActivityLog
+
+    _IL = ZoneInfo('Asia/Jerusalem')
+    user = get_or_404(User, id)
+    uid  = str(user.id)
+
+    page_visits = list(PageVisit.objects(user_id=uid).order_by('-visited_at').limit(500))
+    actions     = list(ActivityLog.objects(user_name=user.name).order_by('-created_at').limit(500))
+
+    def _to_il(dt):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=_tz.utc)
+        return dt.astimezone(_IL)
+
+    timeline = []
+    for pv in page_visits:
+        timeline.append({
+            'kind':       'visit',
+            'icon':       'bi-eye',
+            'color':      'info',
+            'text':       pv.page_name,
+            'path':       pv.path,
+            'session_id': pv.session_id,
+            'ts':         _to_il(pv.visited_at),
+        })
+    for a in actions:
+        timeline.append({
+            'kind':       'action',
+            'icon':       a.icon,
+            'color':      a.color,
+            'text':       a.description,
+            'path':       '',
+            'session_id': '',
+            'ts':         _to_il(a.created_at),
+        })
+
+    timeline.sort(key=lambda x: x['ts'], reverse=True)
+
+    grouped = []
+    for day, items in groupby(timeline, key=lambda x: x['ts'].date()):
+        grouped.append({'date': day, 'items': list(items)})
+
+    visit_count  = sum(1 for e in timeline if e['kind'] == 'visit')
+    action_count = sum(1 for e in timeline if e['kind'] == 'action')
+
+    return render_template('admin/user_activity.html',
+                           target_user=user,
+                           grouped=grouped,
+                           total=len(timeline),
+                           visit_count=visit_count,
+                           action_count=action_count)
+
+
 # ── Settings ─────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/settings', methods=['GET'])

@@ -53,6 +53,12 @@
           <td class="text-center small">{{ user_stats[user.id].tasks }}</td>
           <td class="small text-muted">{{ user.created_at.strftime('%d %b %Y') if user.created_at else '—' }}</td>
           <td class="text-end text-nowrap">
+            {% if current_user.is_super_admin %}
+            <a href="{{ url_for('admin.user_activity', id=user.id) }}"
+               class="btn btn-sm btn-outline-primary" title="היסטוריית פעילות">
+              <i class="bi bi-clock-history"></i>
+            </a>
+            {% endif %}
             {% set can_edit = current_user.is_super_admin or (current_user.is_admin and not user.is_super_admin) %}
             {% if can_edit %}
             <a href="{{ url_for('admin.edit_user', id=user.id) }}" class="btn btn-sm btn-outline-secondary" title="{{ t.btn_edit }}">
