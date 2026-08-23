@@ -81,7 +81,7 @@
               <td class="text-muted small fw-semibold">{{ t.purchase_col_bom_file }}</td>
               <td class="small">
                 {% if purchase.bom_file %}
-                <a href="{{ url_for('static', filename='uploads/bom/' ~ purchase.bom_file) }}"
+                <a href="{{ url_for('purchases.serve_bom', filename=purchase.bom_file) }}"
                    target="_blank" class="text-decoration-none">
                   <i class="bi bi-paperclip me-1"></i>{{ purchase.bom_file }}
                 </a>

@@ -2,7 +2,7 @@ import os
 import traceback
 from datetime import datetime
 from flask import (Blueprint, render_template, redirect, url_for, flash,
-                   request, abort, g, current_app, jsonify)
+                   request, abort, g, current_app, jsonify, send_from_directory)
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
@@ -23,18 +23,28 @@ def _allowed(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def _bom_dir():
+    d = os.path.join(current_app.root_path, 'uploads', 'bom')
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 def _save_bom_file(file):
     if not file or not file.filename:
         return None
     if not _allowed(file.filename):
         return None
-    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'bom')
-    os.makedirs(upload_dir, exist_ok=True)
     filename = secure_filename(file.filename)
     ts = datetime.utcnow().strftime('%Y%m%d%H%M%S_')
     filename = ts + filename
-    file.save(os.path.join(upload_dir, filename))
+    file.save(os.path.join(_bom_dir(), filename))
     return filename
+
+
+@purchases_bp.route('/bom/<path:filename>')
+@login_required
+def serve_bom(filename):
+    return send_from_directory(_bom_dir(), filename)
 
 
 def _parse_date(val):
