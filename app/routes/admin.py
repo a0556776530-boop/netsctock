@@ -399,17 +399,26 @@ def user_activity(id):
             dt = dt.replace(tzinfo=_tz.utc)
         return dt.astimezone(_IL)
 
-    # Deduplicate: one entry per unique page (keep most recent visit)
-    seen = {}
-    for pv in PageVisit.objects(user_id=uid).order_by('-visited_at').limit(1000):
-        if pv.path not in seen:
-            seen[pv.path] = {
-                'text':      pv.page_name,
-                'path':      pv.path,
-                'last_seen': _to_il(pv.visited_at),
-            }
-
-    visited_pages = sorted(seen.values(), key=lambda x: x['last_seen'], reverse=True)
+    # Deduplicate in MongoDB: one entry per unique path, keep most recent
+    pipeline = [
+        {'$match': {'user_id': uid}},
+        {'$sort': {'visited_at': -1}},
+        {'$group': {
+            '_id':       '$path',
+            'page_name': {'$first': '$page_name'},
+            'visited_at': {'$first': '$visited_at'},
+        }},
+        {'$sort': {'visited_at': -1}},
+    ]
+    rows = list(PageVisit._get_collection().aggregate(pipeline))
+    visited_pages = [
+        {
+            'text':      r['page_name'],
+            'path':      r['_id'],
+            'last_seen': _to_il(r['visited_at']),
+        }
+        for r in rows
+    ]
 
     return render_template('admin/user_activity.html',
                            target_user=user,
@@ -423,7 +432,7 @@ def user_activity(id):
 def settings():
     _super_admin_required()
     from app.models.settings import AppSetting
-    all_users = list(User.objects.order_by('name'))
+    all_users = list(User.objects.order_by('name').only('id', 'name', 'role'))
     alloc_counter = int(AppSetting.get('alloc_counter') or 0)
     return render_template('admin/settings.html', users=all_users,
                            alloc_counter=alloc_counter)

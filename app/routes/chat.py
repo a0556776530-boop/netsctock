@@ -852,11 +852,14 @@ def api_search():
     if not _can_access_room(str(current_user.id), room_key):
         return jsonify(results=[]), 403
 
-    pattern = re.compile(re.escape(q), re.IGNORECASE)
-    msgs    = ChatMessage.objects(room=room_key, deleted=False).order_by('timestamp')
+    import re as _re
+    msgs = ChatMessage.objects(
+        room=room_key, deleted=False,
+        text__icontains=q,
+    ).order_by('timestamp').limit(100)
     results = [
         {'id': str(m.id), 'text': m.text or '', 'ts': m.timestamp.strftime('%d/%m %H:%M'), 'user': m.user_name}
-        for m in msgs if m.text and pattern.search(m.text)
+        for m in msgs
     ]
     return jsonify(results=results)
 

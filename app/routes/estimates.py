@@ -135,12 +135,9 @@ def check_allocation():
     if not num:
         return jsonify(exists=False)
     qs = Estimate.objects(allocation_number=num)
-    conflict = None
-    for est in qs:
-        if exclude_id and str(est.id) == exclude_id:
-            continue
-        conflict = est
-        break
+    if exclude_id:
+        qs = qs.filter(id__ne=exclude_id)
+    conflict = qs.only('task_name').first()
     if conflict:
         return jsonify(exists=True, task_name=conflict.task_name)
     return jsonify(exists=False)
