@@ -241,7 +241,7 @@
 
 {% block scripts %}
 <script>
-(function () {
+document.addEventListener('DOMContentLoaded', function () {
   var body    = document.getElementById('itemsBody');
   var noMsg   = document.getElementById('noItemsMsg');
   var addBtn  = document.getElementById('addItemBtn');
@@ -383,6 +383,6 @@
   }
   {% endif %}
 
-})();
+});
 </script>
 {% endblock %}
