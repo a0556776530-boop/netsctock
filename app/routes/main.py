@@ -311,9 +311,17 @@ def dashboard():
     expiring_estimates = _expiring_estimates()
     activity_feed      = _activity_feed()
 
+    # user list — cached 15s (no profile_photo — use separate cache)
+    _users_raw = cache.get('_dash_users')
+    if _users_raw is None:
+        _users_raw = list(
+            User.objects.only('id', 'name', 'last_seen', 'role', 'last_login')
+                        .order_by('-last_seen')
+        )
+        cache.set('_dash_users', _users_raw, timeout=15)
+
     all_users = []
-    user_photos = {}
-    for u in User.objects.only('id', 'name', 'last_seen', 'role', 'last_login', 'profile_photo').order_by('-last_seen'):
+    for u in _users_raw:
         if u.last_seen:
             diff     = (now_utc - u.last_seen).total_seconds()
             status   = 'online' if diff < 35 else ('away' if diff < 600 else 'offline')
@@ -321,8 +329,10 @@ def dashboard():
         else:
             status, diff_min = 'never', None
         all_users.append({'user': u, 'status': status, 'diff_min': diff_min})
-        if u.profile_photo:
-            user_photos[u.name] = u.profile_photo
+
+    # photos from shared cache (90s TTL) — no extra DB query
+    from app.routes.tasks import _user_photos
+    user_photos = _user_photos()
 
     # ── Charts ────────────────────────────────────────────────────────────────
     sc = _d['status_counts']
