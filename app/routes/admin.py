@@ -107,7 +107,7 @@ def _super_admin_required():
 class NewUserForm(FlaskForm):
     name     = StringField('Name', validators=[DataRequired(), Length(max=100)])
     role     = SelectField('Role', choices=[])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=8, max=72)])
     submit   = SubmitField('Create User')
 
 
@@ -115,18 +115,18 @@ class EditUserForm(FlaskForm):
     name             = StringField('Name',             validators=[DataRequired(), Length(max=100)])
     role             = SelectField('Role',             choices=[])
     current_password = PasswordField('Current Password', validators=[Optional()])
-    new_password     = PasswordField('New Password',     validators=[Optional(), Length(min=8)])
+    new_password     = PasswordField('New Password',     validators=[Optional(), Length(min=8, max=72)])
     submit           = SubmitField('Save')
 
 
 class ChangeOwnPasswordForm(FlaskForm):
-    current_password = PasswordField('Current Password', validators=[DataRequired()])
-    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8)])
+    current_password = PasswordField('Current Password', validators=[DataRequired(), Length(max=72)])
+    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8, max=72)])
     submit           = SubmitField('Save')
 
 
 class ResetPasswordForm(FlaskForm):
-    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=8)])
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=8, max=72)])
     submit       = SubmitField('Reset Password')
 
 

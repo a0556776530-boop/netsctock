@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, Length
 
 from app import bcrypt, limiter
 from app.routes.admin import _password_already_used
@@ -16,14 +16,14 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 class LoginForm(FlaskForm):
-    password = PasswordField('Password', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired(), Length(max=72)])
     remember = BooleanField('Remember me')
     submit   = SubmitField('Sign In')
 
 
 class ChangePasswordForm(FlaskForm):
-    current_password = PasswordField('Current Password', validators=[DataRequired()])
-    new_password     = PasswordField('New Password',     validators=[DataRequired()])
+    current_password = PasswordField('Current Password', validators=[DataRequired(), Length(max=72)])
+    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8, max=72)])
     submit           = SubmitField('Save Password')
 
 
@@ -45,6 +45,7 @@ def login():
                 break
         if matched:
             from datetime import datetime
+            prev_login = matched.last_login
             matched.last_login = datetime.utcnow()
             matched.last_seen  = datetime.utcnow()
             matched.save()
@@ -64,6 +65,9 @@ def login():
                     or next_page[1:2] == '\\'):
                 next_page = ''
             flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=matched.name), 'success')
+            if prev_login:
+                fmt = prev_login.strftime('%d %b %Y, %H:%M')
+                flash(t.get('flash_last_login', 'Last login: {date}').format(date=fmt), 'info')
             return redirect(next_page or url_for('main.dashboard'))
         record_login(
             user_name='—', user_role='—',

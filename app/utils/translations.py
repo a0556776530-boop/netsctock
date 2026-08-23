@@ -406,6 +406,8 @@ TRANSLATIONS = {
         'min_chars_hint': 'Minimum 8 characters.',
         # Flash messages
         'flash_welcome': 'Welcome back, {name}!',
+        'flash_last_login': 'Last login: {date}',
+        'login_loading': 'Signing in…',
         'flash_login_failed': 'Incorrect password.',
         'flash_logged_out': 'You have been logged out.',
         'flash_wrong_password':        'Current password is incorrect.',
@@ -1115,6 +1117,8 @@ TRANSLATIONS = {
         'min_chars_hint': 'מינימום 8 תווים.',
         # Flash messages
         'flash_welcome': 'ברוך שובך, {name}!',
+        'flash_last_login': 'כניסה אחרונה: {date}',
+        'login_loading': 'מתחבר…',
         'flash_login_failed': 'הסיסמה שגויה.',
         'flash_logged_out': 'התנתקת בהצלחה.',
         'flash_wrong_password':        'הסיסמא הנוכחית שגויה.',

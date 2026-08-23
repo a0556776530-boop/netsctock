@@ -24,7 +24,8 @@
       <label class="form-label">{{ t.form_password }}</label>
       <div class="pw-wrap">
         {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
-                         placeholder="••••••••", id="pwField", autocomplete="current-password") }}
+                         placeholder="••••••••", id="pwField", autocomplete="current-password",
+                         autofocus=True) }}
         <button type="button" class="pw-eye" id="pwToggle" tabindex="-1" aria-label="Toggle password visibility">
           <i class="bi bi-eye" id="pwIcon"></i>
         </button>
@@ -39,8 +40,12 @@
       {{ form.remember.label(class="form-check-label") }}
     </div>
 
-    <button type="submit" class="btn-login">
-      {{ t.login_submit }}
+    <button type="submit" class="btn-login" id="loginBtn">
+      <span id="loginBtnText">{{ t.login_submit }}</span>
+      <span id="loginSpinner" style="display:none;">
+        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+        {{ t.get('login_loading', 'Signing in…') }}
+      </span>
     </button>
   </form>
 
@@ -58,6 +63,19 @@
       var show = fld.type === 'password';
       fld.type = show ? 'text' : 'password';
       icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+  }
+
+  // Loading state on submit
+  var loginForm = fld && fld.closest('form');
+  var loginBtn  = document.getElementById('loginBtn');
+  var loginText = document.getElementById('loginBtnText');
+  var loginSpin = document.getElementById('loginSpinner');
+  if (loginForm && loginBtn) {
+    loginForm.addEventListener('submit', function () {
+      loginBtn.disabled  = true;
+      loginText.style.display = 'none';
+      loginSpin.style.display = '';
     });
   }
 </script>
