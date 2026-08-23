@@ -20,14 +20,16 @@
     {{ form.hidden_tag() }}
 
     <div class="mb-4 anim-4">
-      <div class="ffc-wrap pw-wrap{% if form.password.errors %} is-active{% endif %}" id="ffcWrap">
+      <div class="ffc-wrap{% if form.password.errors %} is-active{% endif %}" id="ffcWrap">
         <label class="ffc-label" for="pwField">{{ t.form_password }}</label>
-        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
-                         placeholder=" ", id="pwField", autocomplete="current-password",
-                         autofocus=True) }}
-        <button type="button" class="pw-eye" id="pwToggle" tabindex="-1" aria-label="Toggle password visibility">
-          <i class="bi bi-eye" id="pwIcon"></i>
-        </button>
+        <div class="pw-wrap">
+          {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
+                           placeholder=" ", id="pwField", autocomplete="current-password",
+                           autofocus=True) }}
+          <button type="button" class="pw-eye" id="pwToggle" tabindex="-1" aria-label="Toggle password visibility">
+            <i class="bi bi-eye" id="pwIcon"></i>
+          </button>
+        </div>
         {% for error in form.password.errors %}
           <div class="invalid-feedback">{{ error }}</div>
         {% endfor %}
