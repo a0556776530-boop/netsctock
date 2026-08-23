@@ -379,7 +379,7 @@ def user_activity(id):
 
     grouped = []
     for day, items in groupby(timeline, key=lambda x: x['ts'].date()):
-        grouped.append({'date': day, 'items': list(items)})
+        grouped.append({'date': day, 'entries': list(items)})
 
     visit_count  = sum(1 for e in timeline if e['kind'] == 'visit')
     action_count = sum(1 for e in timeline if e['kind'] == 'action')

@@ -58,13 +58,13 @@
         {{ group.date.strftime('%A, %d %B %Y') }}
       </div>
       <div class="flex-grow-1" style="height:1px;background:var(--bs-border-color);"></div>
-      <span class="badge bg-secondary bg-opacity-15 text-secondary">{{ group.items | length }}</span>
+      <span class="badge bg-secondary bg-opacity-15 text-secondary">{{ group.entries | length }}</span>
     </div>
 
     <div class="card border-0 shadow-sm">
       <ul class="list-group list-group-flush">
         {% set ns = namespace(prev_session='') %}
-        {% for item in group.items %}
+        {% for item in group.entries %}
 
           {# Session break marker #}
           {% if item.kind == 'visit' and item.session_id and item.session_id != ns.prev_session and ns.prev_session != '' %}
