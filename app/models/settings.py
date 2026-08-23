@@ -1,4 +1,8 @@
+import time
 import mongoengine as me
+
+_cache: dict = {}  # key -> (value, expires_at)
+_TTL = 60  # seconds
 
 # Fallback defaults — user can override these via the UI (stored in AppSetting)
 USD_BASE_RATE: float = 3.6
@@ -22,8 +26,15 @@ class AppSetting(me.Document):
 
     @classmethod
     def get(cls, key):
+        now = time.time()
+        if key in _cache:
+            val, exp = _cache[key]
+            if now < exp:
+                return val
         row = cls.objects(key=key).first()
-        return float(row.value if row else cls.DEFAULTS.get(key, '0'))
+        val = float(row.value if row else cls.DEFAULTS.get(key, '0'))
+        _cache[key] = (val, now + _TTL)
+        return val
 
     @classmethod
     def set(cls, key, value):
@@ -33,6 +44,7 @@ class AppSetting(me.Document):
             row.save()
         else:
             cls(key=key, value=str(value)).save()
+        _cache.pop(key, None)  # invalidate
 
     @classmethod
     def all_as_dict(cls):

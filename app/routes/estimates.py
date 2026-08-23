@@ -28,6 +28,20 @@ _LIST_FIELDS = (
 def _invalidate_list_cache():
     cache.delete('est_list_pending')
     cache.delete('est_list_budget')
+    cache.delete('est_active_pools')
+
+
+def _active_pools():
+    hit = cache.get('est_active_pools')
+    if hit is not None:
+        return hit
+    from mongoengine import Q as _Q
+    from app.models.pool import Pool as _Pool
+    pools = list(_Pool.objects(
+        _Q(is_active=True) | _Q(is_active__exists=False)
+    ).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
+    cache.set('est_active_pools', pools, timeout=60)
+    return pools
 
 
 @cache.memoize(timeout=120)
@@ -157,7 +171,7 @@ def new_estimate():
     assets_list = _priced_assets_for_form()
     maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
 
-    active_pools = list(Pool.objects(Q(is_active=True) | Q(is_active__exists=False)).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
+    active_pools = _active_pools()
 
     def _rerender(error_msg, form_data):
         flash(error_msg, 'danger')
