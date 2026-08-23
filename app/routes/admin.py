@@ -175,7 +175,8 @@ def users():
         }
         for u in all_users
     }
-    return render_template('admin/users.html', users=all_users, user_stats=user_stats)
+    user_photos = {u.name: u.profile_photo for u in all_users if u.profile_photo}
+    return render_template('admin/users.html', users=all_users, user_stats=user_stats, user_photos=user_photos)
 
 
 @admin_bp.route('/users/new', methods=['GET', 'POST'])

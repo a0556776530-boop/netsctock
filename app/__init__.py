@@ -24,6 +24,13 @@ from .utils.cache import cache
 db = me
 
 
+def _avatar_color(name):
+    _pal = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#f97316']
+    if not name:
+        return _pal[0]
+    return _pal[hash(name) % len(_pal)]
+
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -43,6 +50,9 @@ def create_app(config_class=Config):
     csrf.init_app(app)
     limiter.init_app(app)
     cache.init_app(app, config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 60})
+
+    # Jinja2 globals — set once at startup, zero per-request cost
+    app.jinja_env.globals['avatar_color'] = _avatar_color
 
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'

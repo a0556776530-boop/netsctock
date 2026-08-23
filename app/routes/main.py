@@ -312,7 +312,8 @@ def dashboard():
     activity_feed      = _activity_feed()
 
     all_users = []
-    for u in User.objects.only('id', 'name', 'last_seen', 'role', 'last_login').order_by('-last_seen'):
+    user_photos = {}
+    for u in User.objects.only('id', 'name', 'last_seen', 'role', 'last_login', 'profile_photo').order_by('-last_seen'):
         if u.last_seen:
             diff     = (now_utc - u.last_seen).total_seconds()
             status   = 'online' if diff < 35 else ('away' if diff < 600 else 'offline')
@@ -320,6 +321,8 @@ def dashboard():
         else:
             status, diff_min = 'never', None
         all_users.append({'user': u, 'status': status, 'diff_min': diff_min})
+        if u.profile_photo:
+            user_photos[u.name] = u.profile_photo
 
     # ── Charts ────────────────────────────────────────────────────────────────
     sc = _d['status_counts']
@@ -342,6 +345,7 @@ def dashboard():
         top_committed=_d['top_committed_raw'],
         expiring_estimates=expiring_estimates,
         all_users=all_users,
+        user_photos=user_photos,
         activity_feed=activity_feed,
         now_utc=now_utc,
         today=today,

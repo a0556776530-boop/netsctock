@@ -8,6 +8,21 @@ from app.models.task import Task
 from app.utils.mongo_helpers import get_or_404
 from app.utils.activity import log_activity
 
+
+def _user_photos():
+    from app import cache
+    from app.models.user import User
+    photos = cache.get('_user_photos')
+    if photos is None:
+        try:
+            photos = {u.name: u.profile_photo
+                      for u in User.objects.only('name', 'profile_photo')
+                      if u.profile_photo}
+        except Exception:
+            photos = {}
+        cache.set('_user_photos', photos, timeout=90)
+    return photos
+
 tasks_bp = Blueprint('tasks', __name__, url_prefix='/tasks')
 
 
@@ -37,6 +52,7 @@ def list_tasks():
         'tasks/list.html',
         tasks=tasks,
         sort=sort, order=order,
+        user_photos=_user_photos(),
     )
 
 
@@ -44,7 +60,7 @@ def list_tasks():
 @login_required
 def history():
     tasks = list(Task.objects(status='done').order_by('-created_at'))
-    return render_template('tasks/history.html', tasks=tasks)
+    return render_template('tasks/history.html', tasks=tasks, user_photos=_user_photos())
 
 
 @tasks_bp.route('/new', methods=['GET', 'POST'])
