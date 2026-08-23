@@ -335,16 +335,11 @@ def user_activity(id):
     _super_admin_required()
     from zoneinfo import ZoneInfo
     from datetime import timezone as _tz
-    from itertools import groupby
     from app.models.page_visit import PageVisit
-    from app.models.activity import ActivityLog
 
     _IL = ZoneInfo('Asia/Jerusalem')
     user = get_or_404(User, id)
     uid  = str(user.id)
-
-    page_visits = list(PageVisit.objects(user_id=uid).order_by('-visited_at').limit(500))
-    actions     = list(ActivityLog.objects(user_name=user.name).order_by('-created_at').limit(500))
 
     def _to_il(dt):
         if dt is None:
@@ -353,43 +348,21 @@ def user_activity(id):
             dt = dt.replace(tzinfo=_tz.utc)
         return dt.astimezone(_IL)
 
-    timeline = []
-    for pv in page_visits:
-        timeline.append({
-            'kind':       'visit',
-            'icon':       'bi-eye',
-            'color':      'info',
-            'text':       pv.page_name,
-            'path':       pv.path,
-            'session_id': pv.session_id,
-            'ts':         _to_il(pv.visited_at),
-        })
-    for a in actions:
-        timeline.append({
-            'kind':       'action',
-            'icon':       a.icon,
-            'color':      a.color,
-            'text':       a.description,
-            'path':       '',
-            'session_id': '',
-            'ts':         _to_il(a.created_at),
-        })
+    # Deduplicate: one entry per unique page (keep most recent visit)
+    seen = {}
+    for pv in PageVisit.objects(user_id=uid).order_by('-visited_at').limit(1000):
+        if pv.path not in seen:
+            seen[pv.path] = {
+                'text':      pv.page_name,
+                'path':      pv.path,
+                'last_seen': _to_il(pv.visited_at),
+            }
 
-    timeline.sort(key=lambda x: x['ts'], reverse=True)
-
-    grouped = []
-    for day, items in groupby(timeline, key=lambda x: x['ts'].date()):
-        grouped.append({'date': day, 'entries': list(items)})
-
-    visit_count  = sum(1 for e in timeline if e['kind'] == 'visit')
-    action_count = sum(1 for e in timeline if e['kind'] == 'action')
+    visited_pages = sorted(seen.values(), key=lambda x: x['last_seen'], reverse=True)
 
     return render_template('admin/user_activity.html',
                            target_user=user,
-                           grouped=grouped,
-                           total=len(timeline),
-                           visit_count=visit_count,
-                           action_count=action_count)
+                           visited_pages=visited_pages)
 
 
 # ── Settings ─────────────────────────────────────────────────────────────────
