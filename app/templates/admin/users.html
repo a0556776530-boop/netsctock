@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% from '_macros.html' import avatar %}
 {% block title %}{{ t.user_management_title }}{% endblock %}
 {% block page_title %}{{ t.user_management_title }}{% endblock %}
 
@@ -29,29 +28,24 @@
         {% for user in users %}
         <tr {% if user.id == current_user.id %}class="table-primary table-primary-subtle"{% endif %}>
           <td class="fw-semibold">
-            <div class="d-flex align-items-center gap-2">
-              {{ avatar(user.name, 32) }}
-              <div>
-                {{ user.name }}
-                {% if user.id == current_user.id %}
-                <span class="badge bg-secondary ms-1 small">{{ t.you_badge }}</span>
-                {% endif %}
-              </div>
-            </div>
+            {{ user.name }}
+            {% if user.id == current_user.id %}
+            <span class="badge bg-secondary ms-1 small">{{ t.you_badge }}</span>
+            {% endif %}
           </td>
           <td>
             <div class="d-flex align-items-center gap-2">
               {% if user.role == 'super_admin' %}
-              <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
+              {% if user.profile_photo %}<img src="{{ user.profile_photo }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">{% else %}<div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>{% endif %}
               <span class="small fw-semibold" style="color:#dc2626;">{{ t.role_super_admin or 'Super Admin' }}</span>
               {% elif user.role == 'admin' %}
-              <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>
+              {% if user.profile_photo %}<img src="{{ user.profile_photo }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">{% else %}<div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>{% endif %}
               <span class="small fw-semibold" style="color:#b45309;">{{ t.role_admin }}</span>
               {% elif user.role == 'warehouse' %}
-              <div class="role-avatar-sm role-tech"><i class="bi bi-box-seam-fill"></i></div>
+              {% if user.profile_photo %}<img src="{{ user.profile_photo }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">{% else %}<div class="role-avatar-sm role-tech"><i class="bi bi-box-seam-fill"></i></div>{% endif %}
               <span class="small fw-semibold" style="color:#0369a1;">{{ t.role_warehouse }}</span>
               {% else %}
-              <div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>
+              {% if user.profile_photo %}<img src="{{ user.profile_photo }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">{% else %}<div class="role-avatar-sm role-viewer"><i class="bi bi-eye-fill"></i></div>{% endif %}
               <span class="small fw-semibold" style="color:#7e22ce;">{{ t.role_viewer }}</span>
               {% endif %}
             </div>

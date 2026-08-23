@@ -24,13 +24,6 @@ from .utils.cache import cache
 db = me
 
 
-def _avatar_color(name):
-    _pal = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#f97316']
-    if not name:
-        return _pal[0]
-    return _pal[hash(name) % len(_pal)]
-
-
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -153,23 +146,6 @@ def create_app(config_class=Config):
     def inject_globals():
         from flask import g
         from .utils.exchange import get_usd_to_nis
-
-        _photos = {}
-        try:
-            _cached = cache.get('_user_photos_ctx')
-            if _cached is None:
-                from .models.user import User
-                _cached = {u.name: u.profile_photo
-                           for u in User.objects.only('name', 'profile_photo')
-                           if u.profile_photo}
-                try:
-                    cache.set('_user_photos_ctx', _cached, timeout=90)
-                except Exception:
-                    pass
-            _photos = _cached or {}
-        except Exception:
-            _photos = {}
-
         return {
             'now': datetime.utcnow(),
             'usd_nis_rate': get_usd_to_nis(),
@@ -177,8 +153,6 @@ def create_app(config_class=Config):
             'dir_html': getattr(g, 'dir_html', 'ltr'),
             't': getattr(g, 't', TRANSLATIONS['en']),
             'unread_total': 0,
-            'user_photos': _photos,
-            'avatar_color': _avatar_color,
         }
 
     from .seed import register_commands

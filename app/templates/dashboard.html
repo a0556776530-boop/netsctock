@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% from '_macros.html' import avatar %}
 {% block title %}{{ t.dashboard_title }}{% endblock %}
 {% block page_title %}{{ t.dashboard_title }}{% endblock %}
 
@@ -119,7 +118,6 @@
         <ul class="list-group list-group-flush">
           {% for entry in activity_feed %}
           <li class="list-group-item d-flex align-items-start gap-3 py-2 px-3">
-            <div class="flex-shrink-0 pt-1">{{ avatar(entry.user_name, 26) }}</div>
             <div class="flex-grow-1 overflow-hidden">
               <div class="small fw-semibold text-truncate">{{ entry.description }}</div>
               <div class="x-small text-muted mt-1">
@@ -166,11 +164,7 @@
               data-you="{{ 'true' if u.id == current_user.id else 'false' }}"
               data-lastlogin="{{ u.last_login.strftime('%d %b') if u.last_login else '' }}">
             <div class="position-relative flex-shrink-0">
-              {% set _up = user_photos.get(u.name) if user_photos else None %}
-              {% if _up %}
-              <img src="{{ _up }}" alt="{{ u.name }}"
-                   style="width:34px;height:34px;border-radius:50%;object-fit:cover;display:block;">
-              {% elif u.role == 'super_admin' %}
+              {% if u.role == 'super_admin' %}
               <div class="role-avatar-sm role-super"><i class="bi bi-shield-fill-check"></i></div>
               {% elif u.role == 'admin' %}
               <div class="role-avatar-sm role-admin"><i class="bi bi-crown-fill"></i></div>

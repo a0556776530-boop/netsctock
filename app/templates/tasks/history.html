@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% from '_macros.html' import avatar %}
 {% block title %}{{ t.task_history_title }}{% endblock %}
 {% block page_title %}{{ t.task_history_title }}{% endblock %}
 
@@ -32,14 +31,7 @@
             <div class="text-muted x-small text-truncate" style="max-width:320px;">{{ task.notes }}</div>
             {% endif %}
           </td>
-          <td class="small">
-            {% if task.assignee_name %}
-            <div class="d-flex align-items-center gap-2">
-              {{ avatar(task.assignee_name, 24) }}
-              <span>{{ task.assignee_name }}</span>
-            </div>
-            {% else %}—{% endif %}
-          </td>
+          <td class="small">{{ task.assignee_name or '—' }}</td>
           <td>
             <span class="small fw-semibold text-success">{{ t.done_badge }}</span>
           </td>
