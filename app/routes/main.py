@@ -110,7 +110,7 @@ def user_activity_api():
     from app.models.user import User
     now_utc = datetime.utcnow()
     result = []
-    for u in User.objects.order_by('-last_seen'):
+    for u in User.objects.order_by('-last_seen').only('id', 'name', 'role', 'last_seen', 'last_login'):
         if u.last_seen:
             diff = (now_utc - u.last_seen).total_seconds()
             if diff < 35:

@@ -5,6 +5,7 @@ from flask import (Blueprint, render_template, redirect, url_for, flash,
                    request, abort, g, current_app, jsonify, send_from_directory)
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+from app import cache
 
 from app.models.purchase import Purchase, PurchaseItem, STATUSES, ACTIVE_STATUSES, MANUAL_STATUSES, CURRENCIES, STATUS_COLORS
 from app.models.asset import Asset
@@ -17,6 +18,11 @@ purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
 
 
 ALLOWED_EXTENSIONS = {'pdf', 'xlsx', 'xls', 'csv', 'doc', 'docx', 'png', 'jpg'}
+
+
+def _invalidate_purchases_cache():
+    cache.delete('purchases_active')
+    cache.delete('purchases_history')
 
 
 def _allowed(filename):
@@ -110,7 +116,10 @@ def list_purchases():
     if current_user.is_warehouse:
         abort(403)
     try:
-        purchases = list(Purchase.objects.order_by('-created_at'))
+        purchases = cache.get('purchases_active')
+        if purchases is None:
+            purchases = list(Purchase.objects.order_by('-created_at'))
+            cache.set('purchases_active', purchases, timeout=30)
     except Exception:
         err = traceback.format_exc()
         current_app.logger.error('list_purchases error:\n' + err)
@@ -125,7 +134,10 @@ def purchase_history():
     if current_user.is_warehouse:
         abort(403)
     try:
-        purchases = list(Purchase.objects(status__in=_HISTORY_STATUSES).order_by('-created_at'))
+        purchases = cache.get('purchases_history')
+        if purchases is None:
+            purchases = list(Purchase.objects(status__in=_HISTORY_STATUSES).order_by('-created_at'))
+            cache.set('purchases_history', purchases, timeout=30)
     except Exception:
         err = traceback.format_exc()
         current_app.logger.error('purchase_history error:\n' + err)
@@ -204,6 +216,7 @@ def new_purchase():
                 items           = items,
             )
             p.save()
+            _invalidate_purchases_cache()
             log_activity(current_user, 'purchase_created', f'יצר רכש חדש: {name}')
             flash(t.get('flash_purchase_created', 'Purchase created successfully.'), 'success')
             return redirect(url_for('purchases.list_purchases') + '?status=all')
@@ -286,6 +299,7 @@ def edit(id):
         purchase.items           = _parse_items(request.form, assets_by_id)
         try:
             purchase.save()
+            _invalidate_purchases_cache()
         except Exception as e:
             flash(f'Error saving purchase: {e}', 'danger')
             return render_template('purchases/form.html', purchase=purchase,
@@ -357,6 +371,7 @@ def quick_status(id):
             )
 
     purchase.save()
+    _invalidate_purchases_cache()
     log_activity(current_user, 'purchase_status', f'עדכן סטטוס רכש: {purchase.name} → {new_status}')
 
     key = 'purchase_status_' + new_status.lower().replace(' ', '_')
@@ -375,6 +390,7 @@ def delete(id):
     was_history  = purchase.status in _HISTORY_STATUSES
 
     purchase.delete()
+    _invalidate_purchases_cache()
     flash(t.get('flash_purchase_deleted', 'Purchase deleted.'), 'warning')
 
     # Route back to history if the purchase was in the history list
@@ -446,6 +462,7 @@ def verify(id):
         purchase.status = 'Partial Delivery'
 
     purchase.save()
+    _invalidate_purchases_cache()
 
     skey  = 'purchase_status_' + purchase.status.lower().replace(' ', '_')
     label = t.get(skey, purchase.status)
@@ -513,4 +530,5 @@ def receive(id):
         flash(t.get('flash_no_quantities_entered', 'No quantities were entered.'), 'warning')
 
     purchase.save()
+    _invalidate_purchases_cache()
     return redirect(url_for('purchases.list_purchases') + '?status=all')

@@ -30,6 +30,24 @@ def _invalidate_list_cache():
     cache.delete('est_list_budget')
 
 
+@cache.memoize(timeout=120)
+def _priced_assets_for_form():
+    """All priced assets as plain dicts — cached 2 min, used by new/edit estimate forms."""
+    assets = Asset.objects(
+        price_usd__exists=True, price_usd__ne=None
+    ).order_by('serial_number').select_related()
+    return [{
+        'id':            str(a.id),
+        'component_id':  a.component_id or '',
+        'serial_number': a.serial_number,
+        'model':         a.model or '',
+        'manufacturer':  a.manufacturer or '',
+        'type':          a.asset_type.name if a.asset_type else '',
+        'price_usd':     float(a.price_usd),
+        'quantity':      a.quantity if a.quantity is not None else 0,
+    } for a in assets]
+
+
 def _dense_max_allocation():
     """Find the highest allocation number that belongs to the main sequence.
 
@@ -139,17 +157,7 @@ def new_estimate():
     validity = today + timedelta(days=90)
 
     # Always build assets list (needed for both GET and POST re-render)
-    assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())
-    assets_list = [{
-        'id':            str(a.id),
-        'component_id':  a.component_id or '',
-        'serial_number': a.serial_number,
-        'model':         a.model or '',
-        'manufacturer':  a.manufacturer or '',
-        'type':          a.asset_type.name if a.asset_type else '',
-        'price_usd':     float(a.price_usd),
-        'quantity':      a.quantity if a.quantity is not None else 0,
-    } for a in assets]
+    assets_list = _priced_assets_for_form()
     maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
 
     active_pools = list(Pool.objects(Q(is_active=True) | Q(is_active__exists=False)).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
@@ -425,17 +433,7 @@ def edit(id):
         flash('Estimate updated successfully.', 'success')
         return redirect(url_for('estimates.detail', id=str(estimate.id)))
 
-    assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())
-    assets_list = [{
-        'id':            str(a.id),
-        'component_id':  a.component_id or '',
-        'serial_number': a.serial_number,
-        'model':         a.model or '',
-        'manufacturer':  a.manufacturer or '',
-        'type':          a.asset_type.name if a.asset_type else '',
-        'price_usd':     float(a.price_usd),
-        'quantity':      a.quantity if a.quantity is not None else 0,
-    } for a in assets]
+    assets_list = _priced_assets_for_form()
 
     selected_list = [{
         'asset_id': str(item.asset.id) if item.asset else None,

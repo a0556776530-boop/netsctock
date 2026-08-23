@@ -7,7 +7,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Length, Optional
 
-from app import bcrypt
+from app import bcrypt, cache
 from app.models.user import User
 from app.models.asset import Asset, AssetEvent
 from app.models.task import Task
@@ -26,6 +26,68 @@ def _password_already_used(plaintext, exclude_id=None):
             return True
     return False
 from app.utils.mongo_helpers import get_or_404
+
+
+def _get_login_col():
+    from mongoengine.connection import get_db
+    return get_db('default')['login_events']
+
+
+@cache.memoize(timeout=60)
+def _login_history_analytics():
+    """Chart, alerts, top_failed — cached 60s (not filter-dependent)."""
+    from datetime import timedelta as _td
+    col = _get_login_col()
+    now = datetime.utcnow()
+
+    chart_raw = list(col.aggregate([
+        {'$match': {'timestamp': {'$gte': now - _td(days=14)}}},
+        {'$group': {
+            '_id':     {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
+            'success': {'$sum': {'$cond': ['$success', 1, 0]}},
+            'failed':  {'$sum': {'$cond': ['$success', 0, 1]}},
+        }},
+        {'$sort': {'_id': 1}},
+    ]))
+    alerts = list(col.aggregate([
+        {'$match': {'success': False, 'timestamp': {'$gte': now - _td(hours=24)}}},
+        {'$group': {
+            '_id':   '$ip_address',
+            'count': {'$sum': 1},
+            'users': {'$addToSet': '$user_name'},
+        }},
+        {'$match': {'count': {'$gte': 5}}},
+        {'$sort': {'count': -1}},
+        {'$limit': 5},
+    ]))
+    top_failed = list(col.aggregate([
+        {'$match': {'success': False, 'timestamp': {'$gte': now - _td(days=7)}}},
+        {'$group': {'_id': '$user_name', 'count': {'$sum': 1}}},
+        {'$sort': {'count': -1}},
+        {'$limit': 3},
+    ]))
+    return chart_raw, alerts, top_failed
+
+
+@cache.memoize(timeout=30)
+def _users_page_stats():
+    """Asset + task counts per user — cached 30s."""
+    asset_counts = {
+        str(r['_id']): r['count']
+        for r in Asset._get_collection().aggregate([
+            {'$match': {'assigned_to_id': {'$exists': True, '$ne': None}}},
+            {'$group': {'_id': '$assigned_to_id', 'count': {'$sum': 1}}},
+        ])
+    }
+    task_counts = {
+        r['_id']: r['count']
+        for r in Task._get_collection().aggregate([
+            {'$match': {'status': {'$in': ['pending', 'in_progress']}}},
+            {'$group': {'_id': '$assignee_name', 'count': {'$sum': 1}}},
+        ])
+    }
+    return asset_counts, task_counts
+
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -102,23 +164,10 @@ def _localize_user_form(form, t, is_new=True):
 @login_required
 def users():
     _admin_required()
-    all_users = list(User.objects.order_by('name'))
-
-    # Two aggregations instead of N×2 individual count queries
-    asset_counts = {
-        str(r['_id']): r['count']
-        for r in Asset._get_collection().aggregate([
-            {'$match': {'assigned_to_id': {'$exists': True, '$ne': None}}},
-            {'$group': {'_id': '$assigned_to_id', 'count': {'$sum': 1}}},
-        ])
-    }
-    task_counts = {
-        r['_id']: r['count']
-        for r in Task._get_collection().aggregate([
-            {'$match': {'status': {'$in': ['pending', 'in_progress']}}},
-            {'$group': {'_id': '$assignee_name', 'count': {'$sum': 1}}},
-        ])
-    }
+    all_users = list(User.objects.order_by('name').only(
+        'id', 'name', 'role', 'last_login', 'last_seen', 'created_at',
+    ))
+    asset_counts, task_counts = _users_page_stats()
     user_stats = {
         u.id: {
             'assets': asset_counts.get(str(u.id), 0),
@@ -419,10 +468,6 @@ def update_role(id):
 @login_required
 def login_history():
     _admin_required()
-    from mongoengine.connection import get_db
-
-    col = get_db('default')['login_events']
-
     page           = max(1, request.args.get('page', 1, type=int))
     per_page       = 50
     user_filter    = request.args.get('user', '').strip()
@@ -452,71 +497,43 @@ def login_history():
         except ValueError:
             pass
 
+    col = _get_login_col()
     total  = col.count_documents(filt)
     events = list(col.find(filt).sort([('_id', -1)]).skip((page - 1) * per_page).limit(per_page))
     pages  = max(1, (total + per_page - 1) // per_page)
 
-    from datetime import timedelta as _td
-    _now = datetime.utcnow()
+    # ── KPI stats (scoped to current filter — cache per filt hash) ────────────
+    import hashlib as _hl, json as _json
+    _filt_key = 'lh_stats_' + _hl.md5(_json.dumps(filt, sort_keys=True, default=str).encode()).hexdigest()
+    stats = cache.get(_filt_key)
+    if stats is None:
+        _stats_raw = list(col.aggregate([
+            {'$match': filt},
+            {'$group': {
+                '_id':          None,
+                'total':        {'$sum': 1},
+                'success_cnt':  {'$sum': {'$cond': ['$success', 1, 0]}},
+                'failed_cnt':   {'$sum': {'$cond': ['$success', 0, 1]}},
+                'unique_ips':   {'$addToSet': '$ip_address'},
+                'unique_users': {'$addToSet': '$user_name'},
+            }}
+        ]))
+        _s = _stats_raw[0] if _stats_raw else {}
+        _total_s   = _s.get('total', 0)
+        _success_s = _s.get('success_cnt', 0)
+        _failed_s  = _s.get('failed_cnt', 0)
+        stats = {
+            'total':        _total_s,
+            'success':      _success_s,
+            'failed':       _failed_s,
+            'rate':         round(_success_s * 100 / _total_s, 1) if _total_s else 0,
+            'unique_ips':   len(_s.get('unique_ips', [])),
+            'unique_users': len(_s.get('unique_users', [])),
+        }
+        cache.set(_filt_key, stats, timeout=30)
 
-    # ── KPI stats (scoped to current filter) ──────────────────────────────────
-    _stats_raw = list(col.aggregate([
-        {'$match': filt},
-        {'$group': {
-            '_id':          None,
-            'total':        {'$sum': 1},
-            'success_cnt':  {'$sum': {'$cond': ['$success', 1, 0]}},
-            'failed_cnt':   {'$sum': {'$cond': ['$success', 0, 1]}},
-            'unique_ips':   {'$addToSet': '$ip_address'},
-            'unique_users': {'$addToSet': '$user_name'},
-        }}
-    ]))
-    _s = _stats_raw[0] if _stats_raw else {}
-    _total_s   = _s.get('total', 0)
-    _success_s = _s.get('success_cnt', 0)
-    _failed_s  = _s.get('failed_cnt', 0)
-    _rate      = round(_success_s * 100 / _total_s, 1) if _total_s else 0
-    stats = {
-        'total':        _total_s,
-        'success':      _success_s,
-        'failed':       _failed_s,
-        'rate':         _rate,
-        'unique_ips':   len(_s.get('unique_ips', [])),
-        'unique_users': len(_s.get('unique_users', [])),
-    }
-
-    # ── Chart data — last 14 days ──────────────────────────────────────────────
-    _chart_raw = list(col.aggregate([
-        {'$match': {'timestamp': {'$gte': _now - _td(days=14)}}},
-        {'$group': {
-            '_id':     {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
-            'success': {'$sum': {'$cond': ['$success', 1, 0]}},
-            'failed':  {'$sum': {'$cond': ['$success', 0, 1]}},
-        }},
-        {'$sort': {'_id': 1}},
-    ]))
-    chart_data = _chart_raw
-
-    # ── Security alerts — IPs with ≥5 failures in last 24 h ───────────────────
-    security_alerts = list(col.aggregate([
-        {'$match': {'success': False, 'timestamp': {'$gte': _now - _td(hours=24)}}},
-        {'$group': {
-            '_id':   '$ip_address',
-            'count': {'$sum': 1},
-            'users': {'$addToSet': '$user_name'},
-        }},
-        {'$match': {'count': {'$gte': 5}}},
-        {'$sort': {'count': -1}},
-        {'$limit': 5},
-    ]))
-
-    # ── Top failed users — last 7 days ────────────────────────────────────────
-    top_failed = list(col.aggregate([
-        {'$match': {'success': False, 'timestamp': {'$gte': _now - _td(days=7)}}},
-        {'$group': {'_id': '$user_name', 'count': {'$sum': 1}}},
-        {'$sort': {'count': -1}},
-        {'$limit': 3},
-    ]))
+    # ── Chart, alerts, top_failed — cached 60s (not filter-dependent) ─────────
+    chart_data, security_alerts, top_failed = _login_history_analytics()
 
     resp = make_response(render_template(
         'admin/login_history.html',
