@@ -2050,7 +2050,7 @@
 
   function roleAvatar(role, size, uid) {
     if (uid && _photoCache[uid]) {
-      return '<img src="' + _photoCache[uid] + '" class="chat-avatar-photo' + (size === 'sm' ? ' sm' : '') + '" alt="">';
+      return '<img src="' + _esc(_photoCache[uid]) + '" class="chat-avatar-photo' + (size === 'sm' ? ' sm' : '') + '" alt="">';
     }
     var cls = 'role-viewer', icon = 'bi-eye-fill';
     if (role === 'super_admin') { cls = 'role-super'; icon = 'bi-shield-fill-check'; }

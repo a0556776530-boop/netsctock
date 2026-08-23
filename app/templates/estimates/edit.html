@@ -158,8 +158,8 @@
   // RATE = stored effective rate for this estimate (USD_BASE × BINA at creation time)
   var RATE     = {{ usd_rate }};
   var FACTOR   = {{ maint_factor }};
-  var ASSETS   = {{ assets_json|safe }};
-  var SELECTED = {{ selected_json|safe }};
+  var ASSETS   = {{ assets_list | tojson }};
+  var SELECTED = {{ selected_list | tojson }};
   var sel      = {};
 
   SELECTED.forEach(function(s) {

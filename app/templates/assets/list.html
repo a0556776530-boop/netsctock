@@ -572,7 +572,7 @@
   var factor   = 1.7;
 
   try {
-    var srv = {{ global_settings|safe }};
+    var srv = {{ global_settings | tojson }};
     if (srv.usd_base_rate      > 0) USD_BASE = srv.usd_base_rate;
     if (srv.bina_factor        > 0) BINA     = srv.bina_factor;
     if (srv.vat_factor         > 0) VAT      = srv.vat_factor;

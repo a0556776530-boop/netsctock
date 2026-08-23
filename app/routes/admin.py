@@ -173,12 +173,13 @@ def edit_user(id):
         if user.id == current_user.id:
             # Save profile photo regardless of password form
             photo_data = request.form.get('profile_photo_data', '').strip()
+            _PHOTO_MIME = ('data:image/jpeg;', 'data:image/png;', 'data:image/gif;', 'data:image/webp;')
             if photo_data == 'REMOVE':
                 user.profile_photo = None
                 user.save()
                 from app.models.user import _user_cache
                 _user_cache.pop(str(user.id), None)
-            elif photo_data:
+            elif photo_data and any(photo_data.startswith(m) for m in _PHOTO_MIME):
                 user.profile_photo = photo_data
                 user.save()
                 from app.models.user import _user_cache
@@ -256,12 +257,13 @@ def edit_user(id):
         user.save()
 
     # Profile photo — saved regardless of password/name form result
+    _PHOTO_MIME = ('data:image/jpeg;', 'data:image/png;', 'data:image/gif;', 'data:image/webp;')
     if request.method == 'POST':
         photo_data = request.form.get('profile_photo_data', '').strip()
         if photo_data == 'REMOVE':
             user.profile_photo = None
             user.save()
-        elif photo_data:
+        elif photo_data and any(photo_data.startswith(m) for m in _PHOTO_MIME):
             user.profile_photo = photo_data
             user.save()
         if photo_data:

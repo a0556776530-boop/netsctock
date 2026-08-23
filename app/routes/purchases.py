@@ -104,7 +104,7 @@ def list_purchases():
     except Exception:
         err = traceback.format_exc()
         current_app.logger.error('list_purchases error:\n' + err)
-        flash('שגיאה בטעינת רכשים: ' + err.splitlines()[-1], 'danger')
+        flash('שגיאה בטעינת רכשים. נסה שוב.', 'danger')
         purchases = []
     return render_template('purchases/list.html', purchases=purchases, manual_statuses=MANUAL_STATUSES)
 
@@ -119,7 +119,7 @@ def purchase_history():
     except Exception:
         err = traceback.format_exc()
         current_app.logger.error('purchase_history error:\n' + err)
-        flash('שגיאה בטעינת היסטוריה: ' + err.splitlines()[-1], 'danger')
+        flash('שגיאה בטעינת היסטוריה. נסה שוב.', 'danger')
         purchases = []
     return render_template('purchases/history.html', purchases=purchases)
 
@@ -136,7 +136,7 @@ def new_purchase():
     except Exception:
         err = traceback.format_exc()
         current_app.logger.error('new_purchase _grouped_assets error:\n' + err)
-        flash('Error loading assets: ' + err.splitlines()[-1], 'danger')
+        flash('Error loading data. Please try again.', 'danger')
         return redirect(url_for('purchases.list_purchases') + '?status=all')
 
     assets_by_id = {str(a.id): a for a in assets}
@@ -201,7 +201,7 @@ def new_purchase():
         except Exception:
             err = traceback.format_exc()
             current_app.logger.error('Purchase create error:\n' + err)
-            flash('שגיאה ביצירת רכש: ' + err.splitlines()[-1], 'danger')
+            flash('שגיאה ביצירת רכש. נסה שוב.', 'danger')
 
     return render_template('purchases/form.html', purchase=None,
                            assets=assets, grouped_assets=grouped_assets,
@@ -229,7 +229,7 @@ def edit(id):
     except Exception:
         err = traceback.format_exc()
         current_app.logger.error('edit _grouped_assets error:\n' + err)
-        flash('Error loading assets: ' + err.splitlines()[-1], 'danger')
+        flash('Error loading data. Please try again.', 'danger')
         return redirect(url_for('purchases.detail', id=id))
     assets_by_id = {str(a.id): a for a in assets}
 

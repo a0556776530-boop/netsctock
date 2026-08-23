@@ -762,9 +762,10 @@ def api_profile_photo():
         _bust_all_conv_caches()
         return jsonify(ok=True, removed=True)
 
-    if not photo.startswith('data:image/'):
+    _ALLOWED_MIME = ('data:image/jpeg;', 'data:image/png;', 'data:image/gif;', 'data:image/webp;')
+    if not any(photo.startswith(m) for m in _ALLOWED_MIME):
         return jsonify(ok=False, error='invalid'), 400
-    if len(photo) > 250 * 1024:   # ~250 KB max (160×160 JPEG ≈ 8–15 KB)
+    if len(photo) > 250 * 1024:
         return jsonify(ok=False, error='too_large'), 400
     uid = str(current_user.id)
     User.objects(id=uid).update_one(set__profile_photo=photo)

@@ -118,6 +118,7 @@ def create_app(config_class=Config):
     def set_locale():
         from flask import g, session
         from flask_login import current_user
+        session.permanent = True  # enforce PERMANENT_SESSION_LIFETIME idle timeout
         lang = session.get('lang', 'en')
         if lang not in TRANSLATIONS:
             lang = 'en'
@@ -210,10 +211,19 @@ def create_app(config_class=Config):
 
     @app.after_request
     def set_security_headers(response):
-        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('X-Frame-Options', 'DENY')
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-        response.headers.setdefault('X-XSS-Protection', '1; mode=block')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)')
+        response.headers.setdefault('Content-Security-Policy',
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdn.socket.io; "
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; "
+            "font-src 'self' cdn.jsdelivr.net fonts.gstatic.com data:; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self' ws: wss:; "
+            "frame-ancestors 'none';"
+        )
         return response
 
     @app.errorhandler(429)

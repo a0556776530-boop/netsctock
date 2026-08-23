@@ -140,7 +140,7 @@ def new_estimate():
 
     # Always build assets list (needed for both GET and POST re-render)
     assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())
-    assets_json = json.dumps([{
+    assets_list = [{
         'id':            str(a.id),
         'component_id':  a.component_id or '',
         'serial_number': a.serial_number,
@@ -149,7 +149,7 @@ def new_estimate():
         'type':          a.asset_type.name if a.asset_type else '',
         'price_usd':     float(a.price_usd),
         'quantity':      a.quantity if a.quantity is not None else 0,
-    } for a in assets])
+    } for a in assets]
     maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
 
     active_pools = list(Pool.objects(Q(is_active=True) | Q(is_active__exists=False)).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
@@ -157,7 +157,7 @@ def new_estimate():
     def _rerender(error_msg, form_data):
         flash(error_msg, 'danger')
         return render_template('estimates/new.html',
-                               assets_json=assets_json,
+                               assets_list=assets_list,
                                usd_rate=float(usd_rate),
                                maint_factor=maint_factor,
                                today=today,
@@ -177,10 +177,16 @@ def new_estimate():
         suggested_raw = (request.form.get('alloc_suggested') or '').strip()
         suggested_num = int(suggested_raw) if suggested_raw.isdigit() else None
 
+        try:
+            _items_parsed = json.loads(items_raw) if isinstance(items_raw, str) else []
+            if not isinstance(_items_parsed, list):
+                _items_parsed = []
+        except Exception:
+            _items_parsed = []
         _form_data = {
             'task_name':    task_name,
             'project_name': project_name,
-            'items_raw':    items_raw,
+            'items_parsed': _items_parsed,
             'alloc_num':    alloc_raw,
             'record_type':  record_type,
             'pool_id':      pool_id,
@@ -282,7 +288,7 @@ def new_estimate():
 
     # GET
     return render_template('estimates/new.html',
-                           assets_json=assets_json,
+                           assets_list=assets_list,
                            usd_rate=float(usd_rate),
                            maint_factor=maint_factor,
                            today=today,
@@ -420,7 +426,7 @@ def edit(id):
         return redirect(url_for('estimates.detail', id=str(estimate.id)))
 
     assets = list(Asset.objects(price_usd__exists=True, price_usd__ne=None).order_by('serial_number').select_related())
-    assets_json = json.dumps([{
+    assets_list = [{
         'id':            str(a.id),
         'component_id':  a.component_id or '',
         'serial_number': a.serial_number,
@@ -429,18 +435,18 @@ def edit(id):
         'type':          a.asset_type.name if a.asset_type else '',
         'price_usd':     float(a.price_usd),
         'quantity':      a.quantity if a.quantity is not None else 0,
-    } for a in assets])
+    } for a in assets]
 
-    selected_json = json.dumps([{
+    selected_list = [{
         'asset_id': str(item.asset.id) if item.asset else None,
         'quantity': item.quantity,
-    } for item in estimate.items])
+    } for item in estimate.items]
 
     stored_factor = float(estimate.maintenance_factor or AppSetting.get('maintenance_factor') or 1.7)
     active_pools  = list(Pool.objects(Q(is_active=True) | Q(is_active__exists=False)).order_by('name').only('id', 'name', 'emf_number', 'currency', 'total_amount', 'consumed_amount'))
     return render_template('estimates/edit.html',
-                           estimate=estimate, assets_json=assets_json,
-                           selected_json=selected_json, usd_rate=usd_rate,
+                           estimate=estimate, assets_list=assets_list,
+                           selected_list=selected_list, usd_rate=usd_rate,
                            maint_factor=stored_factor,
                            active_pools=active_pools)
 

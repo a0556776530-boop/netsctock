@@ -74,7 +74,7 @@ def login():
     return render_template('auth/login.html', form=form)
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
     t = getattr(g, 't', {})
@@ -85,6 +85,7 @@ def logout():
 
 @auth_bp.route('/change-password', methods=['GET', 'POST'])
 @login_required
+@limiter.limit('5 per minute')
 def change_password():
     t    = getattr(g, 't', {})
     form = ChangePasswordForm()

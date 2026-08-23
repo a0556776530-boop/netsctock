@@ -198,11 +198,11 @@
   // RATE = USD_BASE (3.6) × BINA (1.048), passed from server
   var RATE   = {{ usd_rate }};
   var FACTOR = {{ maint_factor }};
-  var ASSETS = {{ assets_json|safe }};
+  var ASSETS = {{ assets_list | tojson }};
   var sel    = {};
 
   // Restore items from server prefill (validation error re-render)
-  var PREFILL_ITEMS = {{ (prefill.items_raw if prefill else '[]') | safe }};
+  var PREFILL_ITEMS = {{ (prefill.items_parsed if prefill else []) | tojson }};
   if (Array.isArray(PREFILL_ITEMS) && PREFILL_ITEMS.length) {
     PREFILL_ITEMS.forEach(function (item) {
       var a = ASSETS.find(function (x) { return x.id === item.asset_id; });

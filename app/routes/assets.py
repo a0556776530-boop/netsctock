@@ -204,7 +204,7 @@ def list_assets():
         assets = list(qs.select_related())
 
     asset_types  = _all_asset_types_sorted()
-    global_settings = json.dumps(_global_settings_json())
+    global_settings = _global_settings_json()
 
     # Build type lookup from cached list — avoids per-asset reference dereference
     _type_name_map = {str(t.id): t.name for t in asset_types}
