@@ -154,16 +154,21 @@ def create_app(config_class=Config):
         from flask import g
         from .utils.exchange import get_usd_to_nis
 
-        _photos = cache.get('_user_photos_ctx')
-        if _photos is None:
-            try:
+        _photos = {}
+        try:
+            _cached = cache.get('_user_photos_ctx')
+            if _cached is None:
                 from .models.user import User
-                _photos = {u.name: u.profile_photo
+                _cached = {u.name: u.profile_photo
                            for u in User.objects.only('name', 'profile_photo')
                            if u.profile_photo}
-            except Exception:
-                _photos = {}
-            cache.set('_user_photos_ctx', _photos, timeout=90)
+                try:
+                    cache.set('_user_photos_ctx', _cached, timeout=90)
+                except Exception:
+                    pass
+            _photos = _cached or {}
+        except Exception:
+            _photos = {}
 
         return {
             'now': datetime.utcnow(),
