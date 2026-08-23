@@ -107,6 +107,9 @@ def unread_count():
 def user_activity_api():
     if not current_user.is_admin:
         return jsonify({'ok': False}), 403
+    _hit = cache.get('user_activity_api')
+    if _hit is not None:
+        return jsonify(_hit)
     from app.models.user import User
     now_utc = datetime.utcnow()
     result = []
@@ -135,7 +138,9 @@ def user_activity_api():
             'last_login': u.last_login.strftime('%d %b') if u.last_login else None,
             'last_seen_utc': u.last_seen.strftime('%H:%M:%S') if u.last_seen else None,
         })
-    return jsonify({'ok': True, 'users': result, 'now': now_utc.isoformat()})
+    payload = {'ok': True, 'users': result, 'now': now_utc.isoformat()}
+    cache.set('user_activity_api', payload, timeout=10)
+    return jsonify(payload)
 
 
 @main_bp.route('/api/rate')
