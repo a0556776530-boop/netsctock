@@ -6,25 +6,24 @@
 
   <!-- Brand -->
   <div class="text-center mb-4">
-    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NetStock"
-         style="width:200px; height:auto; max-width:100%; object-fit:contain; display:block; margin:0 auto;">
-    <div style="color:#00d4ff; font-size:.68rem; letter-spacing:.12em; font-weight:500; margin-top:3px;">
-      Track. Optimize. Scale.
-    </div>
-    <p class="brand-sub mt-2">{{ t.app_login_subtitle }}</p>
+    <img class="anim-0" src="{{ url_for('static', filename='img/logo.png') }}" alt="NetStock"
+         style="width:82px; height:auto; max-width:100%; object-fit:contain; display:block; margin:0 auto;">
+    <div class="brand-name anim-1">NetStock</div>
+    <div class="brand-tagline anim-2">Track · Optimize · Scale</div>
+    <p class="brand-sub anim-3">{{ t.app_login_subtitle }}</p>
   </div>
 
-  <hr class="divider">
+  <hr class="divider anim-3">
 
   <!-- Form -->
-  <form method="POST" novalidate autocomplete="on">
+  <form method="POST" novalidate autocomplete="on" id="loginForm">
     {{ form.hidden_tag() }}
 
-    <div class="mb-4">
-      <label class="form-label">{{ t.form_password }}</label>
-      <div class="pw-wrap">
+    <div class="mb-4 anim-4">
+      <div class="ffc-wrap pw-wrap{% if form.password.errors %} is-active{% endif %}" id="ffcWrap">
+        <label class="ffc-label" for="pwField">{{ t.form_password }}</label>
         {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
-                         placeholder="••••••••", id="pwField", autocomplete="current-password",
+                         placeholder=" ", id="pwField", autocomplete="current-password",
                          autofocus=True) }}
         <button type="button" class="pw-eye" id="pwToggle" tabindex="-1" aria-label="Toggle password visibility">
           <i class="bi bi-eye" id="pwIcon"></i>
@@ -35,19 +34,26 @@
       </div>
     </div>
 
-    <div class="mb-4 form-check">
+    <div class="mb-4 form-check anim-4">
       {{ form.remember(class="form-check-input") }}
       {{ form.remember.label(class="form-check-label") }}
     </div>
 
-    <button type="submit" class="btn-login" id="loginBtn">
-      <span id="loginBtnText">{{ t.login_submit }}</span>
-      <span id="loginSpinner" style="display:none;">
-        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-        {{ t.get('login_loading', 'Signing in…') }}
-      </span>
-    </button>
+    <div class="anim-5">
+      <button type="submit" class="btn-login" id="loginBtn">
+        <span id="loginBtnText">{{ t.login_submit }}</span>
+        <span id="loginSpinner" style="display:none;">
+          <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          {{ t.get('login_loading', 'Signing in…') }}
+        </span>
+      </button>
+    </div>
   </form>
+
+  <div class="trust-row anim-5">
+    <i class="bi bi-shield-lock-fill"></i>
+    Secured &middot; Encrypted &middot; HTTPS
+  </div>
 
   <p class="login-footer">NetStock &copy; {{ now.year }}</p>
 </div>
@@ -55,6 +61,8 @@
 
 {% block scripts %}
 <script>
+(function () {
+  // Eye toggle
   var btn  = document.getElementById('pwToggle');
   var fld  = document.getElementById('pwField');
   var icon = document.getElementById('pwIcon');
@@ -66,17 +74,41 @@
     });
   }
 
+  // Floating label: mark wrapper active when field has value
+  var wrap = document.getElementById('ffcWrap');
+  if (fld && wrap) {
+    function syncActive() {
+      if (fld.value.length > 0) {
+        wrap.classList.add('is-active');
+      } else {
+        wrap.classList.remove('is-active');
+      }
+    }
+    fld.addEventListener('input', syncActive);
+    syncActive();
+  }
+
   // Loading state on submit
-  var loginForm = fld && fld.closest('form');
+  var loginForm = document.getElementById('loginForm');
   var loginBtn  = document.getElementById('loginBtn');
   var loginText = document.getElementById('loginBtnText');
   var loginSpin = document.getElementById('loginSpinner');
   if (loginForm && loginBtn) {
     loginForm.addEventListener('submit', function () {
-      loginBtn.disabled  = true;
+      loginBtn.disabled = true;
       loginText.style.display = 'none';
       loginSpin.style.display = '';
     });
   }
+
+  // Shake card on server-side validation error
+  var card = document.querySelector('.login-card');
+  if (card && document.querySelector('.is-invalid')) {
+    card.classList.add('shake');
+    card.addEventListener('animationend', function () {
+      card.classList.remove('shake');
+    }, { once: true });
+  }
+})();
 </script>
 {% endblock %}

@@ -11,54 +11,53 @@
   {% endif %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
-      background: #0a0f1e;
+      background: #080d1a;
       min-height: 100vh;
       margin: 0;
       overflow: hidden;
     }
 
-    /* ── Animated background ── */
+    /* ── Aurora background ── */
     .bg-scene {
       position: fixed;
       inset: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(59,130,246,.18) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 50% at 80% 90%, rgba(99,102,241,.14) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 60% 40%, rgba(16,185,129,.07) 0%, transparent 60%),
-        #0a0f1e;
+      background: #080d1a;
+      overflow: hidden;
     }
+    .bg-scene::before {
+      content: '';
+      position: absolute;
+      inset: -60%;
+      background:
+        radial-gradient(ellipse 55% 45% at 20% 25%, rgba(59,130,246,.22) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 40% at 78% 75%, rgba(99,102,241,.18) 0%, transparent 65%),
+        radial-gradient(ellipse 35% 30% at 55% 15%, rgba(16,185,129,.10) 0%, transparent 65%),
+        radial-gradient(ellipse 30% 25% at 85% 30%, rgba(139,92,246,.08) 0%, transparent 60%);
+      animation: aurora 20s ease-in-out infinite alternate;
+      will-change: transform, filter;
+    }
+    @keyframes aurora {
+      0%   { transform: scale(1)    rotate(0deg);  filter: hue-rotate(0deg); }
+      50%  { transform: scale(1.08) rotate(4deg);  filter: hue-rotate(18deg); }
+      100% { transform: scale(.96)  rotate(-3deg); filter: hue-rotate(-12deg); }
+    }
+    /* Subtle noise grain overlay */
     .bg-scene::after {
       content: '';
       position: absolute;
       inset: 0;
-      background-image:
-        radial-gradient(circle, rgba(255,255,255,.04) 1px, transparent 1px);
-      background-size: 40px 40px;
-    }
-
-    /* ── Floating orbs ── */
-    .orb {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(80px);
-      animation: drift 12s ease-in-out infinite alternate;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: .028;
       pointer-events: none;
     }
-    .orb-1 { width:420px; height:420px; background:rgba(59,130,246,.12); top:-120px; left:-100px; animation-delay:0s; }
-    .orb-2 { width:320px; height:320px; background:rgba(99,102,241,.10); bottom:-80px; right:-80px; animation-delay:-4s; }
-    .orb-3 { width:200px; height:200px; background:rgba(16,185,129,.08); top:50%; right:15%; animation-delay:-8s; }
-    @keyframes drift {
-      from { transform: translate(0, 0) scale(1); }
-      to   { transform: translate(30px, -20px) scale(1.06); }
-    }
 
-    /* ── Card ── */
+    /* ── Centering wrapper ── */
     .login-wrap {
       position: relative;
       z-index: 10;
@@ -68,84 +67,153 @@
       min-height: 100vh;
       padding: 1.5rem;
     }
+
+    /* ── Card ── */
     .login-card {
       width: 100%;
-      max-width: 420px;
-      background: rgba(255,255,255,.035);
-      border: 1px solid rgba(255,255,255,.09);
-      border-radius: 20px;
-      padding: 2.8rem 2.5rem 2.5rem;
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      max-width: 430px;
+      position: relative;
+      background: rgba(255,255,255,.032);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 22px;
+      padding: 3rem 2.6rem 2.4rem;
+      backdrop-filter: blur(28px) saturate(1.4);
+      -webkit-backdrop-filter: blur(28px) saturate(1.4);
+      overflow: hidden;
       box-shadow:
-        0 0 0 1px rgba(255,255,255,.05) inset,
-        0 32px 64px rgba(0,0,0,.5),
-        0 8px 24px rgba(0,0,0,.3);
-      animation: cardIn .5s cubic-bezier(.22,1,.36,1) both;
+        0 0 0 1px rgba(255,255,255,.045) inset,
+        0 40px 80px rgba(0,0,0,.55),
+        0 12px 32px rgba(0,0,0,.35),
+        0 0 120px rgba(59,130,246,.06);
+      animation: cardIn .55s cubic-bezier(.22,1,.36,1) both;
+    }
+    /* Branded top accent line */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(59,130,246,.9) 30%,
+        rgba(139,92,246,.9) 60%,
+        transparent
+      );
+    }
+    /* Subtle inner top glow */
+    .login-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 100px;
+      background: linear-gradient(180deg, rgba(59,130,246,.05) 0%, transparent 100%);
+      pointer-events: none;
     }
     @keyframes cardIn {
-      from { opacity:0; transform: translateY(24px) scale(.97); }
-      to   { opacity:1; transform: translateY(0) scale(1); }
+      from { opacity:0; transform: translateY(28px) scale(.96); }
+      to   { opacity:1; transform: translateY(0)    scale(1); }
     }
 
-    /* ── Brand ── */
-    .brand-icon {
-      width: 60px; height: 60px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.6rem;
-      color: #fff;
-      box-shadow: 0 8px 24px rgba(59,130,246,.4), 0 0 0 1px rgba(255,255,255,.15) inset;
-      margin: 0 auto 1.2rem;
+    /* ── Brand section animations ── */
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(14px); }
+      to   { opacity:1; transform: translateY(0); }
     }
+    .anim-0 { animation: fadeUp .5s .08s ease both; }
+    .anim-1 { animation: fadeUp .5s .16s ease both; }
+    .anim-2 { animation: fadeUp .5s .22s ease both; }
+    .anim-3 { animation: fadeUp .5s .28s ease both; }
+    .anim-4 { animation: fadeUp .5s .34s ease both; }
+    .anim-5 { animation: fadeUp .5s .40s ease both; }
+
+    /* ── Brand typography ── */
     .brand-name {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #f1f5f9;
-      letter-spacing: -.02em;
-      margin: 0 0 .25rem;
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: #f0f4ff;
+      letter-spacing: -.035em;
+      margin: .55rem 0 .1rem;
+      line-height: 1;
+    }
+    .brand-tagline {
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(0,212,255,.7);
+      margin-bottom: .1rem;
     }
     .brand-sub {
-      font-size: .82rem;
-      color: rgba(255,255,255,.38);
+      font-size: .8rem;
+      color: rgba(255,255,255,.32);
       margin: 0;
     }
 
-    /* ── Form labels ── */
-    .form-label {
-      color: rgba(255,255,255,.65);
-      font-size: .8rem;
-      font-weight: 500;
-      letter-spacing: .02em;
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.09) 30%, rgba(255,255,255,.09) 70%, transparent);
+      margin: 1.6rem 0;
+    }
+
+    /* ── Form label (floating) ── */
+    .ffc-wrap {
+      position: relative;
+      padding-top: 1.25rem;
+    }
+    .ffc-label {
+      position: absolute;
+      top: 1.93rem;
+      inset-inline-start: .95rem;
+      color: rgba(255,255,255,.3);
+      font-size: .9rem;
+      font-weight: 400;
+      pointer-events: none;
+      transition: top .18s ease, font-size .18s ease, color .18s ease, letter-spacing .18s ease;
+      z-index: 2;
+    }
+    .ffc-wrap.is-active .ffc-label,
+    .ffc-wrap:focus-within .ffc-label {
+      top: .05rem;
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .06em;
       text-transform: uppercase;
-      margin-bottom: .45rem;
+      color: rgba(255,255,255,.45);
+    }
+    .ffc-wrap:focus-within .ffc-label {
+      color: #60a5fa;
     }
 
     /* ── Inputs ── */
     .form-control {
-      background: rgba(255,255,255,.06) !important;
-      border: 1px solid rgba(255,255,255,.1) !important;
-      border-radius: 10px !important;
-      color: #f1f5f9 !important;
+      background: rgba(255,255,255,.055) !important;
+      border: 1px solid rgba(255,255,255,.09) !important;
+      border-radius: 11px !important;
+      color: #f0f4ff !important;
       font-size: .92rem;
-      padding: .65rem .95rem;
-      transition: border-color .2s, box-shadow .2s, background .2s;
+      padding: .7rem .95rem;
+      transition: border-color .22s ease, box-shadow .22s ease, background .22s ease;
     }
-    .form-control::placeholder { color: rgba(255,255,255,.22) !important; }
+    .form-control::placeholder { color: transparent !important; }
     .form-control:focus {
-      background: rgba(255,255,255,.09) !important;
-      border-color: rgba(59,130,246,.7) !important;
-      box-shadow: 0 0 0 3px rgba(59,130,246,.18) !important;
+      background: rgba(255,255,255,.08) !important;
+      border-color: rgba(59,130,246,.65) !important;
+      box-shadow:
+        0 0 0 3px rgba(59,130,246,.18),
+        0 0 0 1px rgba(59,130,246,.5) !important;
       outline: none;
     }
     .form-control.is-invalid {
-      border-color: rgba(239,68,68,.6) !important;
-      box-shadow: 0 0 0 3px rgba(239,68,68,.12) !important;
+      border-color: rgba(239,68,68,.65) !important;
+      box-shadow: 0 0 0 3px rgba(239,68,68,.14) !important;
     }
-    .invalid-feedback { color: #f87171; font-size: .78rem; margin-top: .3rem; }
+    .invalid-feedback { color: #f87171; font-size: .78rem; margin-top: .35rem; }
 
-    /* ── Password wrapper ── */
+    /* ── Eye toggle ── */
     .pw-wrap { position: relative; }
     .pw-wrap .form-control { padding-inline-end: 2.8rem; }
     .pw-eye {
@@ -154,18 +222,19 @@
       inset-inline-end: .1rem;
       width: 2.6rem;
       display: flex; align-items: center; justify-content: center;
-      color: rgba(255,255,255,.3);
+      color: rgba(255,255,255,.28);
       cursor: pointer;
       background: none; border: none;
       transition: color .15s;
       font-size: 1rem;
+      z-index: 3;
     }
-    .pw-eye:hover { color: rgba(255,255,255,.7); }
+    .pw-eye:hover { color: rgba(255,255,255,.72); }
 
     /* ── Remember me ── */
     .form-check-input {
-      background-color: rgba(255,255,255,.08) !important;
-      border-color: rgba(255,255,255,.18) !important;
+      background-color: rgba(255,255,255,.07) !important;
+      border-color: rgba(255,255,255,.16) !important;
       cursor: pointer;
     }
     .form-check-input:checked {
@@ -173,69 +242,120 @@
       border-color: #3b82f6 !important;
     }
     .form-check-label {
-      color: rgba(255,255,255,.5);
+      color: rgba(255,255,255,.45);
       font-size: .83rem;
       cursor: pointer;
     }
 
     /* ── Submit button ── */
     .btn-login {
-      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 55%, #60a5fa 100%);
       border: none;
-      border-radius: 10px;
+      border-radius: 11px;
       color: #fff;
       font-size: .9rem;
       font-weight: 600;
       letter-spacing: .01em;
-      padding: .72rem;
+      padding: .78rem;
       width: 100%;
-      transition: opacity .15s, transform .12s, box-shadow .15s;
-      box-shadow: 0 4px 16px rgba(59,130,246,.35);
+      transition: opacity .15s, transform .14s cubic-bezier(.22,1,.36,1), box-shadow .2s;
+      box-shadow: 0 4px 20px rgba(59,130,246,.38), 0 1px 3px rgba(0,0,0,.3);
     }
-    .btn-login:hover  { opacity:.9; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(59,130,246,.4); color:#fff; }
-    .btn-login:active { transform: translateY(0); }
+    .btn-login:hover {
+      opacity: .93;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(59,130,246,.48), 0 2px 6px rgba(0,0,0,.3);
+      color: #fff;
+    }
+    .btn-login:active { transform: translateY(0) scale(.99); }
+    /* Shimmer sweep on hover */
+    .btn-login::after {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0;
+      left: -80%;
+      width: 60%;
+      background: linear-gradient(105deg,
+        transparent 0%,
+        rgba(255,255,255,.18) 50%,
+        transparent 100%
+      );
+    }
+    .btn-login:hover::after {
+      animation: btnShimmer .58s ease forwards;
+    }
+    @keyframes btnShimmer {
+      to { left: 140%; }
+    }
+
+    /* ── Shake on error ── */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      18%,54%  { transform: translateX(-8px); }
+      36%,72%  { transform: translateX(8px); }
+      90%      { transform: translateX(-3px); }
+    }
+    .shake { animation: shake .42s cubic-bezier(.36,.07,.19,.97) both; }
 
     /* ── Flash messages ── */
     .flash-wrap {
       position: fixed;
-      top: 1.25rem;
+      top: 1.2rem;
       left: 50%;
       transform: translateX(-50%);
       z-index: 9999;
       min-width: 340px;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
     }
     .alert {
-      border-radius: 10px;
-      font-size: .85rem;
-      backdrop-filter: blur(12px);
+      border-radius: 12px;
+      font-size: .84rem;
+      font-weight: 500;
+      backdrop-filter: blur(16px);
+      border-width: 1px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.2);
+      animation: alertSlide .32s cubic-bezier(.22,1,.36,1) both;
     }
+    @keyframes alertSlide {
+      from { opacity:0; transform: translateY(-16px) scale(.96); }
+      to   { opacity:1; transform: translateY(0)     scale(1); }
+    }
+
+    /* ── Trust row ── */
+    .trust-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      color: rgba(255,255,255,.18);
+      font-size: .7rem;
+      letter-spacing: .03em;
+      margin-top: 1.8rem;
+    }
+    .trust-row .bi { font-size: .78rem; color: rgba(34,197,94,.5); }
 
     /* ── Footer note ── */
     .login-footer {
       text-align: center;
-      color: rgba(255,255,255,.18);
-      font-size: .74rem;
-      margin-top: 2rem;
-    }
-    .divider {
-      border: none;
-      height: 1px;
-      background: rgba(255,255,255,.07);
-      margin: 1.6rem 0;
+      color: rgba(255,255,255,.14);
+      font-size: .7rem;
+      margin-top: .75rem;
     }
   </style>
 </head>
 <body>
 
 <div class="bg-scene"></div>
-<div class="orb orb-1"></div>
-<div class="orb orb-2"></div>
-<div class="orb orb-3"></div>
 
 <div class="flash-wrap">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
-      <div class="alert alert-{{ category }} alert-dismissible fade show shadow" role="alert">
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
         {{ message }}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
