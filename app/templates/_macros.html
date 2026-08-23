@@ -1,0 +1,17 @@
+{#
+  avatar(name, size=28)
+  Shows profile photo if available (via user_photos context dict), else initials circle.
+  user_photos and avatar_color are injected by the context processor in app/__init__.py.
+#}
+{%- macro avatar(name, size=28) -%}
+{%- set _p = user_photos.get(name) if (user_photos is defined and user_photos and name) else None -%}
+{%- if _p -%}
+<img src="{{ _p }}" alt="{{ name }}"
+     style="width:{{ size }}px;height:{{ size }}px;border-radius:50%;object-fit:cover;flex-shrink:0;display:inline-block;">
+{%- else -%}
+<div style="width:{{ size }}px;height:{{ size }}px;border-radius:50%;background:{{ avatar_color(name) }};
+            display:inline-flex;align-items:center;justify-content:center;
+            color:#fff;font-weight:700;font-size:{{ (size * 0.42)|int }}px;
+            flex-shrink:0;text-transform:uppercase;letter-spacing:0;user-select:none;">{{ ((name or '?')[0])|upper }}</div>
+{%- endif -%}
+{%- endmacro -%}
