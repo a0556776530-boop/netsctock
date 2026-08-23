@@ -165,7 +165,7 @@ def _localize_user_form(form, t, is_new=True):
 def users():
     _admin_required()
     all_users = list(User.objects.order_by('name').only(
-        'id', 'name', 'role', 'last_login', 'last_seen', 'created_at',
+        'id', 'name', 'role', 'last_login', 'last_seen', 'created_at', 'profile_photo',
     ))
     asset_counts, task_counts = _users_page_stats()
     user_stats = {
