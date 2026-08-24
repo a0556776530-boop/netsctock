@@ -20,6 +20,14 @@ class PoolForm(FlaskForm):
     notes        = TextAreaField('Notes',      validators=[Optional()])
     submit       = SubmitField('Save')
 
+    def localize(self, t):
+        self.name.label.text         = t.get('pool_label_name',     self.name.label.text)
+        self.emf_number.label.text   = t.get('pool_label_emf',      self.emf_number.label.text)
+        self.total_amount.label.text = t.get('pool_label_amount',   self.total_amount.label.text)
+        self.currency.label.text     = t.get('pool_label_currency', self.currency.label.text)
+        self.notes.label.text        = t.get('pool_label_notes',    self.notes.label.text)
+        self.submit.label.text       = t.get('pool_btn_save',       self.submit.label.text)
+
 
 # ── List ──────────────────────────────────────────────────────────────────────
 
@@ -38,6 +46,7 @@ def new_pool():
     if not current_user.can_edit:
         abort(403)
     form = PoolForm()
+    form.localize(getattr(g, 't', {}))
     if form.validate_on_submit():
         emf = form.emf_number.data.strip()
         if Pool.objects(emf_number=emf).first():
@@ -74,6 +83,7 @@ def edit_pool(id):
         abort(403)
     pool = get_or_404(Pool, id)
     form = PoolForm(obj=pool)
+    form.localize(getattr(g, 't', {}))
     if form.validate_on_submit():
         new_emf = form.emf_number.data.strip()
         conflict = Pool.objects(emf_number=new_emf, id__ne=pool.id).first()
