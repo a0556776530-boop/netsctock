@@ -91,8 +91,8 @@ def _global_settings_json():
 
 @cache.memoize(timeout=45)
 def _fetch_assets_unfiltered(sort_field, order):
-    """Full assets list with select_related — cached 45s when no filter applied."""
-    qs = Asset.objects.order_by(sort_field if order == 'asc' else f'-{sort_field}')
+    """Full assets list — photo excluded (fetched lazily per-asset via /assets/<id>/photo)."""
+    qs = Asset.objects.exclude('photo').order_by(sort_field if order == 'asc' else f'-{sort_field}')
     return list(qs.select_related())
 
 
@@ -201,7 +201,7 @@ def list_assets():
     if not q and not status_filter and not type_filter:
         assets = _fetch_assets_unfiltered(sort_field, order)
     else:
-        assets = list(qs.select_related())
+        assets = list(qs.exclude('photo').select_related())
 
     asset_types  = _all_asset_types_sorted()
     global_settings = _global_settings_json()
@@ -564,6 +564,17 @@ _SERIAL_COLS = (
     'partnumber', 'partno', 'component id', 'component', 'componentid',
 )
 _QTY_COLS = ('stock qty', 'stockqty', 'כמות', 'quantity', 'qty')
+
+
+@assets_bp.route('/<id>/photo')
+@login_required
+def asset_photo(id):
+    """Lightweight endpoint — returns only the photo field for a single asset."""
+    from flask import jsonify
+    asset = Asset.objects(id=id).only('photo').first()
+    if not asset:
+        return jsonify({'photo': ''}), 404
+    return jsonify({'photo': asset.photo or ''})
 
 
 @assets_bp.route('/export-csv')

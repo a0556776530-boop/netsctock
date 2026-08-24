@@ -297,7 +297,7 @@
                   "created":      asset.created_at.strftime("%d %b %Y") if asset.created_at else "",
                   "open_orders":  open_order_counts.get(asset.id|string, 0),
                   "closed_orders": closed_order_counts.get(asset.id|string, 0),
-                  "photo":        asset.photo or "",
+                  "asset_id":     asset.id|string,
                   "specs":        asset.specs or {}
                 } | tojson }}'>
 
@@ -863,8 +863,31 @@
 
   // ── Asset hover popover ────────────────────────────────────────────────────
   (function () {
-    var pop      = document.getElementById('assetPopover');
+    var pop       = document.getElementById('assetPopover');
     var hideTimer = null;
+    var _photoCache = {};  // asset_id → photo src (or '' if none)
+
+    function _loadPhoto(assetId, imgEl, wrapEl, noPhotoEl) {
+      if (_photoCache[assetId] !== undefined) {
+        if (_photoCache[assetId]) {
+          imgEl.src = _photoCache[assetId];
+          wrapEl.style.display = '';
+          noPhotoEl.style.display = 'none';
+        }
+        return;
+      }
+      fetch('/assets/' + assetId + '/photo')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          _photoCache[assetId] = data.photo || '';
+          if (data.photo) {
+            imgEl.src = data.photo;
+            wrapEl.style.display = '';
+            noPhotoEl.style.display = 'none';
+          }
+        })
+        .catch(function() { _photoCache[assetId] = ''; });
+    }
 
     var STATUS_COLORS = {
       'primary':   ['#dbeafe','#1d4ed8'],
@@ -881,18 +904,15 @@
       var d;
       try { d = JSON.parse(raw); } catch (_) { return; }
 
-      // Photo
+      // Photo — lazy fetch per asset
       var photoWrap  = document.getElementById('popPhotoWrap');
       var photoImg   = document.getElementById('popPhoto');
       var noPhotoEl  = document.getElementById('popNoPhoto');
-      if (d.photo) {
-        photoImg.src = d.photo;
-        photoWrap.style.display = '';
-        noPhotoEl.style.display = 'none';
-      } else {
-        photoWrap.style.display = 'none';
-        photoImg.src = '';
-        noPhotoEl.style.display = 'flex';
+      photoWrap.style.display = 'none';
+      photoImg.src = '';
+      noPhotoEl.style.display = 'flex';
+      if (d.asset_id) {
+        _loadPhoto(d.asset_id, photoImg, photoWrap, noPhotoEl);
       }
 
       // Model name
