@@ -67,6 +67,8 @@ class Pool(me.Document):
 
     def fmt(self, amount):
         amount = amount or 0.0
+        sign = '−' if amount < 0 else ''  # unicode minus before currency symbol
+        abs_amount = abs(amount)
         if self.currency == 'ILS':
-            return '₪{:,.0f}'.format(amount)
-        return '${:,.2f}'.format(amount)
+            return '{}₪{:,.0f}'.format(sign, abs_amount)
+        return '{}${:,.2f}'.format(sign, abs_amount)

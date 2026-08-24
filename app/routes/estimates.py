@@ -162,13 +162,13 @@ def check_allocation():
 def new_estimate():
     if not current_user.can_edit:
         abort(403)
-    from app.models.settings import EFFECTIVE_RATE
-    usd_rate = EFFECTIVE_RATE  # 3.6 × 1.048 ≈ 3.7728
-    today    = date.today()
-    validity = today + timedelta(days=90)
+    usd_rate     = round(AppSetting.get('usd_base_rate') * AppSetting.get('bina_factor'), 6)
+    vat_factor   = float(AppSetting.get('vat_factor') or 1.18)
+    today        = date.today()
+    validity     = today + timedelta(days=90)
 
     # Always build assets list (needed for both GET and POST re-render)
-    assets_list = _priced_assets_for_form()
+    assets_list  = _priced_assets_for_form()
     maint_factor = float(AppSetting.get('maintenance_factor') or 1.7)
 
     active_pools = _active_pools()
@@ -179,6 +179,7 @@ def new_estimate():
                                assets_list=assets_list,
                                usd_rate=float(usd_rate),
                                maint_factor=maint_factor,
+                               vat_factor=vat_factor,
                                today=today,
                                valid_until=validity,
                                next_num=form_data.get('next_num', _next_allocation_number()),
@@ -260,7 +261,7 @@ def new_estimate():
             if not asset or not asset.price_usd:
                 continue
             unit_usd = float(asset.price_usd)
-            line_nis  = round(unit_usd * float(usd_rate) * maint_factor * 1.18 * qty, 2)
+            line_nis  = round(unit_usd * float(usd_rate) * maint_factor * vat_factor * qty, 2)
             total_nis += line_nis
             estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
 
@@ -310,6 +311,7 @@ def new_estimate():
                            assets_list=assets_list,
                            usd_rate=float(usd_rate),
                            maint_factor=maint_factor,
+                           vat_factor=vat_factor,
                            today=today,
                            valid_until=validity,
                            next_num=_next_allocation_number(),
@@ -328,7 +330,8 @@ def detail(id):
     # Warehouse workers can only view allocations
     if current_user.is_warehouse and rec_type != 'allocation':
         abort(403)
-    return render_template('estimates/detail.html', estimate=estimate)
+    vat_factor = float(AppSetting.get('vat_factor') or 1.18)
+    return render_template('estimates/detail.html', estimate=estimate, vat_factor=vat_factor)
 
 
 @estimates_bp.route('/<id>/withdraw', methods=['POST'])
@@ -372,8 +375,9 @@ def restore(id):
 def edit(id):
     if not current_user.can_edit:
         abort(403)
-    estimate = get_or_404(Estimate, id)
-    usd_rate = float(estimate.usd_rate)
+    estimate   = get_or_404(Estimate, id)
+    usd_rate   = float(estimate.usd_rate)
+    vat_factor = float(AppSetting.get('vat_factor') or 1.18)
 
     if request.method == 'POST':
         task_name    = (request.form.get('task_name') or '').strip()
@@ -419,7 +423,7 @@ def edit(id):
             if not asset or not asset.price_usd:
                 continue
             unit_usd  = float(asset.price_usd)
-            line_nis  = round(unit_usd * usd_rate * maint_factor * 1.18 * qty, 2)
+            line_nis  = round(unit_usd * usd_rate * maint_factor * vat_factor * qty, 2)
             total_nis += line_nis
             estimate.items.append(EstimateItem(asset=asset, quantity=qty, unit_price_usd=unit_usd))
 
@@ -457,6 +461,7 @@ def edit(id):
                            estimate=estimate, assets_list=assets_list,
                            selected_list=selected_list, usd_rate=usd_rate,
                            maint_factor=stored_factor,
+                           vat_factor=vat_factor,
                            active_pools=active_pools)
 
 
@@ -473,8 +478,9 @@ def export_csv(id):
     w.writerow(['Valid Until', estimate.valid_until.strftime('%d %b %Y') if estimate.valid_until else ''])
     w.writerow([])
     w.writerow(['Part No.','Description','Type','Qty','Unit Price (USD)','Unit Price (ILS)','Line Total (ILS)'])
-    rate   = float(estimate.usd_rate)
-    factor = float(estimate.maintenance_factor or 1.7)
+    rate       = float(estimate.usd_rate)
+    factor     = float(estimate.maintenance_factor or 1.7)
+    vat        = float(AppSetting.get('vat_factor') or 1.18)
     for item in estimate.items:
         # Resolve asset safely — it may be a dangling reference if the asset was deleted
         try:
@@ -489,7 +495,7 @@ def export_csv(id):
             sn, model, atype = '[נמחק]', '', ''
 
         unit_usd = float(item.unit_price_usd) if item.unit_price_usd else 0.0
-        unit_ils = round(unit_usd * rate * factor * 1.18, 2)
+        unit_ils = round(unit_usd * rate * factor * vat, 2)
         line_ils = round(unit_ils * item.quantity, 2)
         w.writerow([sn, model, atype, item.quantity,
                     f'{unit_usd:.2f}', f'{unit_ils:.2f}', f'{line_ils:.2f}'])

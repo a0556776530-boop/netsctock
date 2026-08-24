@@ -174,11 +174,11 @@
     });
   }
 
-  // ── Formula: USD × 3.6 × 1.048 (Bina) × maintenance_factor × 1.18 ────────
-  const USD_BASE = 3.6;
-  const BINA     = 1.048;
-  const VAT      = 1.18;
-  let   factor   = 1.7;
+  // ── Formula: USD × usdBase × bina × factor × vat — all from /api/settings ─
+  let USD_BASE = 3.6;
+  let BINA     = 1.048;
+  let VAT      = 1.18;
+  let factor   = 1.7;
 
   const factorLabel = document.getElementById('factorLabel');
   const usdInput    = document.getElementById('priceUsd');        // visible editable input
@@ -188,8 +188,10 @@
   fetch('/api/settings')
     .then(r => r.json())
     .then(data => {
-      const f = parseFloat(data.maintenance_factor);
-      if (f > 0) factor = f;
+      if (data.usd_base_rate      > 0) USD_BASE = parseFloat(data.usd_base_rate);
+      if (data.bina_factor        > 0) BINA     = parseFloat(data.bina_factor);
+      if (data.maintenance_factor > 0) factor   = parseFloat(data.maintenance_factor);
+      if (data.vat_factor         > 0) VAT      = parseFloat(data.vat_factor);
       if (factorLabel) factorLabel.textContent = factor.toFixed(2);
       recalcNis();
     })

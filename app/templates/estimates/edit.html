@@ -158,6 +158,7 @@
   // RATE = stored effective rate for this estimate (USD_BASE × BINA at creation time)
   var RATE     = {{ usd_rate }};
   var FACTOR   = {{ maint_factor }};
+  var VAT      = {{ vat_factor }};
   var ASSETS   = {{ assets_list | tojson }};
   var SELECTED = {{ selected_list | tojson }};
   var sel      = {};
@@ -167,9 +168,9 @@
     if (a) sel[a.id] = { asset: a, qty: s.quantity };
   });
 
-  // Formula: USD × RATE × FACTOR × 1.18
+  // Formula: USD × RATE × FACTOR × VAT
   function calcILS(usd, qty) {
-    return Math.round(usd * RATE * FACTOR * 1.18 * (qty || 1) * 100) / 100;
+    return Math.round(usd * RATE * FACTOR * VAT * (qty || 1) * 100) / 100;
   }
   function fmt(n) {
     return n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₪';

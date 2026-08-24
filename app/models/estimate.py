@@ -14,10 +14,10 @@ class EstimateItem(me.EmbeddedDocument):
         except Exception:
             return None
 
-    def line_total_nis(self, usd_rate, maintenance_factor=1.7):
+    def line_total_nis(self, usd_rate, maintenance_factor=1.7, vat_factor=1.18):
         if not self.unit_price_usd:
             return 0.0
-        return round(self.unit_price_usd * float(usd_rate) * maintenance_factor * 1.18 * self.quantity, 2)
+        return round(self.unit_price_usd * float(usd_rate) * maintenance_factor * vat_factor * self.quantity, 2)
 
 
 class Estimate(me.Document):

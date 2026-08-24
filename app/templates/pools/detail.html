@@ -64,6 +64,7 @@
       <div class="fw-bold fs-5 {% if is_deficit %}text-danger{% elif pool.balance < pool.total_amount * 0.15 %}text-danger{% else %}text-success{% endif %}">
         {{ pool.fmt(pool.balance) }}
         {% if is_deficit %}
+          <i class="bi bi-arrow-down-circle-fill ms-1 small"></i>
           <span class="badge bg-danger align-middle ms-1" style="font-size:.6rem; vertical-align:middle;">{{ t.pool_badge_deficit }}</span>
         {% endif %}
       </div>
