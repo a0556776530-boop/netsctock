@@ -106,41 +106,6 @@
 
 </div>
 
-<!-- ── Activity Feed ──────────────────────────────────────────────────── -->
-<div class="row g-3 mb-4">
-  <div class="col-12">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-transparent fw-semibold small border-0 pt-3 d-flex align-items-center justify-content-between">
-        <span><i class="bi bi-activity me-1 text-primary"></i>פעילות אחרונה במערכת</span>
-        <span class="badge bg-primary bg-opacity-10 text-primary">{{ activity_feed | length }} פעולות</span>
-      </div>
-      <div class="card-body p-0" style="max-height:340px; overflow-y:auto;">
-        {% if activity_feed %}
-        <ul class="list-group list-group-flush">
-          {% for entry in activity_feed %}
-          <li class="list-group-item d-flex align-items-start gap-3 py-2 px-3">
-            <div class="flex-shrink-0 pt-1">{{ avatar(entry.user_name, user_photos, 26) }}</div>
-            <div class="flex-grow-1 overflow-hidden">
-              <div class="small fw-semibold text-truncate">{{ entry.description }}</div>
-              <div class="x-small text-muted mt-1">
-                <span class="me-1">{{ entry.user_name }}</span>
-                <span class="text-muted" data-ts="{{ entry.created_at.isoformat() }}">
-                  {{ entry.created_at.strftime('%d/%m %H:%M') }}
-                </span>
-              </div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="text-muted text-center small py-4">
-          <i class="bi bi-hourglass me-1"></i>עדיין אין פעילות רשומה — תתחיל להשתמש במערכת
-        </p>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ── Purchases Pipeline + Expiring ────────────────────────────────── -->
 <div class="row g-3 mb-4">

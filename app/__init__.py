@@ -56,33 +56,6 @@ def create_app(config_class=Config):
     login_manager.login_message = 'Please log in to access this page.'
     login_manager.login_message_category = 'warning'
 
-    from flask_login import user_loaded_from_cookie
-    from flask import request as _flask_req
-
-    _cookie_login_seen: dict = {}  # uid -> last recorded timestamp
-
-    @user_loaded_from_cookie.connect_via(app)
-    def _on_cookie_login(sender, user):
-        try:
-            from datetime import datetime as _dt
-            uid = str(user.id)
-            now = _dt.utcnow()
-            last = _cookie_login_seen.get(uid)
-            if last and (now - last).total_seconds() < 300:
-                return  # skip DB query — recorded within last 5 min
-            _cookie_login_seen[uid] = now
-            from .utils.login_recorder import record_login, get_ip
-            record_login(
-                user_name=user.name,
-                user_role=user.role,
-                user_id=uid,
-                ip=get_ip(_flask_req),
-                ua=_flask_req.headers.get('User-Agent', ''),
-                success=True,
-            )
-        except Exception:
-            pass
-
     from .routes.auth import auth_bp
     from .routes.main import main_bp
     from .routes.assets import assets_bp
@@ -147,57 +120,6 @@ def create_app(config_class=Config):
 
     from .seed import register_commands
     register_commands(app)
-
-    # Ensure login_events indexes (incl. TTL) exist on the live collection
-    try:
-        from .models.login_event import LoginEvent
-        LoginEvent.ensure_indexes()
-    except Exception:
-        pass
-
-    try:
-        from .models.activity import ActivityLog
-        ActivityLog.ensure_indexes()
-    except Exception:
-        pass
-
-    try:
-        from .models.page_visit import PageVisit
-        PageVisit.ensure_indexes()
-    except Exception:
-        pass
-
-    @app.before_request
-    def _log_page_visit():
-        from flask import request, session
-        from flask_login import current_user
-        if not current_user.is_authenticated:
-            return
-        if request.method != 'GET':
-            return
-        endpoint = request.endpoint or ''
-        from .models.page_visit import PAGE_NAMES
-        if endpoint not in PAGE_NAMES:
-            return
-        try:
-            import uuid as _uuid
-            from .models.page_visit import PageVisit
-            sid = session.get('_psid')
-            if not sid:
-                sid = _uuid.uuid4().hex[:20]
-                session['_psid'] = sid
-            ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
-            PageVisit(
-                user_id=str(current_user.id),
-                user_name=current_user.name,
-                user_role=getattr(current_user, 'role', ''),
-                path=request.path,
-                page_name=PAGE_NAMES[endpoint],
-                ip_address=ip,
-                session_id=sid,
-            ).save()
-        except Exception:
-            pass
 
     @app.after_request
     def set_security_headers(response):

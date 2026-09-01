@@ -13,7 +13,6 @@ from app.models.asset import Asset
 from app.models.pool import Pool, PoolTransaction
 from app.models.settings import AppSetting
 from app.utils.mongo_helpers import get_or_404
-from app.utils.activity import log_activity
 from app import cache
 
 estimates_bp = Blueprint('estimates', __name__, url_prefix='/estimates')
@@ -300,7 +299,6 @@ def new_estimate():
         if suggested and next_num == suggested:
             AppSetting.set('alloc_counter', next_num)
 
-        log_activity(current_user, 'estimate_created', f'יצר הקצאה חדשה: {task_name}')
         flash(f'Estimate "{task_name}" saved successfully.', 'success')
         if record_type == 'estimate':
             return redirect(url_for('estimates.list_budget_estimates'))
@@ -348,7 +346,6 @@ def withdraw(id):
     estimate.withdrawn_at = datetime.now(israel_tz).replace(tzinfo=None)
     estimate.save()
     _invalidate_list_cache()
-    log_activity(current_user, 'estimate_withdrawn', f'העביר הקצאה להיסטוריה: {estimate.task_name}')
     flash(f'Assignment {estimate.allocation_number} marked as ongoing and moved to History.', 'success')
     return redirect(url_for('estimates.detail', id=str(estimate.id)))
 
@@ -444,7 +441,6 @@ def edit(id):
                 flash('מספר הקצאה נתפס במקביל. נסה שוב.', 'danger')
                 return redirect(url_for('estimates.edit', id=str(estimate.id)))
         _invalidate_list_cache()
-        log_activity(current_user, 'estimate_edited', f'עדכן הקצאה: {estimate.task_name}')
         flash('Estimate updated successfully.', 'success')
         return redirect(url_for('estimates.detail', id=str(estimate.id)))
 
@@ -530,7 +526,6 @@ def warehouse_complete(id):
     estimate.warehouse_status = 'completed'
     estimate.warehouse_completed_at = datetime.now(timezone(timedelta(hours=3))).replace(tzinfo=None)
     estimate.save()
-    log_activity(current_user, 'estimate_completed', f'סיים הקצאה: {estimate.task_name}')
     flash('ההזמנה סומנה כבוצעה ועברה להיסטוריה.', 'success')
     return redirect(url_for('estimates.list_estimates'))
 

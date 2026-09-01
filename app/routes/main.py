@@ -10,7 +10,6 @@ from app.utils.cache import cache
 
 from app.models.asset import Asset
 from app.models.task import Task
-from app.models.activity import ActivityLog
 
 main_bp = Blueprint('main', __name__)
 
@@ -137,10 +136,6 @@ def save_settings():
                 pass
     return jsonify({'ok': True})
 
-
-@cache.memoize(timeout=30)
-def _activity_feed():
-    return list(ActivityLog.objects.order_by('-created_at').limit(30))
 
 
 @cache.memoize(timeout=45)
@@ -271,7 +266,6 @@ def dashboard():
 
     # ── Live data ─────────────────────────────────────────────────────────────
     expiring_estimates = _expiring_estimates()
-    activity_feed      = _activity_feed()
 
     # user list — cached 15s (no profile_photo — use separate cache)
     _users_raw = cache.get('_dash_users')
@@ -318,7 +312,6 @@ def dashboard():
         expiring_estimates=expiring_estimates,
         all_users=all_users,
         user_photos=user_photos,
-        activity_feed=activity_feed,
         now_utc=now_utc,
         today=today,
         status_chart=status_chart,

@@ -10,7 +10,6 @@ from app import cache
 from app.models.purchase import Purchase, PurchaseItem, STATUSES, ACTIVE_STATUSES, MANUAL_STATUSES, CURRENCIES, STATUS_COLORS
 from app.models.asset import Asset
 from app.utils.mongo_helpers import get_or_404
-from app.utils.activity import log_activity
 
 purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
 
@@ -217,7 +216,6 @@ def new_purchase():
             )
             p.save()
             _invalidate_purchases_cache()
-            log_activity(current_user, 'purchase_created', f'יצר רכש חדש: {name}')
             flash(t.get('flash_purchase_created', 'Purchase created successfully.'), 'success')
             return redirect(url_for('purchases.list_purchases') + '?status=all')
 
@@ -327,7 +325,6 @@ def edit(id):
                 )
             flash('ההזמנה בוטלה.', 'warning')
 
-        log_activity(current_user, 'purchase_updated', f'עדכן רכש: {purchase.name}')
         flash(t.get('flash_purchase_updated', 'Purchase updated successfully.'), 'success')
         return redirect(url_for('purchases.detail', id=purchase.id))
 
@@ -372,7 +369,6 @@ def quick_status(id):
 
     purchase.save()
     _invalidate_purchases_cache()
-    log_activity(current_user, 'purchase_status', f'עדכן סטטוס רכש: {purchase.name} → {new_status}')
 
     key = 'purchase_status_' + new_status.lower().replace(' ', '_')
     label = t.get(key, new_status)
@@ -519,7 +515,6 @@ def receive(id):
         purchase.status = 'Order Received in Warehouse'
         if not purchase.received_at:
             purchase.received_at = datetime.utcnow()
-        log_activity(current_user, 'purchase_received', f'קלט לפי הזמנה: {purchase.name}')
         flash(t.get('flash_all_items_received', 'All items received — order completed!'), 'success')
     elif any_received_total > 0:
         purchase.status = 'Partial Delivery'

@@ -10,7 +10,6 @@ from app import bcrypt, limiter
 from app.routes.admin import _password_already_used
 from app.models.user import User
 from app.utils.translations import localize_form
-from app.utils.login_recorder import record_login, get_ip
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -45,35 +44,18 @@ def login():
                 break
         if matched:
             from datetime import datetime
-            prev_login = matched.last_login
             matched.last_login = datetime.utcnow()
             matched.last_seen  = datetime.utcnow()
             matched.save()
             login_user(matched, remember=form.remember.data)
-            record_login(
-                user_name=matched.name, user_role=matched.role,
-                user_id=str(matched.id), ip=get_ip(request),
-                ua=request.headers.get('User-Agent', ''), success=True,
-            )
             next_page = request.args.get('next', '')
-            # Allow only safe relative paths.
-            # Block: empty, non-slash-prefixed, protocol-relative (//), and backslash-relative (/\)
-            # because Chrome/Edge/Safari normalise /\ to // enabling open-redirect.
             if (not next_page
                     or not next_page.startswith('/')
                     or next_page.startswith('//')
                     or next_page[1:2] == '\\'):
                 next_page = ''
             flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=matched.name), 'success')
-            if prev_login:
-                fmt = prev_login.strftime('%d %b %Y, %H:%M')
-                flash(t.get('flash_last_login', 'Last login: {date}').format(date=fmt), 'info')
             return redirect(next_page or url_for('main.dashboard'))
-        record_login(
-            user_name='—', user_role='—',
-            ip=get_ip(request),
-            ua=request.headers.get('User-Agent', ''), success=False,
-        )
         flash(t.get('flash_login_failed', 'Incorrect password.'), 'danger')
     return render_template('auth/login.html', form=form)
 

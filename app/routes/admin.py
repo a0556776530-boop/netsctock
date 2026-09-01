@@ -1,6 +1,4 @@
 from datetime import datetime
-from flask import make_response
-
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
@@ -26,47 +24,6 @@ def _password_already_used(plaintext, exclude_id=None):
             return True
     return False
 from app.utils.mongo_helpers import get_or_404
-
-
-def _get_login_col():
-    from mongoengine.connection import get_db
-    return get_db('default')['login_events']
-
-
-@cache.memoize(timeout=60)
-def _login_history_analytics():
-    """Chart, alerts, top_failed — cached 60s (not filter-dependent)."""
-    from datetime import timedelta as _td
-    col = _get_login_col()
-    now = datetime.utcnow()
-
-    chart_raw = list(col.aggregate([
-        {'$match': {'timestamp': {'$gte': now - _td(days=14)}}},
-        {'$group': {
-            '_id':     {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
-            'success': {'$sum': {'$cond': ['$success', 1, 0]}},
-            'failed':  {'$sum': {'$cond': ['$success', 0, 1]}},
-        }},
-        {'$sort': {'_id': 1}},
-    ]))
-    alerts = list(col.aggregate([
-        {'$match': {'success': False, 'timestamp': {'$gte': now - _td(hours=24)}}},
-        {'$group': {
-            '_id':   '$ip_address',
-            'count': {'$sum': 1},
-            'users': {'$addToSet': '$user_name'},
-        }},
-        {'$match': {'count': {'$gte': 5}}},
-        {'$sort': {'count': -1}},
-        {'$limit': 5},
-    ]))
-    top_failed = list(col.aggregate([
-        {'$match': {'success': False, 'timestamp': {'$gte': now - _td(days=7)}}},
-        {'$group': {'_id': '$user_name', 'count': {'$sum': 1}}},
-        {'$sort': {'count': -1}},
-        {'$limit': 3},
-    ]))
-    return chart_raw, alerts, top_failed
 
 
 @cache.memoize(timeout=30)
@@ -370,53 +327,6 @@ def reset_password(id):
     return render_template('admin/reset_password.html', form=form, user=user)
 
 
-# ── User activity timeline (super_admin only) ─────────────────────────────────
-
-@admin_bp.route('/users/<id>/activity')
-@login_required
-def user_activity(id):
-    _super_admin_required()
-    from zoneinfo import ZoneInfo
-    from datetime import timezone as _tz
-    from app.models.page_visit import PageVisit
-
-    _IL = ZoneInfo('Asia/Jerusalem')
-    user = get_or_404(User, id)
-    uid  = str(user.id)
-
-    def _to_il(dt):
-        if dt is None:
-            return None
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=_tz.utc)
-        return dt.astimezone(_IL)
-
-    # Deduplicate in MongoDB: one entry per unique path, keep most recent
-    pipeline = [
-        {'$match': {'user_id': uid}},
-        {'$sort': {'visited_at': -1}},
-        {'$group': {
-            '_id':       '$path',
-            'page_name': {'$first': '$page_name'},
-            'visited_at': {'$first': '$visited_at'},
-        }},
-        {'$sort': {'visited_at': -1}},
-    ]
-    rows = list(PageVisit._get_collection().aggregate(pipeline))
-    visited_pages = [
-        {
-            'text':      r['page_name'],
-            'path':      r['_id'],
-            'last_seen': _to_il(r['visited_at']),
-        }
-        for r in rows
-    ]
-
-    return render_template('admin/user_activity.html',
-                           target_user=user,
-                           visited_pages=visited_pages)
-
-
 # ── Settings ─────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/settings', methods=['GET'])
@@ -463,98 +373,5 @@ def update_role(id):
     return jsonify(ok=True)
 
 
-# ── Login History ─────────────────────────────────────────────────────────────
-
-@admin_bp.route('/login-history')
-@login_required
-def login_history():
-    _admin_required()
-    page           = max(1, request.args.get('page', 1, type=int))
-    per_page       = 50
-    user_filter    = request.args.get('user', '').strip()
-    success_filter = request.args.get('success', '')
-    date_from      = request.args.get('date_from', '')
-    date_to        = request.args.get('date_to', '')
-    ip_filter      = request.args.get('ip', '').strip()
-
-    filt = {}
-    if user_filter:
-        import re as _re
-        filt['user_name'] = {'$regex': _re.escape(user_filter), '$options': 'i'}
-    if success_filter == '1':
-        filt['success'] = True
-    elif success_filter == '0':
-        filt['success'] = False
-    if ip_filter:
-        filt['ip_address'] = ip_filter
-    if date_from:
-        try:
-            filt.setdefault('timestamp', {})['$gte'] = datetime.strptime(date_from, '%Y-%m-%d')
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            filt.setdefault('timestamp', {})['$lte'] = datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S')
-        except ValueError:
-            pass
-
-    col = _get_login_col()
-    total  = col.count_documents(filt)
-    events = list(col.find(filt).sort([('_id', -1)]).skip((page - 1) * per_page).limit(per_page))
-    pages  = max(1, (total + per_page - 1) // per_page)
-
-    # ── KPI stats (scoped to current filter — cache per filt hash) ────────────
-    import hashlib as _hl, json as _json
-    _filt_key = 'lh_stats_' + _hl.md5(_json.dumps(filt, sort_keys=True, default=str).encode()).hexdigest()
-    stats = cache.get(_filt_key)
-    if stats is None:
-        _stats_raw = list(col.aggregate([
-            {'$match': filt},
-            {'$group': {
-                '_id':          None,
-                'total':        {'$sum': 1},
-                'success_cnt':  {'$sum': {'$cond': ['$success', 1, 0]}},
-                'failed_cnt':   {'$sum': {'$cond': ['$success', 0, 1]}},
-                'unique_ips':   {'$addToSet': '$ip_address'},
-                'unique_users': {'$addToSet': '$user_name'},
-            }}
-        ]))
-        _s = _stats_raw[0] if _stats_raw else {}
-        _total_s   = _s.get('total', 0)
-        _success_s = _s.get('success_cnt', 0)
-        _failed_s  = _s.get('failed_cnt', 0)
-        stats = {
-            'total':        _total_s,
-            'success':      _success_s,
-            'failed':       _failed_s,
-            'rate':         round(_success_s * 100 / _total_s, 1) if _total_s else 0,
-            'unique_ips':   len(_s.get('unique_ips', [])),
-            'unique_users': len(_s.get('unique_users', [])),
-        }
-        cache.set(_filt_key, stats, timeout=30)
-
-    # ── Chart, alerts, top_failed — cached 60s (not filter-dependent) ─────────
-    chart_data, security_alerts, top_failed = _login_history_analytics()
-
-    resp = make_response(render_template(
-        'admin/login_history.html',
-        events=events,
-        total=total,
-        page=page,
-        pages=pages,
-        per_page=per_page,
-        user_filter=user_filter,
-        success_filter=success_filter,
-        date_from=date_from,
-        date_to=date_to,
-        ip_filter=ip_filter,
-        stats=stats,
-        chart_data=chart_data,
-        security_alerts=security_alerts,
-        top_failed=top_failed,
-    ))
-    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    resp.headers['Pragma'] = 'no-cache'
-    return resp
 
 

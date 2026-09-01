@@ -15,7 +15,6 @@ from app.models.purchase import Purchase, ACTIVE_STATUSES
 from app.models.site import Site
 from app.models.user import User
 from app.utils.events import log_event
-from app.utils.activity import log_activity
 from app.utils.translations import localize_form
 from app.utils.mongo_helpers import get_or_404
 from app.utils.cache import cache
@@ -320,7 +319,6 @@ def new_asset():
         )
         asset.save()
         log_event(asset, 'created', current_user, notes=f'Asset registered. Status: {asset.status_label}')
-        log_activity(current_user, 'asset_created', f'רשם רכיב חדש: {asset.serial_number}')
         flash(t.get('flash_asset_created', '{sn} registered successfully.').format(sn=asset.serial_number), 'success')
         return redirect(url_for('assets.list_assets'))
 
@@ -421,7 +419,6 @@ def assign(id):
         asset.save()
         log_event(asset, 'assigned', current_user, from_site=prev_site, to_site=to_site,
                   notes=(form.notes.data or '').strip() or None)
-        log_activity(current_user, 'asset_assigned', f'הקצה את {asset.serial_number} ל-{assignee.name if assignee else "—"}')
         flash(t.get('flash_assigned', '{sn} assigned successfully.').format(sn=asset.serial_number), 'success')
 
     else:
@@ -447,7 +444,6 @@ def move(id):
         asset.save()
         log_event(asset, 'moved', current_user, from_site=prev_site, to_site=to_site,
                   notes=(form.notes.data or '').strip() or None)
-        log_activity(current_user, 'asset_moved', f'העביר את {asset.serial_number} ל-{to_site.name}')
         flash(t.get('flash_moved', '{sn} moved to {site}.').format(sn=asset.serial_number, site=to_site.name), 'success')
     else:
         flash(t.get('flash_form_error', 'Form error. Please try again.'), 'danger')
@@ -475,7 +471,6 @@ def return_asset(id):
         asset.save()
         log_event(asset, 'returned', current_user, from_site=prev_site, to_site=to_site,
                   notes=(form.notes.data or '').strip() or None)
-        log_activity(current_user, 'asset_returned', f'החזיר את {asset.serial_number} לאחסון')
         flash(t.get('flash_returned', '{sn} returned to storage.').format(sn=asset.serial_number), 'info')
     else:
         flash(t.get('flash_form_error', 'Form error. Please try again.'), 'danger')
