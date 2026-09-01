@@ -579,7 +579,7 @@ TRANSLATIONS = {
         'import_qty_invalid_title': 'Invalid Quantity',
         'import_qty_skipped_title': 'Skipped',
         # ── Pools ─────────────────────────────────────────────────────────────
-        'pools_title':              'Pools',
+        'pools_title':              'Pool Management',
         'pools_page_title':         'Pool Management',
         'pool_count_suffix':        'pool',
         'pool_count_suffix_plural': 'pools',
@@ -1246,7 +1246,7 @@ TRANSLATIONS = {
         'import_qty_invalid_title': 'כמות לא תקינה',
         'import_qty_skipped_title': 'דולגו',
         # ── פולים ─────────────────────────────────────────────────────────────
-        'pools_title':              'פולים',
+        'pools_title':              'ניהול פולים',
         'pools_page_title':         'ניהול פולים',
         'pool_count_suffix':        'פול',
         'pool_count_suffix_plural': 'פולים',
