@@ -2,7 +2,6 @@ Flask==3.0.3
 Flask-Login==0.6.3
 Flask-Bcrypt==1.0.1
 Flask-WTF==1.2.1
-Flask-SocketIO==5.3.6
 mongoengine==0.29.3
 pymongo==4.17.0
 dnspython==2.8.0
@@ -11,9 +10,6 @@ WTForms==3.1.2
 email-validator==2.1.1
 gunicorn==23.0.0
 Flask-Limiter==3.9.0
-geoip2==4.8.0
-maxminddb==2.6.2
 tzdata
 Flask-Caching==2.3.0
-pywebpush>=1.14.0,<2.0.0
 openpyxl==3.1.5
