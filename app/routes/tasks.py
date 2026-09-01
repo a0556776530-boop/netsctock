@@ -130,7 +130,10 @@ def mark_done(id):
     task.status = 'done'
     task.save()
     flash(f'"{task.title}" marked as done.', 'success')
-    return redirect(request.referrer or url_for('tasks.list_tasks'))
+    from urllib.parse import urlparse
+    ref = request.referrer or ''
+    safe_ref = urlparse(ref).path or url_for('tasks.list_tasks')
+    return redirect(safe_ref)
 
 
 @tasks_bp.route('/<id>/reopen', methods=['POST'])
@@ -142,7 +145,10 @@ def reopen(id):
     task.status = 'in_progress'
     task.save()
     flash(f'"{task.title}" reopened.', 'info')
-    return redirect(request.referrer or url_for('tasks.list_tasks'))
+    from urllib.parse import urlparse
+    ref = request.referrer or ''
+    safe_ref = urlparse(ref).path or url_for('tasks.list_tasks')
+    return redirect(safe_ref)
 
 
 @tasks_bp.route('/<id>/delete', methods=['POST'])

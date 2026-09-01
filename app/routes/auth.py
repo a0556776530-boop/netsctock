@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SubmitField
+from wtforms import StringField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 
@@ -22,6 +23,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 class LoginForm(FlaskForm):
+    username = StringField('Username')  # optional — speeds up login when set
     password = PasswordField('Password', validators=[DataRequired(), _byte_length(max=72)])
     remember = BooleanField('Remember me')
     submit   = SubmitField('Sign In')
@@ -43,12 +45,18 @@ def login():
     localize_form(form, t, submit_key='login_submit')
     if form.validate_on_submit():
         matched = None
-        # Sort by last_login so most-recently-active user is checked first,
-        # minimising bcrypt iterations on average without changing the UX.
-        for u in User.objects.order_by('-last_login'):
-            if bcrypt.check_password_hash(u.password_hash, form.password.data):
-                matched = u
-                break
+        uname = (form.username.data or '').strip()
+        if uname:
+            # Fast path: direct index lookup by username
+            candidate = User.objects(username=uname).first()
+            if candidate and bcrypt.check_password_hash(candidate.password_hash, form.password.data):
+                matched = candidate
+        else:
+            # Fallback: scan all users sorted by last_login (password-only mode)
+            for u in User.objects.order_by('-last_login'):
+                if bcrypt.check_password_hash(u.password_hash, form.password.data):
+                    matched = u
+                    break
         if matched:
             from datetime import datetime
             matched.last_login = datetime.utcnow()

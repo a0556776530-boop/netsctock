@@ -211,6 +211,12 @@
     });
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
   // Formula: USD × RATE × FACTOR × VAT
   function calcILS(usd, qty) {
     return Math.round(usd * RATE * FACTOR * VAT * (qty || 1) * 100) / 100;
@@ -240,10 +246,10 @@
         : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">0</span>';
       html +=
         '<tr>' +
-        '<td class="x-small font-monospace text-muted">'   + (a.component_id || '—') + '</td>' +
-        '<td class="small font-monospace fw-semibold">'    + a.serial_number + '</td>' +
-        '<td class="small">'                               + (a.model || '') + (a.model && a.manufacturer ? ' · ' : '') + (a.manufacturer || '') + '</td>' +
-        '<td class="x-small text-muted">'                 + (a.type || '') + '</td>' +
+        '<td class="x-small font-monospace text-muted">'   + esc(a.component_id || '—') + '</td>' +
+        '<td class="small font-monospace fw-semibold">'    + esc(a.serial_number) + '</td>' +
+        '<td class="small">'                               + esc(a.model || '') + (a.model && a.manufacturer ? ' · ' : '') + esc(a.manufacturer || '') + '</td>' +
+        '<td class="x-small text-muted">'                 + esc(a.type || '') + '</td>' +
         '<td class="text-center">'                        + stockBadge + '</td>' +
         '<td class="text-end small font-monospace">$'     + a.price_usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>' +
         '<td class="text-end small font-monospace">'      + fmt(calcILS(a.price_usd, 1)) + '</td>' +
@@ -303,8 +309,8 @@
       var a = s.asset;
       html +=
         '<tr id="selRow_' + id + '">' +
-        '<td class="small font-monospace fw-semibold">' + a.serial_number + '</td>' +
-        '<td class="small">' + (a.model || '—') + '</td>' +
+        '<td class="small font-monospace fw-semibold">' + esc(a.serial_number) + '</td>' +
+        '<td class="small">' + esc(a.model || '—') + '</td>' +
         '<td class="text-center">' +
           '<input type="number" class="form-control form-control-sm text-center" min="1" value="' + s.qty + '"' +
           ' style="width:75px; margin:auto;"' +

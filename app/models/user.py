@@ -5,9 +5,11 @@ from datetime import datetime
 
 
 class User(UserMixin, me.Document):
-    meta = {'collection': 'users', 'strict': False, 'indexes': ['-last_seen', 'role']}
+    meta = {'collection': 'users', 'strict': False,
+            'indexes': ['-last_seen', 'role', {'fields': ['username'], 'unique': True, 'sparse': True}]}
 
     name           = me.StringField(max_length=100, required=True)
+    username       = me.StringField(max_length=50, sparse=True)  # unique login identifier; sparse = NULLs allowed
     password_hash  = me.StringField(max_length=255, required=True)
     role           = me.StringField(max_length=20, default='viewer')
     created_at     = me.DateTimeField(default=datetime.utcnow)

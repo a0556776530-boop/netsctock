@@ -581,6 +581,8 @@ def asset_photo(id):
 @assets_bp.route('/export-csv')
 @login_required
 def export_csv():
+    if not current_user.can_edit:
+        abort(403)
     import io
     from flask import Response
     import openpyxl

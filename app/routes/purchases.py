@@ -49,6 +49,8 @@ def _save_bom_file(file):
 @purchases_bp.route('/bom/<path:filename>')
 @login_required
 def serve_bom(filename):
+    if not current_user.can_edit:
+        abort(403)
     return send_from_directory(_bom_dir(), filename)
 
 
@@ -234,6 +236,8 @@ def new_purchase():
 @purchases_bp.route('/<id>')
 @login_required
 def detail(id):
+    if current_user.is_warehouse:
+        abort(403)
     purchase = get_or_404(Purchase, id)
     return render_template('purchases/detail.html', purchase=purchase)
 

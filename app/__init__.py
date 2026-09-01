@@ -1,5 +1,5 @@
 import traceback as _tb
-from flask import Flask
+from flask import Flask, request
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from flask_wtf.csrf import CSRFProtect
@@ -125,6 +125,10 @@ def create_app(config_class=Config):
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)')
+        if request.is_secure:
+            response.headers.setdefault(
+                'Strict-Transport-Security', 'max-age=31536000; includeSubDomains'
+            )
         response.headers.setdefault('Content-Security-Policy',
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline'; "

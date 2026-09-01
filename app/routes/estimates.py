@@ -157,9 +157,14 @@ def check_allocation():
     exclude_id = request.args.get('exclude', '')
     if not num:
         return jsonify(exists=False)
+    from bson import ObjectId
+    from bson.errors import InvalidId
     qs = Estimate.objects(allocation_number=num)
     if exclude_id:
-        qs = qs.filter(id__ne=exclude_id)
+        try:
+            qs = qs.filter(id__ne=ObjectId(exclude_id))
+        except (InvalidId, Exception):
+            pass
     conflict = qs.only('task_name').first()
     if conflict:
         return jsonify(exists=True, task_name=conflict.task_name)

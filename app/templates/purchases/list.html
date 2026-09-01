@@ -378,6 +378,12 @@
 
 // ── Verify Items Modal ────────────────────────────────────────────────────
 (function () {
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
   var csrfToken = document.querySelector('meta[name="csrf-token"]') ?
     document.querySelector('meta[name="csrf-token"]').content : '';
   var currentPurchaseId = null;
@@ -400,7 +406,7 @@
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      if (!data.ok) { document.getElementById('verifyModalBody').innerHTML = '<p class="text-danger p-3">' + (data.error || 'שגיאה') + '</p>'; return; }
+      if (!data.ok) { var errEl = document.createElement('p'); errEl.className='text-danger p-3'; errEl.textContent=data.error||'שגיאה'; document.getElementById('verifyModalBody').replaceChildren(errEl); return; }
       document.getElementById('verifyPurchaseName').textContent = data.name;
       renderItems(data.items);
     })
@@ -428,8 +434,8 @@
           '</div>';
       return '<tr>' +
         '<td class="text-center" style="width:44px;">' + cbHtml + '</td>' +
-        '<td><div class="fw-semibold small">' + item.serial_number + '</div>' +
-          (item.model ? '<div class="text-muted" style="font-size:.75rem;">' + item.model + '</div>' : '') +
+        '<td><div class="fw-semibold small">' + esc(item.serial_number) + '</div>' +
+          (item.model ? '<div class="text-muted" style="font-size:.75rem;">' + esc(item.model) + '</div>' : '') +
         '</td>' +
         '<td class="text-center">' + qtyHtml + '</td>' +
         '<td class="text-center">' +

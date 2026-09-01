@@ -34,6 +34,8 @@ class PoolForm(FlaskForm):
 @pools_bp.route('/')
 @login_required
 def list_pools():
+    if not current_user.can_edit:
+        abort(403)
     pools = list(Pool.objects.order_by('-created_at'))
     return render_template('pools/list.html', pools=pools)
 
@@ -70,6 +72,8 @@ def new_pool():
 @pools_bp.route('/<id>')
 @login_required
 def detail(id):
+    if not current_user.can_edit:
+        abort(403)
     pool = get_or_404(Pool, id)
     return render_template('pools/detail.html', pool=pool)
 
