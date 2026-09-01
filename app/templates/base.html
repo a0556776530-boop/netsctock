@@ -276,7 +276,6 @@ if ('serviceWorker' in navigator) {
 //   1. Tab is visible (not hidden/backgrounded)
 //   2. User interacted with the page in the last 90 seconds
 // Ping only from this explicit interval — last_seen is NOT updated by any other request.
-// So pinging whenever the tab is visible is safe: chat/AJAX won't keep users "online".
 (function() {
   function _ping() {
     if (document.hidden) return;

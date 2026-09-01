@@ -89,8 +89,6 @@ def create_app(config_class=Config):
         g.t = TRANSLATIONS[lang]
         g.dir_html = 'rtl' if lang == 'he' else 'ltr'
 
-        # last_seen is updated ONLY by /api/ping (explicit heartbeat with activity check)
-        # Not here — to prevent AJAX polling (chat, etc.) from keeping users "online"
 
 
     from zoneinfo import ZoneInfo
