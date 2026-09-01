@@ -23,7 +23,6 @@ PAGE_NAMES = {
     'purchases.edit':                  'עריכת רכש',
     'purchases.purchase_history':      'היסטוריית רכשים',
     'purchases.receive':               'קליטת ציוד',
-    'chat.app':                        "צ'אט",
     'admin.users':                     'ניהול משתמשים',
     'admin.settings':                  'הגדרות מערכת',
     'admin.login_history':             'היסטוריית כניסות',

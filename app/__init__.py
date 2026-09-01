@@ -3,7 +3,6 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from flask_wtf.csrf import CSRFProtect
-from flask_socketio import SocketIO
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import mongoengine as me
@@ -14,7 +13,6 @@ from .config import Config, MONGO_URI
 login_manager = LoginManager()
 bcrypt        = Bcrypt()
 csrf          = CSRFProtect()
-socketio      = SocketIO()
 limiter       = Limiter(key_func=get_remote_address, default_limits=[])
 
 from .utils.cache import cache
@@ -93,8 +91,6 @@ def create_app(config_class=Config):
     from .routes.estimates import estimates_bp
     from .routes.purchases import purchases_bp
     from .routes.pools import pools_bp
-    from .routes.chat import chat_bp
-    from .routes import chat_socket as _chat_socket  # register socket handlers  # noqa: F401
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -104,22 +100,6 @@ def create_app(config_class=Config):
     app.register_blueprint(estimates_bp)
     app.register_blueprint(purchases_bp)
     app.register_blueprint(pools_bp)
-    app.register_blueprint(chat_bp)
-
-    import os as _os
-    _origin_env = _os.environ.get('ALLOWED_ORIGIN', '').strip()
-    _cors = [o.strip() for o in _origin_env.split(',') if o.strip()] if _origin_env else '*'
-    socketio.init_app(
-        app,
-        cors_allowed_origins=_cors,
-        async_mode='threading',
-        logger=False,
-        engineio_logger=False,
-        ping_timeout=25,
-        ping_interval=15,
-        allow_upgrades=True,
-        transports=['websocket', 'polling'],
-    )
 
     from datetime import datetime
     from .utils.translations import TRANSLATIONS

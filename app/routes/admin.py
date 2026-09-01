@@ -320,15 +320,6 @@ def edit_user(id):
             from app.models.user import _user_cache
             _user_cache.pop(str(user.id), None)
 
-        # Bust all conversation caches so photo update is visible in chat
-        if photo_data:
-            from app.utils.cache import cache as _cache
-            from app.models.user import _user_cache
-            _user_cache.pop(str(user.id), None)
-            for uid in list(_user_cache.keys()):
-                _cache.delete(f'chat_convs_{uid}')
-            _cache.delete(f'chat_convs_{user.id}')
-
         flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
         return redirect(url_for('admin.users'))
     editing_self = (str(user.id) == str(current_user.id))

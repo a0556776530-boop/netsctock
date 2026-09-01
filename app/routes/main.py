@@ -62,44 +62,6 @@ def ping():
     return jsonify({'ok': True})
 
 
-@main_bp.route('/api/unread-count')
-@login_required
-def unread_count():
-    me_id = str(current_user.id)
-    _ck   = f'unread_{me_id}'
-    _hit  = cache.get(_ck)
-    if _hit is not None:
-        return jsonify({'count': _hit})
-
-    from app.models.chat_message import ChatMessage
-    dm_count = ChatMessage.objects(receiver_id=me_id, read=False).count()
-
-    group_count = 0
-    try:
-        from app.models.chat_last_read import ChatLastRead
-        from app.models.chat_group import ChatGroup
-        my_groups = list(ChatGroup.objects(member_ids=me_id).only('id'))
-        grp_keys  = ['grp_' + str(g.id) for g in my_groups] + ['group']
-        last_read_docs = {
-            d.room: d.last_read_at
-            for d in ChatLastRead.objects(user_id=me_id, room__in=grp_keys)
-        }
-        if last_read_docs:
-            or_conds = [
-                {'room': rk, 'timestamp': {'$gt': lr}}
-                for rk, lr in last_read_docs.items()
-            ]
-            for doc in ChatMessage._get_collection().aggregate([
-                {'$match': {'$or': or_conds, 'user_id': {'$ne': me_id}, 'deleted': {'$ne': True}}},
-                {'$group': {'_id': '$room', 'count': {'$sum': 1}}},
-            ]):
-                group_count += doc['count']
-    except Exception:
-        pass
-
-    total = dm_count + group_count
-    cache.set(_ck, total, timeout=25)
-    return jsonify({'count': total})
 
 
 @main_bp.route('/api/user-activity')

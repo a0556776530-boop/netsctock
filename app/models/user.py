@@ -13,11 +13,8 @@ class User(UserMixin, me.Document):
     created_at     = me.DateTimeField(default=datetime.utcnow)
     last_seen       = me.DateTimeField()
     last_login      = me.DateTimeField()
-    pinned_rooms   = me.ListField(me.StringField())
-    favorite_rooms = me.ListField(me.StringField())
-    profile_photo       = me.StringField()  # base64 data URI e.g. "data:image/jpeg;base64,..."
-    push_subscriptions  = me.ListField(me.DictField())  # Web Push subscription objects
-    session_version     = me.IntField(default=0)
+    profile_photo   = me.StringField()  # base64 data URI e.g. "data:image/jpeg;base64,..."
+    session_version = me.IntField(default=0)
 
     def get_id(self):
         return f"{self.id}:{self.session_version or 0}"
