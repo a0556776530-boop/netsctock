@@ -1,4 +1,4 @@
-/* Google Fonts loaded via <link> in base.html with preconnect — faster than @import */
+/* Air Gap: all vendor assets served locally from /static/vendor/ */
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Arial, sans-serif;

@@ -227,9 +227,9 @@ def create_app(config_class=Config):
         response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)')
         response.headers.setdefault('Content-Security-Policy',
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdn.socket.io; "
-            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; "
-            "font-src 'self' cdn.jsdelivr.net fonts.gstatic.com data:; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "font-src 'self' data:; "
             "img-src 'self' data: blob:; "
             "connect-src 'self' ws: wss:; "
             "frame-ancestors 'none';"
