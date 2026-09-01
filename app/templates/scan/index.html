@@ -103,7 +103,7 @@ window._scanT = {
   loading:    '{{ t.loading }}'
 };
 </script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
 <script>
 const LOOKUP_URL = "{{ url_for('scan.lookup') }}";
 const CISCO_RE   = /^[A-Z]{3}[0-9]{4}[A-Z0-9]{4}$/;
