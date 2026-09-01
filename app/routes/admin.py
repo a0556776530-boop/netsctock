@@ -3,7 +3,15 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Length, Optional
+from wtforms.validators import DataRequired, Length, Optional, ValidationError
+
+
+def _byte_length(min=0, max=72):
+    def validate(form, field):
+        b = len((field.data or '').encode('utf-8'))
+        if b < min or b > max:
+            raise ValidationError(f'Password must be between {min} and {max} bytes.')
+    return validate
 
 from app import bcrypt, cache
 from app.models.user import User
@@ -64,7 +72,7 @@ def _super_admin_required():
 class NewUserForm(FlaskForm):
     name     = StringField('Name', validators=[DataRequired(), Length(max=100)])
     role     = SelectField('Role', choices=[])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=8, max=72)])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=8), _byte_length(min=8, max=72)])
     submit   = SubmitField('Create User')
 
 
@@ -72,18 +80,18 @@ class EditUserForm(FlaskForm):
     name             = StringField('Name',             validators=[DataRequired(), Length(max=100)])
     role             = SelectField('Role',             choices=[])
     current_password = PasswordField('Current Password', validators=[Optional()])
-    new_password     = PasswordField('New Password',     validators=[Optional(), Length(min=8, max=72)])
+    new_password     = PasswordField('New Password',     validators=[Optional(), Length(min=8), _byte_length(min=8, max=72)])
     submit           = SubmitField('Save')
 
 
 class ChangeOwnPasswordForm(FlaskForm):
-    current_password = PasswordField('Current Password', validators=[DataRequired(), Length(max=72)])
-    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8, max=72)])
+    current_password = PasswordField('Current Password', validators=[DataRequired(), _byte_length(max=72)])
+    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8), _byte_length(min=8, max=72)])
     submit           = SubmitField('Save')
 
 
 class ResetPasswordForm(FlaskForm):
-    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=8, max=72)])
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=8), _byte_length(min=8, max=72)])
     submit       = SubmitField('Reset Password')
 
 
@@ -168,6 +176,7 @@ def new_user():
 @admin_bp.route('/users/<id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_user(id):
+    _admin_required()
     t = getattr(g, 't', {})
     user = get_or_404(User, id)
 

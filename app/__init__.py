@@ -131,7 +131,7 @@ def create_app(config_class=Config):
             "style-src 'self' 'unsafe-inline'; "
             "font-src 'self' data:; "
             "img-src 'self' data: blob:; "
-            "connect-src 'self' ws: wss:; "
+            "connect-src 'self'; "
             "frame-ancestors 'none';"
         )
         return response

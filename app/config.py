@@ -13,7 +13,11 @@ _HTTPS = os.environ.get('FLASK_DEBUG', '0') != '1'
 
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+    _sk = os.environ.get('SECRET_KEY', '')
+    if not _sk and os.environ.get('FLASK_DEBUG', '0') != '1':
+        raise RuntimeError('SECRET_KEY environment variable is not set. '
+                           'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"')
+    SECRET_KEY = _sk or secrets.token_hex(32)
 
     MONGODB_SETTINGS = {
         'host': MONGO_URI,

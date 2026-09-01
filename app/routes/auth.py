@@ -4,7 +4,14 @@ from urllib.parse import urlparse
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Length, ValidationError
+
+
+def _byte_length(max=72):
+    def validate(form, field):
+        if len((field.data or '').encode('utf-8')) > max:
+            raise ValidationError(f'Password cannot exceed {max} bytes.')
+    return validate
 
 from app import bcrypt, limiter
 from app.routes.admin import _password_already_used
@@ -15,14 +22,14 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 class LoginForm(FlaskForm):
-    password = PasswordField('Password', validators=[DataRequired(), Length(max=72)])
+    password = PasswordField('Password', validators=[DataRequired(), _byte_length(max=72)])
     remember = BooleanField('Remember me')
     submit   = SubmitField('Sign In')
 
 
 class ChangePasswordForm(FlaskForm):
-    current_password = PasswordField('Current Password', validators=[DataRequired(), Length(max=72)])
-    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8, max=72)])
+    current_password = PasswordField('Current Password', validators=[DataRequired(), _byte_length(max=72)])
+    new_password     = PasswordField('New Password',     validators=[DataRequired(), Length(min=8), _byte_length(max=72)])
     submit           = SubmitField('Save Password')
 
 

@@ -1,5 +1,12 @@
 import csv
 import io
+
+def _csv_safe(v):
+    """Prevent spreadsheet formula injection."""
+    s = str(v) if v is not None else ''
+    if s and s[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + s
+    return s
 import json
 from datetime import date, timedelta, datetime, timezone
 
@@ -136,7 +143,10 @@ def list_budget_estimates():
 @estimates_bp.route('/history')
 @login_required
 def history():
-    estimates = list(Estimate.objects(status='withdrawn').order_by('-created_at'))
+    qs = Estimate.objects(status='withdrawn')
+    if not current_user.is_super_admin:
+        qs = qs.filter(record_type__ne='estimate')
+    estimates = list(qs.order_by('-created_at'))
     return render_template('estimates/history.html', estimates=estimates)
 
 
@@ -465,6 +475,8 @@ def edit(id):
 @login_required
 def export_csv(id):
     estimate = get_or_404(Estimate, id)
+    if estimate.record_type == 'estimate' and not current_user.is_super_admin:
+        abort(403)
     buf = io.StringIO()
     w   = csv.writer(buf)
     w.writerow(['Allocation Number', estimate.allocation_number or ''])
@@ -493,7 +505,7 @@ def export_csv(id):
         unit_usd = float(item.unit_price_usd) if item.unit_price_usd else 0.0
         unit_ils = round(unit_usd * rate * factor * vat, 2)
         line_ils = round(unit_ils * item.quantity, 2)
-        w.writerow([sn, model, atype, item.quantity,
+        w.writerow([_csv_safe(sn), _csv_safe(model), _csv_safe(atype), item.quantity,
                     f'{unit_usd:.2f}', f'{unit_ils:.2f}', f'{line_ils:.2f}'])
     w.writerow([])
     w.writerow(['', '', '', '', '', 'TOTAL (ILS)', estimate.formatted_total.replace(' ₪', '')])

@@ -302,7 +302,13 @@ def new_asset():
             return redirect(url_for('assets.new_asset'))
 
         asset_type = AssetType.objects(id=form.asset_type_id.data).first()
+        _PHOTO_MIME = ('data:image/jpeg;', 'data:image/png;', 'data:image/gif;', 'data:image/webp;')
+        MAX_PHOTO_BYTES = 5 * 1024 * 1024  # 5 MB
         photo_data = request.form.get('photo_data', '').strip()
+        if photo_data and not any(photo_data.startswith(m) for m in _PHOTO_MIME):
+            photo_data = ''
+        if photo_data and len(photo_data.encode('ascii', errors='ignore')) > MAX_PHOTO_BYTES:
+            photo_data = ''
         asset = Asset(
             component_id  = (form.component_id.data or '').strip() or None,
             serial_number = form.serial_number.data.strip().upper(),
@@ -597,11 +603,15 @@ def export_csv():
         cell.font = header_font
         cell.alignment = center
 
+    def _safe(v):
+        s = str(v) if v else ''
+        return ("'" + s) if s and s[0] in ('=', '+', '-', '@', '\t', '\r') else s
+
     # Data rows
     for a in Asset.objects.order_by('serial_number').only('serial_number', 'component_id', 'quantity'):
         ws.append([
-            a.component_id or '',
-            a.serial_number or '',
+            _safe(a.component_id),
+            _safe(a.serial_number),
             a.quantity if a.quantity is not None else 0,
         ])
 
@@ -709,7 +719,7 @@ def import_qty_preview():
     except Exception as e:
         import traceback as _tb
         current_app.logger.error('import_qty_preview error:\n' + _tb.format_exc())
-        return jsonify({'ok': False, 'error': f'{type(e).__name__}: {e}'}), 200
+        return jsonify({'ok': False, 'error': 'שגיאה בעיבוד הקובץ. בדוק את הפורמט ונסה שוב.'}), 400
 
 
 @assets_bp.route('/import-qty/commit', methods=['POST'])

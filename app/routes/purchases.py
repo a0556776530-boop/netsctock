@@ -299,7 +299,8 @@ def edit(id):
             purchase.save()
             _invalidate_purchases_cache()
         except Exception as e:
-            flash(f'Error saving purchase: {e}', 'danger')
+            current_app.logger.error('Purchase save error: %s', e)
+            flash('שגיאה בשמירת הרכש. נסה שוב.', 'danger')
             return render_template('purchases/form.html', purchase=purchase,
                                    assets=assets, grouped_assets=grouped_assets,
                                    statuses=MANUAL_STATUSES, currencies=CURRENCIES)
