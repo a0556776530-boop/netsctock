@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h6 class="mb-0 fw-bold">{{ t.estimates_hist_title }}</h6>
-    <span class="text-muted small">{{ estimates | length }} withdrawn assignment(s)</span>
+    <span class="text-muted small">{{ estimates | length }} {{ t.withdrawn_count }}</span>
   </div>
   <a href="{{ url_for('estimates.list_estimates') }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left me-1"></i>{{ t.back_to_active }}
@@ -25,7 +25,8 @@
     <table class="table table-hover align-middle mb-0" id="estimatesTable">
       <thead class="table-light">
         <tr>
-          <th>{{ t.col_assignment_no }}</th>
+          <th>{{ t.col_type }}</th>
+          <th>{{ t.col_number }}</th>
           <th>{{ t.col_requester }}</th>
           <th>{{ t.col_project }}</th>
           <th>{{ t.col_date }}</th>
@@ -37,6 +38,13 @@
       <tbody>
         {% for e in estimates %}
         <tr data-assignment="{{ e.allocation_number or '' }}">
+          <td>
+            {% if e.record_type == 'estimate' %}
+            <span class="badge" style="background:#8b5cf6;">{{ t.record_type_estimate }}</span>
+            {% else %}
+            <span class="badge bg-primary">{{ t.record_type_allocation }}</span>
+            {% endif %}
+          </td>
           <td>
             <span class="badge bg-secondary font-monospace">{{ e.allocation_number or '—' }}</span>
           </td>
@@ -61,7 +69,7 @@
               <i class="bi bi-pencil"></i>
             </a>
             <form method="POST" action="{{ url_for('estimates.restore', id=e.id) }}" class="d-inline"
-                  onsubmit="return confirm('{{ t.confirm_restore_assign.format(no=e.allocation_number) }}')">
+                  onsubmit="return confirm('{{ (t.confirm_restore_estimate_no if e.record_type == 'estimate' else t.confirm_restore_assign).format(no=e.allocation_number) }}')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-success" title="{{ t.btn_restore_pending }}">
                 <i class="bi bi-arrow-counterclockwise"></i>
@@ -81,7 +89,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="text-center text-muted py-5">
+          <td colspan="8" class="text-center text-muted py-5">
             <i class="bi bi-clock-history fs-3 d-block mb-2"></i>
             {{ t.no_withdrawn }}
           </td>
@@ -109,7 +117,7 @@ function filterTable(q) {
   if (!noResult) {
     noResult = document.createElement('tr');
     noResult.id = 'noResultRow';
-    noResult.innerHTML = '<td colspan="7" class="text-center text-muted py-4 small">{{ t.no_assignments_match }}</td>';
+    noResult.innerHTML = '<td colspan="8" class="text-center text-muted py-4 small">{{ t.no_assignments_match }}</td>';
     document.querySelector('#estimatesTable tbody').appendChild(noResult);
   }
   noResult.style.display = (q && visible === 0) ? '' : 'none';

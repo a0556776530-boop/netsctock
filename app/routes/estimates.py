@@ -144,19 +144,11 @@ def list_budget_estimates():
 @estimates_bp.route('/history')
 @login_required
 def history():
-    qs = Estimate.objects(status='withdrawn', record_type__ne='estimate')
+    qs = Estimate.objects(status='withdrawn')
+    if not current_user.is_super_admin:
+        qs = qs.filter(record_type__ne='estimate')
     estimates = list(qs.order_by('-created_at'))
     return render_template('estimates/history.html', estimates=estimates)
-
-
-@estimates_bp.route('/budget-history')
-@login_required
-def budget_history():
-    if not current_user.is_super_admin:
-        abort(403)
-    qs = Estimate.objects(status='withdrawn', record_type='estimate')
-    estimates = list(qs.order_by('-created_at'))
-    return render_template('estimates/budget_history.html', estimates=estimates)
 
 
 @estimates_bp.route('/check-allocation')
