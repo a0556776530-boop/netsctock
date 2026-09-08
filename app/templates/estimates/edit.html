@@ -17,7 +17,7 @@
       </h6>
       <div class="row g-3">
         <div class="col-md-3">
-          <label class="form-label fw-semibold">{{ t.allocation_no_label }}</label>
+          <label class="form-label fw-semibold">{{ t.col_estimate_no if estimate.record_type == 'estimate' else t.allocation_no_label }}</label>
           <div class="input-group">
             <span class="input-group-text text-muted">#</span>
             <input type="number" name="allocation_number" id="allocNum"

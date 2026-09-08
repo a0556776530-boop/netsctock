@@ -41,7 +41,7 @@
 
 <!-- Print header -->
 <div class="d-none d-print-block mb-3">
-  <h4 class="fw-bold">{{ t.nav_allocations }} #{{ estimate.allocation_number or '—' }} — {{ estimate.task_name }}</h4>
+  <h4 class="fw-bold">{{ t.record_type_estimate if estimate.record_type == 'estimate' else t.nav_allocations }} #{{ estimate.allocation_number or '—' }} — {{ estimate.task_name }}</h4>
   {% if estimate.project_name %}<div class="text-muted">{{ estimate.project_name }}</div>{% endif %}
   <div class="small mt-1">{{ estimate.created_date.strftime('%d %b %Y') }} — {{ t.col_valid_until }}: {{ estimate.valid_until.strftime('%d %b %Y') }}</div>
 </div>
@@ -123,6 +123,13 @@
         <i class="bi bi-arrow-right-circle me-1"></i>{{ t.btn_convert_to_allocation }}
       </button>
     </form>
+    <form method="POST" action="{{ url_for('estimates.withdraw', id=estimate.id) }}"
+          onsubmit="return confirm('{{ t.confirm_mark_withdrawn_est }}')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold">
+        <i class="bi bi-check2-circle me-1"></i>{{ t.btn_mark_withdrawn }}
+      </button>
+    </form>
     {% else %}
     <form method="POST" action="{{ url_for('estimates.withdraw', id=estimate.id) }}"
           onsubmit="return confirm('{{ t.confirm_mark_withdrawn }}')">
@@ -175,7 +182,7 @@
             </td>
           </tr>
           <tr>
-            <td class="text-muted fw-semibold">{{ t.col_assignment_no }}</td>
+            <td class="text-muted fw-semibold">{{ t.col_estimate_no if estimate.record_type == 'estimate' else t.col_assignment_no }}</td>
             <td>
               <span class="badge bg-primary font-monospace fs-6 px-2 py-1">
                 {{ estimate.allocation_number or '—' }}

@@ -40,7 +40,7 @@
       <div class="row g-3">
         <div class="col-md-3">
           <label class="form-label fw-semibold">
-            {{ t.allocation_no_label }}
+            <span id="allocNumLabel">{{ t.allocation_no_label }}</span>
             <span class="text-muted fw-normal small ms-1">{{ t.auto_label }}</span>
           </label>
           <div class="input-group">
@@ -433,6 +433,8 @@ function selectType(type) {
   }
   var lbl = document.getElementById('saveBtnLabel');
   if (lbl) lbl.textContent = type === 'allocation' ? '{{ t.btn_save_allocation }}' : '{{ t.btn_save_estimate }}';
+  var numLbl = document.getElementById('allocNumLabel');
+  if (numLbl) numLbl.textContent = type === 'allocation' ? '{{ t.allocation_no_label }}' : '{{ t.col_estimate_no }}';
 }
 </script>
 {% endblock %}
