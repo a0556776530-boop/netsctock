@@ -274,6 +274,7 @@ def edit_user(id):
 
     # Profile photo — saved regardless of password/name form result
     _PHOTO_MIME = ('data:image/jpeg;', 'data:image/png;', 'data:image/gif;', 'data:image/webp;')
+    editing_self = (str(user.id) == str(current_user.id))
     if request.method == 'POST':
         photo_data = request.form.get('profile_photo_data', '').strip()
         if photo_data == 'REMOVE':
@@ -286,9 +287,13 @@ def edit_user(id):
             from app.models.user import _user_cache
             _user_cache.pop(str(user.id), None)
 
+        if form.errors:
+            # Name/role/password form failed validation (e.g. password under 8
+            # characters) — show the real error instead of a false "success".
+            return render_template('admin/edit_user.html', form=form, user=user, editing_self=editing_self)
+
         flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
         return redirect(url_for('admin.users'))
-    editing_self = (str(user.id) == str(current_user.id))
     return render_template('admin/edit_user.html', form=form, user=user, editing_self=editing_self)
 
 
