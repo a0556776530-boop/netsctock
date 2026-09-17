@@ -534,6 +534,10 @@ TRANSLATIONS = {
         'edit_user_page_title':   'Edit User',
         'hint_min_8_chars':       'Min 8 characters',
         'hint_first_login_pw':    'The user should change this on first login.',
+        'hint_username':          'Optional — lets this person sign in with a username in addition to their password.',
+        'btn_change_photo':       'Change Photo',
+        'btn_remove_photo':       'Remove',
+        'title_change_photo':     'Click to change photo',
         'hint_leave_blank_pw':    'Leave blank to keep current password',
         # ── Asset form hints ──────────────────────────────────────────────────
         'ph_component_id':        'e.g. SN-0042',
@@ -1208,6 +1212,10 @@ TRANSLATIONS = {
         'edit_user_page_title':   'עריכת משתמש',
         'hint_min_8_chars':       'מינימום 8 תווים',
         'hint_first_login_pw':    'המשתמש יצטרך לשנות זאת בכניסה הראשונה.',
+        'hint_username':          'אופציונלי — מאפשר להתחבר עם שם משתמש בנוסף לסיסמה.',
+        'btn_change_photo':       'שנה תמונה',
+        'btn_remove_photo':       'הסר',
+        'title_change_photo':     'לחץ לשינוי תמונה',
         'hint_leave_blank_pw':    'השאר ריק לשמירת הסיסמא הנוכחית',
         # ── טפסי ציוד ─────────────────────────────────────────────────────────
         'ph_component_id':        'לדוגמה: SN-0042',

@@ -26,7 +26,7 @@
           <div class="mb-3 text-center">
             <div id="photoPreview" style="width:90px;height:90px;border-radius:50%;overflow:hidden;
                  margin:0 auto 10px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;cursor:pointer;"
-                 onclick="document.getElementById('photoInput').click()" title="לחץ לשינוי תמונה">
+                 onclick="document.getElementById('photoInput').click()" title="{{ t.title_change_photo }}">
               {% if user.profile_photo %}
               <img id="photoImg" src="{{ user.profile_photo }}" style="width:100%;height:100%;object-fit:cover;">
               {% else %}
@@ -36,11 +36,11 @@
             <input type="file" id="photoInput" accept="image/*" style="display:none">
             <div class="d-flex gap-2 justify-content-center">
               <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('photoInput').click()">
-                <i class="bi bi-camera"></i> שנה תמונה
+                <i class="bi bi-camera"></i> {{ t.btn_change_photo }}
               </button>
               {% if user.profile_photo %}
               <button type="button" class="btn btn-sm btn-outline-danger" id="removePhotoBtn">
-                <i class="bi bi-trash3"></i> הסר
+                <i class="bi bi-trash3"></i> {{ t.btn_remove_photo }}
               </button>
               {% endif %}
             </div>
@@ -61,6 +61,7 @@
               <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-at"></i></span>
               {{ form.username(class="form-control border-start-0" + (" is-invalid" if form.username.errors else ""), style="border-radius:0 6px 6px 0;", autocomplete="username") }}
             </div>
+            <div class="form-text">{{ t.hint_username }}</div>
             {% for e in form.username.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
           </div>
 

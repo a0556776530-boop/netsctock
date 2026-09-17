@@ -14,12 +14,25 @@ def _byte_length(max=72):
             raise ValidationError(f'Password cannot exceed {max} bytes.')
     return validate
 
+import re
 from app import bcrypt, limiter
 from app.routes.admin import _password_already_used
 from app.models.user import User
 from app.utils.translations import localize_form
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+_DUMMY_HASH = None
+
+def _dummy_hash():
+    """A precomputed bcrypt hash checked when a username lookup misses, so a
+    nonexistent username takes the same time to reject as a wrong password —
+    otherwise the skipped bcrypt call makes username existence measurable
+    via response timing."""
+    global _DUMMY_HASH
+    if _DUMMY_HASH is None:
+        _DUMMY_HASH = bcrypt.generate_password_hash('constant-time-padding').decode('utf-8')
+    return _DUMMY_HASH
 
 
 class LoginForm(FlaskForm):
@@ -45,12 +58,17 @@ def login():
     localize_form(form, t, submit_key='login_submit')
     if form.validate_on_submit():
         matched = None
-        uname = (form.username.data or '').strip()
+        uname = (form.username.data or '').strip().lower()
         if uname:
             # Fast path: direct index lookup by username
             candidate = User.objects(username=uname).first()
-            if candidate and bcrypt.check_password_hash(candidate.password_hash, form.password.data):
-                matched = candidate
+            if candidate:
+                if bcrypt.check_password_hash(candidate.password_hash, form.password.data):
+                    matched = candidate
+            else:
+                # No such username — still run a bcrypt check against a dummy
+                # hash so this branch takes the same time as a real mismatch.
+                bcrypt.check_password_hash(_dummy_hash(), form.password.data)
         else:
             # Fallback: scan all users sorted by last_login (password-only mode)
             for u in User.objects.order_by('-last_login'):
@@ -63,7 +81,10 @@ def login():
             matched.last_seen  = datetime.utcnow()
             matched.save()
             login_user(matched, remember=form.remember.data)
-            next_page = request.args.get('next', '')
+            # Strip control characters browsers ignore when parsing a URL
+            # (tab/CR/LF) — otherwise "/\t/evil.com" passes the checks below
+            # but a browser reads it as "//evil.com" and redirects off-site.
+            next_page = re.sub(r'[\t\r\n]', '', request.args.get('next', ''))
             if (not next_page
                     or not next_page.startswith('/')
                     or next_page.startswith('//')
@@ -71,6 +92,7 @@ def login():
                 next_page = ''
             flash(t.get('flash_welcome', 'Welcome back, {name}!').format(name=matched.name), 'success')
             return redirect(next_page or url_for('main.dashboard'))
+        form.password.errors.append(t.get('flash_login_failed', 'Incorrect password.'))
         flash(t.get('flash_login_failed', 'Incorrect password.'), 'danger')
     return render_template('auth/login.html', form=form)
 

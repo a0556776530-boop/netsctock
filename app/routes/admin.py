@@ -13,6 +13,7 @@ def _byte_length(min=0, max=72):
             raise ValidationError(f'Password must be between {min} and {max} bytes.')
     return validate
 
+from mongoengine.errors import NotUniqueError
 from app import bcrypt, cache
 from app.models.user import User
 from app.models.asset import Asset, AssetEvent
@@ -171,7 +172,7 @@ def new_user():
         if _password_already_used(form.password.data):
             flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
             return redirect(url_for('admin.new_user'), 303)
-        username = (form.username.data or '').strip() or None
+        username = (form.username.data or '').strip().lower() or None
         if username and _username_taken(username):
             flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
             return redirect(url_for('admin.new_user'), 303)
@@ -181,7 +182,11 @@ def new_user():
             password_hash=bcrypt.generate_password_hash(form.password.data).decode('utf-8'),
             role=form.role.data,
         )
-        u.save()
+        try:
+            u.save()
+        except NotUniqueError:
+            flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
+            return redirect(url_for('admin.new_user'), 303)
         flash(t.get('flash_user_created', 'User {name} created successfully.').format(name=u.name), 'success')
         return redirect(url_for('admin.users'))
     return render_template('admin/new_user.html', form=form)
@@ -244,14 +249,18 @@ def edit_user(id):
         if form.validate_on_submit():
             if form.role.data not in _ADMIN_ASSIGNABLE_ROLES:
                 abort(403)
-            username = (form.username.data or '').strip() or None
+            username = (form.username.data or '').strip().lower() or None
             if username and _username_taken(username, exclude_id=user.id):
                 flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
                 return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
             user.name = form.name.data.strip()
             user.username = username
             user.role = form.role.data
-            user.save()
+            try:
+                user.save()
+            except NotUniqueError:
+                flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
+                return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
             flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
             return redirect(url_for('admin.users'))
         return render_template('admin/edit_user.html', form=form, user=user)
@@ -266,7 +275,7 @@ def edit_user(id):
         form.role.data = user.role
 
     if form.validate_on_submit():
-        username = (form.username.data or '').strip() or None
+        username = (form.username.data or '').strip().lower() or None
         if username and _username_taken(username, exclude_id=user.id):
             flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
             return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
@@ -296,7 +305,11 @@ def edit_user(id):
         user.username = username
         user.role = form.role.data
 
-        user.save()
+        try:
+            user.save()
+        except NotUniqueError:
+            flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
+            return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
 
     # Profile photo — saved regardless of password/name form result
     _PHOTO_MIME = ('data:image/jpeg;', 'data:image/png;', 'data:image/gif;', 'data:image/webp;')

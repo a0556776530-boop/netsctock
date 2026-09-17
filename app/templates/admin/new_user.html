@@ -33,6 +33,7 @@
               <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-at"></i></span>
               {{ form.username(class="form-control border-start-0" + (" is-invalid" if form.username.errors else ""), style="border-radius:0 6px 6px 0;", autocomplete="username") }}
             </div>
+            <div class="form-text">{{ t.hint_username }}</div>
             {% for e in form.username.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
           </div>
 
