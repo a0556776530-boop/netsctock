@@ -31,6 +31,13 @@ def _password_already_used(plaintext, exclude_id=None):
         if bcrypt.check_password_hash(u.password_hash, plaintext):
             return True
     return False
+
+
+def _username_taken(username, exclude_id=None):
+    qs = User.objects(username=username)
+    if exclude_id:
+        qs = qs.filter(id__ne=exclude_id)
+    return qs.first() is not None
 from app.utils.mongo_helpers import get_or_404
 
 
@@ -71,6 +78,7 @@ def _super_admin_required():
 
 class NewUserForm(FlaskForm):
     name     = StringField('Name', validators=[DataRequired(), Length(max=100)])
+    username = StringField('Username', validators=[Optional(), Length(max=50)])
     role     = SelectField('Role', choices=[])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=8), _byte_length(min=8, max=72)])
     submit   = SubmitField('Create User')
@@ -78,6 +86,7 @@ class NewUserForm(FlaskForm):
 
 class EditUserForm(FlaskForm):
     name             = StringField('Name',             validators=[DataRequired(), Length(max=100)])
+    username         = StringField('Username',         validators=[Optional(), Length(max=50)])
     role             = SelectField('Role',             choices=[])
     current_password = PasswordField('Current Password', validators=[Optional()])
     new_password     = PasswordField('New Password',     validators=[Optional(), Length(min=8), _byte_length(min=8, max=72)])
@@ -162,8 +171,13 @@ def new_user():
         if _password_already_used(form.password.data):
             flash(t.get('flash_password_taken', 'הסיסמה קיימת במערכת — בחר סיסמה אחרת.'), 'danger')
             return redirect(url_for('admin.new_user'), 303)
+        username = (form.username.data or '').strip() or None
+        if username and _username_taken(username):
+            flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
+            return redirect(url_for('admin.new_user'), 303)
         u = User(
             name=form.name.data.strip(),
+            username=username,
             password_hash=bcrypt.generate_password_hash(form.password.data).decode('utf-8'),
             role=form.role.data,
         )
@@ -225,11 +239,17 @@ def edit_user(id):
         form.name.label.text = t.get('col_name', 'Name')
         if request.method == 'GET':
             form.name.data = user.name
+            form.username.data = user.username
             form.role.data = user.role
         if form.validate_on_submit():
             if form.role.data not in _ADMIN_ASSIGNABLE_ROLES:
                 abort(403)
+            username = (form.username.data or '').strip() or None
+            if username and _username_taken(username, exclude_id=user.id):
+                flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
+                return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
             user.name = form.name.data.strip()
+            user.username = username
             user.role = form.role.data
             user.save()
             flash(t.get('flash_user_updated', '{name} updated successfully.').format(name=user.name), 'success')
@@ -242,9 +262,14 @@ def edit_user(id):
 
     if request.method == 'GET':
         form.name.data = user.name
+        form.username.data = user.username
         form.role.data = user.role
 
     if form.validate_on_submit():
+        username = (form.username.data or '').strip() or None
+        if username and _username_taken(username, exclude_id=user.id):
+            flash(t.get('flash_username_taken', 'This username is already taken.'), 'danger')
+            return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
         if form.new_password.data:
             editing_self = (str(user.id) == str(current_user.id))
             # When editing own account, verify current password; for other users no need
@@ -268,6 +293,7 @@ def edit_user(id):
                 return redirect(url_for('admin.edit_user', id=str(user.id)), 303)
 
         user.name = form.name.data.strip()
+        user.username = username
         user.role = form.role.data
 
         user.save()

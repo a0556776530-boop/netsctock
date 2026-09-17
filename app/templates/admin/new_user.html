@@ -28,6 +28,15 @@
           </div>
 
           <div class="mb-3">
+            <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_username }}</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-at"></i></span>
+              {{ form.username(class="form-control border-start-0" + (" is-invalid" if form.username.errors else ""), style="border-radius:0 6px 6px 0;", autocomplete="username") }}
+            </div>
+            {% for e in form.username.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="mb-3">
             <label class="form-label fw-semibold small text-uppercase text-muted" style="letter-spacing:.05em;">{{ t.col_role }}</label>
             <div class="d-flex align-items-center gap-2">
               <div id="rolePreview" class="role-avatar-sm flex-shrink-0 role-viewer">
