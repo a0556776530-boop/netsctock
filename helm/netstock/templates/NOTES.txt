@@ -1,0 +1,12 @@
+NetStock deployed as "{{ include "netstock.fullname" . }}".
+
+{{- if .Values.route.enabled }}
+Route: {{ if .Values.route.host }}{{ .Values.route.host }}{{ else }}(cluster-assigned host — check `oc get route {{ include "netstock.fullname" . }}`){{ end }}
+{{- else }}
+No Route was created (route.enabled=false) — expose the Service another way.
+{{- end }}
+
+First-time setup: there is no signup page. Create the first admin user with:
+  helm upgrade {{ .Release.Name }} <chart> --reuse-values \
+    --set seedJob.enabled=true --set seedJob.password='ChangeMe12345'
+then set seedJob.enabled back to false on the next upgrade.

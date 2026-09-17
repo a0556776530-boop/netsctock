@@ -36,6 +36,23 @@ def service_worker():
     return resp
 
 
+@main_bp.route('/healthz')
+def healthz():
+    """Liveness probe — process is up and can serve HTTP. No DB access."""
+    return {'status': 'ok'}, 200
+
+
+@main_bp.route('/readyz')
+def readyz():
+    """Readiness probe — confirms the MongoDB connection is actually usable."""
+    from mongoengine.connection import get_db
+    try:
+        get_db().command('ping')
+    except Exception:
+        return {'status': 'unavailable'}, 503
+    return {'status': 'ok'}, 200
+
+
 @main_bp.route('/set-lang/<code>')
 def set_lang(code):
     if code in ('en', 'he'):

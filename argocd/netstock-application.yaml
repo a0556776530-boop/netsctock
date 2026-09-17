@@ -1,0 +1,47 @@
+# ArgoCD Application for NetStock.
+# Fill in every <CHANGEME> before applying. This deliberately does NOT set
+# secret.create=true / mongoUri / secretKey here — those stay out of git.
+# Create the Secret once, directly in the target namespace, before the first
+# sync (see the "Post-transfer checklist" you were given in chat):
+#   oc create secret generic netstock-secrets -n <CHANGEME-namespace> \
+#     --from-literal=MONGO_URI='<your internal Mongo connection string>' \
+#     --from-literal=SECRET_KEY="$(python -c 'import secrets;print(secrets.token_hex(32))')"
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: netstock
+  namespace: argocd  # the namespace ArgoCD itself runs in — usually "argocd"
+spec:
+  project: default   # or your team's dedicated ArgoCD project
+
+  source:
+    repoURL: <CHANGEME — internal git URL for this repo>
+    targetRevision: master
+    path: helm/netstock
+    helm:
+      valueFiles: []
+      parameters:
+        - name: image.repository
+          value: quay.io/<CHANGEME-org>/netstock
+        - name: image.tag
+          value: <CHANGEME — the tag you pushed to Quay>
+        - name: secret.create
+          value: "false"
+        - name: secret.existingSecretName
+          value: netstock-secrets
+        # Leave route.host unset to get a cluster-assigned hostname, or:
+        # - name: route.host
+        #   value: netstock.<CHANGEME-your-internal-domain>
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: <CHANGEME-namespace>
+
+  syncPolicy:
+    # Start with manual sync while validating the first deployment.
+    # Once confident, add automated syncing:
+    # automated:
+    #   prune: true
+    #   selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # create the namespace yourself first, or set true

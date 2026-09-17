@@ -1,0 +1,46 @@
+# Version control / IDE
+.git/
+.claude/
+.vscode/
+.idea/
+
+# Local secrets / env — never bake into the image
+.env
+*.env
+
+# Local dev artifacts
+__pycache__/
+*.pyc
+venv/
+.venv/
+instance/
+*.db
+*.sqlite*
+
+# Legacy Windows EXE packaging — unused in the container
+build/
+dist/
+netstock.spec
+netstock_launcher.py
+
+# Legacy SQLAlchemy migrations — unused by the current MongoEngine app
+migrations/
+
+# Root-level one-off maintenance scripts — not imported by the running app
+add_prices.py
+add_quantity.py
+cleanup_file_data.py
+clear_asset_photos.py
+fetch_asset_photos.py
+inspect_db.py
+migrate_categories.py
+migrate_sqlite_to_mongo.py
+reclassify_assets.py
+seed_inventory.py
+sample_qty.csv
+
+# Docs / misc
+README.md
+plan.md
+build.bat
+data/

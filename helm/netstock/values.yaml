@@ -1,0 +1,103 @@
+# Default values for the netstock chart.
+
+replicaCount: 1
+# NOTE: the app writes purchase-order BOM uploads to local disk
+# (app/routes/purchases.py). With replicaCount > 1 and persistence.enabled
+# false, uploads made on one pod will 404 when served from another pod, and
+# are lost on every restart. Either keep replicaCount at 1, or turn on
+# persistence below with a ReadWriteMany-capable storage class.
+
+image:
+  # Set to your Quay repo, e.g. quay.io/yourorg/netstock
+  repository: quay.io/CHANGEME/netstock
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Only needed if the Quay repo is private.
+# imagePullSecrets:
+#   - name: quay-pull-secret
+imagePullSecrets: []
+
+service:
+  port: 8080
+
+route:
+  enabled: true
+  # Hostname for the OpenShift Route. Leave empty to let OpenShift assign
+  # a default cluster-relative host.
+  host: ""
+  tls:
+    enabled: true
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+# ── Secrets (MONGO_URI, SECRET_KEY) ─────────────────────────────────────────
+# Two ways to supply them — pick one:
+#
+# 1) Let the chart create the Secret, passed at install time (never commit
+#    real values into this file):
+#      helm install netstock ./helm/netstock \
+#        --set secret.create=true \
+#        --set secret.mongoUri='mongodb://user:pass@host:27017/netstock' \
+#        --set secret.secretKey="$(python -c 'import secrets;print(secrets.token_hex(32))')"
+#
+# 2) Reference a Secret you (or external-secrets/sealed-secrets) already
+#    created in-cluster, with keys MONGO_URI and SECRET_KEY:
+#      helm install netstock ./helm/netstock \
+#        --set secret.create=false \
+#        --set secret.existingSecretName=netstock-secrets
+secret:
+  create: false
+  existingSecretName: netstock-secrets
+  mongoUri: ""
+  secretKey: ""
+
+env:
+  FLASK_DEBUG: "0"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 15
+  readiness:
+    path: /readyz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+# Persistent storage for purchase-order BOM uploads (app/routes/purchases.py).
+# Disabled by default — see the replicaCount note above.
+persistence:
+  enabled: false
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  storageClassName: ""
+
+# One-time job to create the first super_admin user (there is no signup
+# page — app/seed.py `flask seed-db`). Run once after the first install,
+# then leave disabled; re-running is safe (it skips if an Admin user
+# already exists) but there's no reason to run it on every upgrade.
+#   helm upgrade netstock ./helm/netstock --reuse-values \
+#     --set seedJob.enabled=true \
+#     --set seedJob.password='ChangeMe12345'
+seedJob:
+  enabled: false
+  password: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]

@@ -1,0 +1,44 @@
+{{- if .Values.seedJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # Suffixed with the revision so re-running (enable → disable → enable)
+  # doesn't collide with an already-completed Job of the same name.
+  name: {{ include "netstock.fullname" . }}-seed-{{ .Release.Revision }}
+  labels:
+    {{- include "netstock.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "netstock.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: seed-db
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command: ["flask", "seed-db", "--password", "{{ .Values.seedJob.password }}"]
+          env:
+            - name: FLASK_APP
+              value: wsgi:app
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "netstock.secretName" . }}
+                  key: MONGO_URI
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "netstock.secretName" . }}
+                  key: SECRET_KEY
+{{- end }}
