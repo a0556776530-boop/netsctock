@@ -48,8 +48,18 @@ class ChangePasswordForm(FlaskForm):
     submit           = SubmitField('Save Password')
 
 
+def _login_username_key():
+    """Rate-limit key based on the submitted username (not whether it's a
+    real account — using request.form directly, before form validation, so
+    the limit applies identically to real and fake usernames alike and adds
+    no new way to detect which usernames exist)."""
+    uname = (request.form.get('username') or '').strip().lower()
+    return uname or 'no-username'
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
-@limiter.limit('10 per minute')
+@limiter.limit('10 per minute')                                    # per source IP
+@limiter.limit('10 per minute', key_func=_login_username_key)      # per submitted username
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))

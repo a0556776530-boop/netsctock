@@ -344,11 +344,39 @@
       font-size: .7rem;
       margin-top: .75rem;
     }
+
+    /* ── Language toggle ── */
+    .lang-toggle {
+      position: fixed;
+      top: 1.2rem;
+      inset-inline-end: 1.2rem;
+      z-index: 20;
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      color: rgba(255,255,255,.55);
+      font-size: .78rem;
+      font-weight: 600;
+      padding: .35rem .9rem;
+      text-decoration: none;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .lang-toggle:hover {
+      color: #f0f4ff;
+      border-color: rgba(59,130,246,.5);
+      background: rgba(255,255,255,.09);
+    }
   </style>
 </head>
 <body>
 
 <div class="bg-scene"></div>
+
+<a href="{{ url_for('main.set_lang', code='he' if lang == 'en' else 'en') }}"
+   class="lang-toggle"
+   title="{{ 'Switch to Hebrew' if lang == 'en' else 'Switch to English' }}">
+  {{ t.lang_toggle_label }}
+</a>
 
 <div class="flash-wrap">
   {% with messages = get_flashed_messages(with_categories=true) %}
