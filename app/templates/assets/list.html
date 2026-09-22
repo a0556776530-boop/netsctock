@@ -962,7 +962,7 @@
     function visibleChecks() {
       return Array.prototype.filter.call(checks(), function (cb) {
         var row = cb.closest('tr');
-        return row && row.style.display !== 'none';
+        return row && row.style.display !== 'none' && !fading.has(row);
       });
     }
 

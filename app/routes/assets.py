@@ -659,7 +659,7 @@ def export_selected():
     from bson import ObjectId
     from bson.errors import InvalidId
     ids = []
-    for raw in request.form.getlist('ids'):
+    for raw in request.form.getlist('ids')[:5000]:
         try:
             ids.append(ObjectId(raw))
         except InvalidId:
