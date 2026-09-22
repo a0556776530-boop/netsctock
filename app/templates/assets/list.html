@@ -177,10 +177,8 @@
       }
       .pf-btn .pf-badge { border-radius: 10px; padding: 1px 8px; font-size: .72rem; font-weight: 700; }
       .pf-all      { --c: #334155; }
-      .pf-in_use   { --c: #198754; }
       .pf-in_storage { --c: #0dcaf0; }
       .pf-assigned { --c: #0d6efd; }
-      .pf-faulty   { --c: #dc3545; }
       .pf-btn { border-color: var(--c); color: var(--c); }
       .pf-btn .pf-badge { background: var(--c); color: #fff; }
       .pf-btn:hover { background: color-mix(in srgb, var(--c) 12%, transparent); }
@@ -189,10 +187,8 @@
     </style>
     {% set status_defs = [
       ('all', 'pf-all', t.get('filter_all', 'All'), assets | length),
-      ('in_use', 'pf-in_use', t.status_in_use, assets | selectattr('status', 'equalto', 'in_use') | list | length),
       ('in_storage', 'pf-in_storage', t.status_in_storage, assets | selectattr('status', 'equalto', 'in_storage') | list | length),
       ('assigned', 'pf-assigned', t.status_assigned, assets | selectattr('status', 'equalto', 'assigned') | list | length),
-      ('faulty', 'pf-faulty', t.status_faulty, assets | selectattr('status', 'equalto', 'faulty') | list | length),
     ] %}
     <div class="d-flex gap-2 flex-wrap mb-3" id="statusFilterBar">
       {% for filter_key, css_class, label, cnt in status_defs %}
