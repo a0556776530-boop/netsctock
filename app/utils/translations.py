@@ -6,7 +6,6 @@ TRANSLATIONS = {
         # Navigation
         'nav_dashboard': 'Dashboard',
         'nav_assets': 'Inventory',
-        'nav_scan': 'Scan',
         'nav_sites': 'Sites',
         'nav_tasks': 'Tasks',
         'nav_admin_label': 'Admin',
@@ -691,7 +690,6 @@ TRANSLATIONS = {
         # Navigation
         'nav_dashboard': 'לוח בקרה',
         'nav_assets': 'מלאי',
-        'nav_scan': 'סריקה',
         'nav_sites': 'אתרים',
         'nav_tasks': 'משימות',
         'nav_admin_label': 'ניהול',
