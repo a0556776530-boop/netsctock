@@ -10,6 +10,7 @@ from wtforms import StringField, SelectField, TextAreaField, SubmitField, Decima
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from collections import defaultdict
 
+from mongoengine.errors import NotUniqueError
 from app.models.asset import Asset, AssetType, AssetEvent
 from app.models.purchase import Purchase, ACTIVE_STATUSES
 from app.models.site import Site
@@ -111,6 +112,11 @@ def _type_choices():
         (str(t.id), f'{t.name} ({t.category})' if t.category else t.name)
         for t in AssetType.objects.only('id', 'name', 'category').order_by('category', 'name')
     ]
+
+
+def _invalidate_type_caches():
+    cache.delete_memoized(_all_asset_types_sorted)
+    cache.delete_memoized(_type_choices)
 
 
 class AssetForm(FlaskForm):
@@ -323,7 +329,11 @@ def new_asset():
             min_threshold = form.min_threshold.data,
             photo         = photo_data if photo_data else None,
         )
-        asset.save()
+        try:
+            asset.save()
+        except NotUniqueError:
+            flash(t.get('flash_asset_duplicate_generic', 'Another asset already uses that Product ID.'), 'danger')
+            return redirect(url_for('assets.new_asset'))
         log_event(asset, 'created', current_user, notes=f'Asset registered. Status: {asset.status_label}')
         flash(t.get('flash_asset_created', '{sn} registered successfully.').format(sn=asset.serial_number), 'success')
         return redirect(url_for('assets.list_assets'))
@@ -393,7 +403,11 @@ def edit(id):
             asset.photo = None
         elif photo_data:
             asset.photo = photo_data
-        asset.save()
+        try:
+            asset.save()
+        except NotUniqueError:
+            flash(t.get('flash_asset_duplicate_generic', 'Another asset already uses that Product ID.'), 'danger')
+            return redirect(url_for('assets.edit', id=str(asset.id)))
         flash(t.get('flash_asset_updated', 'Asset updated successfully.'), 'success')
         return redirect(url_for('assets.list_assets'))
 
@@ -794,6 +808,7 @@ def new_category():
     form = CategoryForm()
     if form.validate_on_submit():
         AssetType(name=form.name.data.strip(), category=form.category.data.strip()).save()
+        _invalidate_type_caches()
         flash(t.get('flash_category_created', 'Category "{name}" created.').format(name=form.name.data), 'success')
         return redirect(url_for('assets.list_assets'))
     return render_template('assets/category_form.html', form=form, title='New Category')
@@ -811,6 +826,7 @@ def edit_category(id):
         cat.name     = form.name.data.strip()
         cat.category = form.category.data.strip()
         cat.save()
+        _invalidate_type_caches()
         flash(t.get('flash_category_updated', 'Category "{name}" updated.').format(name=cat.name), 'success')
         return redirect(url_for('assets.list_assets'))
     return render_template('assets/category_form.html', form=form, title='Edit Category', cat=cat)
@@ -828,5 +844,6 @@ def delete_category(id):
         flash(t.get('flash_category_in_use', 'Cannot delete "{name}" — it is used by existing assets.').format(name=name), 'danger')
     else:
         cat.delete()
+        _invalidate_type_caches()
         flash(t.get('flash_category_deleted', 'Category "{name}" deleted.').format(name=name), 'warning')
     return redirect(url_for('assets.list_assets'))

@@ -544,6 +544,7 @@ def warehouse_complete(id):
     estimate.warehouse_status = 'completed'
     estimate.warehouse_completed_at = datetime.now(timezone(timedelta(hours=3))).replace(tzinfo=None)
     estimate.save()
+    _invalidate_list_cache()
     flash('ההזמנה סומנה כבוצעה ועברה להיסטוריה.', 'success')
     return redirect(url_for('estimates.list_estimates'))
 
@@ -571,6 +572,7 @@ def convert_to_allocation(id):
     estimate = get_or_404(Estimate, id)
     estimate.record_type = 'allocation'
     estimate.save()
+    _invalidate_list_cache()
     flash(f'Estimate "{estimate.task_name}" transferred to allocations list.', 'success')
     return redirect(url_for('estimates.list_estimates'))
 

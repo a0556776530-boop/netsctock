@@ -4,6 +4,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, DecimalField, TextAreaField, SelectField, SubmitField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from mongoengine import Q
+from mongoengine.errors import NotUniqueError
 
 from app.models.pool import Pool, PoolTransaction
 from app.models.estimate import Estimate
@@ -54,14 +55,18 @@ def new_pool():
         if Pool.objects(emf_number=emf).first():
             flash('מספר EMF כבר קיים במערכת.', 'danger')
         else:
-            Pool(
-                name=form.name.data.strip(),
-                emf_number=emf,
-                total_amount=float(form.total_amount.data),
-                currency=form.currency.data,
-                notes=form.notes.data.strip() if form.notes.data else '',
-                created_by=current_user._get_current_object(),
-            ).save()
+            try:
+                Pool(
+                    name=form.name.data.strip(),
+                    emf_number=emf,
+                    total_amount=float(form.total_amount.data),
+                    currency=form.currency.data,
+                    notes=form.notes.data.strip() if form.notes.data else '',
+                    created_by=current_user._get_current_object(),
+                ).save()
+            except NotUniqueError:
+                flash('מספר EMF כבר קיים במערכת.', 'danger')
+                return render_template('pools/form.html', form=form, pool=None)
             flash('פול נוצר בהצלחה.', 'success')
             return redirect(url_for('pools.list_pools'))
     return render_template('pools/form.html', form=form, pool=None)
@@ -100,7 +105,11 @@ def edit_pool(id):
         pool.total_amount = float(form.total_amount.data)
         pool.currency     = form.currency.data
         pool.notes        = form.notes.data.strip() if form.notes.data else ''
-        pool.save()
+        try:
+            pool.save()
+        except NotUniqueError:
+            flash(f'מספר EMF "{new_emf}" כבר קיים בפול אחר.', 'danger')
+            return render_template('pools/form.html', form=form, pool=pool)
         flash('פול עודכן.', 'success')
         return redirect(url_for('pools.detail', id=pool.id))
     return render_template('pools/form.html', form=form, pool=pool)
@@ -111,7 +120,7 @@ def edit_pool(id):
 @pools_bp.route('/<id>/delete', methods=['POST'])
 @login_required
 def delete_pool(id):
-    if not current_user.can_edit:
+    if not current_user.is_admin:
         abort(403)
     pool = get_or_404(Pool, id)
     if pool.transactions:
