@@ -650,6 +650,75 @@ def export_csv():
     )
 
 
+@assets_bp.route('/export-selected', methods=['POST'])
+@login_required
+def export_selected():
+    if not current_user.can_edit:
+        abort(403)
+    t = getattr(g, 't', {})
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    ids = []
+    for raw in request.form.getlist('ids'):
+        try:
+            ids.append(ObjectId(raw))
+        except InvalidId:
+            continue
+    if not ids:
+        flash(t.get('flash_no_selection', 'No assets selected.'), 'warning')
+        return redirect(url_for('assets.list_assets'))
+
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'ציוד נבחר'
+    ws.sheet_view.rightToLeft = True
+
+    headers = ['מקט רכיב', 'מקט יצרן', 'דגם', 'יצרן', 'סטטוס', 'כמות']
+    ws.append(headers)
+
+    header_fill = PatternFill('solid', fgColor='1e293b')
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    center = Alignment(horizontal='center', vertical='center')
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center
+
+    def _safe(v):
+        s = str(v) if v else ''
+        return ("'" + s) if s and s[0] in ('=', '+', '-', '@', '\t', '\r') else s
+
+    for a in Asset.objects(id__in=ids).order_by('serial_number'):
+        ws.append([
+            _safe(a.component_id),
+            _safe(a.serial_number),
+            _safe(a.model),
+            _safe(a.manufacturer),
+            _safe(a.status_label),
+            a.quantity if a.quantity is not None else 0,
+        ])
+
+    for col in ws.columns:
+        max_len = max((len(str(cell.value or '')) for cell in col), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 6, 40)
+        for cell in col[1:]:
+            cell.alignment = center
+
+    ws.row_dimensions[1].height = 24
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return Response(
+        buf.read(),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': 'attachment; filename="selected_assets.xlsx"'}
+    )
+
+
 @assets_bp.route('/import-qty/template')
 @login_required
 def import_qty_template():

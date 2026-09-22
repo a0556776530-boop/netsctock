@@ -136,6 +136,25 @@ def mark_done(id):
     return redirect(safe_ref)
 
 
+@tasks_bp.route('/bulk-done', methods=['POST'])
+@login_required
+def bulk_done():
+    if not current_user.can_edit:
+        abort(403)
+    from bson import ObjectId
+    from bson.errors import InvalidId
+    ids = []
+    for raw in request.form.getlist('ids'):
+        try:
+            ids.append(ObjectId(raw))
+        except InvalidId:
+            continue
+    if ids:
+        count = Task.objects(id__in=ids, status__ne='done').update(set__status='done')
+        flash(f'{count} task(s) marked as done.', 'success')
+    return redirect(url_for('tasks.list_tasks'))
+
+
 @tasks_bp.route('/<id>/reopen', methods=['POST'])
 @login_required
 def reopen(id):
