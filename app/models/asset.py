@@ -21,7 +21,6 @@ class Asset(me.Document):
             'status',
             'quantity',
             'component_id',
-            'assignee',          # admin users page: Asset.objects(assignee=u).count()
             'asset_type',        # filter assets by type
             '-created_at',       # default sort
             {'fields': ['price_usd'], 'sparse': True},  # estimates form filter
@@ -45,8 +44,6 @@ class Asset(me.Document):
     model          = me.StringField(max_length=150)
     manufacturer   = me.StringField(max_length=150)
     status         = me.StringField(default='in_storage', choices=STATUSES)
-    current_site   = me.ReferenceField('Site', db_field='current_site_id')
-    assignee       = me.ReferenceField('User', db_field='assigned_to_id')
     notes          = me.StringField()
     price          = me.FloatField()
     price_nis      = me.FloatField()
@@ -75,14 +72,6 @@ class Asset(me.Document):
             return getattr(self, field)
         except Exception:
             return None
-
-    @property
-    def safe_assignee(self):
-        return self._safe_ref('assignee')
-
-    @property
-    def safe_current_site(self):
-        return self._safe_ref('current_site')
 
     @property
     def safe_asset_type(self):

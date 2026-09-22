@@ -16,7 +16,6 @@ def _byte_length(min=0, max=72):
 from mongoengine.errors import NotUniqueError
 from app import bcrypt, cache
 from app.models.user import User
-from app.models.asset import Asset, AssetEvent
 from app.models.task import Task
 from app.utils.translations import localize_form
 
@@ -44,14 +43,7 @@ from app.utils.mongo_helpers import get_or_404
 
 @cache.memoize(timeout=30)
 def _users_page_stats():
-    """Asset + task counts per user — cached 30s."""
-    asset_counts = {
-        str(r['_id']): r['count']
-        for r in Asset._get_collection().aggregate([
-            {'$match': {'assigned_to_id': {'$exists': True, '$ne': None}}},
-            {'$group': {'_id': '$assigned_to_id', 'count': {'$sum': 1}}},
-        ])
-    }
+    """Task counts per user — cached 30s."""
     task_counts = {
         r['_id']: r['count']
         for r in Task._get_collection().aggregate([
@@ -59,7 +51,7 @@ def _users_page_stats():
             {'$group': {'_id': '$assignee_name', 'count': {'$sum': 1}}},
         ])
     }
-    return asset_counts, task_counts
+    return task_counts
 
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -137,11 +129,10 @@ def users():
     all_users = list(User.objects.order_by('name').only(
         'id', 'name', 'role', 'last_login', 'last_seen', 'created_at', 'profile_photo',
     ))
-    asset_counts, task_counts = _users_page_stats()
+    task_counts = _users_page_stats()
     user_stats = {
         u.id: {
-            'assets': asset_counts.get(str(u.id), 0),
-            'tasks':  task_counts.get(u.name, 0),
+            'tasks': task_counts.get(u.name, 0),
         }
         for u in all_users
     }
@@ -353,7 +344,6 @@ def delete_user(id):
         return redirect(url_for('admin.users'))
 
     name = user.name
-    Asset.objects(assignee=user).update(unset__assignee=1)
     user.delete()
     flash(t.get('flash_user_deleted', 'User {name} deleted.').format(name=name), 'warning')
     return redirect(url_for('admin.users'))
