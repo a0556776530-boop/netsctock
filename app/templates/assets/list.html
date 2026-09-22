@@ -166,6 +166,43 @@
       </div>
     </div>
 
+    <!-- Status filter pills -->
+    <style>
+      .pf-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        border: 2px solid; border-radius: 22px;
+        padding: 5px 14px; font-size: .8rem; font-weight: 600;
+        cursor: pointer; transition: background .15s, color .15s, box-shadow .15s;
+        white-space: nowrap; line-height: 1.4; background: transparent;
+      }
+      .pf-btn .pf-badge { border-radius: 10px; padding: 1px 8px; font-size: .72rem; font-weight: 700; }
+      .pf-all      { --c: #334155; }
+      .pf-in_use   { --c: #198754; }
+      .pf-in_storage { --c: #0dcaf0; }
+      .pf-assigned { --c: #0d6efd; }
+      .pf-faulty   { --c: #dc3545; }
+      .pf-btn { border-color: var(--c); color: var(--c); }
+      .pf-btn .pf-badge { background: var(--c); color: #fff; }
+      .pf-btn:hover { background: color-mix(in srgb, var(--c) 12%, transparent); }
+      .pf-btn.active { background: var(--c); color: #fff; box-shadow: 0 3px 10px color-mix(in srgb, var(--c) 40%, transparent); }
+      .pf-btn.active .pf-badge { background: rgba(255,255,255,.25); }
+    </style>
+    {% set status_defs = [
+      ('all', 'pf-all', t.get('filter_all', 'All'), assets | length),
+      ('in_use', 'pf-in_use', t.status_in_use, assets | selectattr('status', 'equalto', 'in_use') | list | length),
+      ('in_storage', 'pf-in_storage', t.status_in_storage, assets | selectattr('status', 'equalto', 'in_storage') | list | length),
+      ('assigned', 'pf-assigned', t.status_assigned, assets | selectattr('status', 'equalto', 'assigned') | list | length),
+      ('faulty', 'pf-faulty', t.status_faulty, assets | selectattr('status', 'equalto', 'faulty') | list | length),
+    ] %}
+    <div class="d-flex gap-2 flex-wrap mb-3" id="statusFilterBar">
+      {% for filter_key, css_class, label, cnt in status_defs %}
+      <button type="button" class="pf-btn {{ css_class }} {{ 'active' if filter_key == 'all' }}" data-status-filter="{{ filter_key }}">
+        {{ label }}
+        <span class="pf-badge">{{ cnt }}</span>
+      </button>
+      {% endfor %}
+    </div>
+
     </div><!-- /assetsStickyTop -->
 
     <!-- Table -->
@@ -774,6 +811,7 @@
   var noResultsRow = document.getElementById('noResultsRow');
   var assetCountEl = document.getElementById('assetCount');
   var searchForm   = searchInput ? searchInput.closest('form') : null;
+  var currentStatusFilter = 'all';
 
   // Per-row cache of highlight-able cells and their original text
   var hlCache = new Map();
@@ -833,7 +871,9 @@
 
     document.querySelectorAll('tr[data-asset-row]').forEach(function (row) {
       var text = row.getAttribute('data-q') || '';
-      var show = !ql || text.indexOf(ql) !== -1;
+      var matchesText   = !ql || text.indexOf(ql) !== -1;
+      var matchesStatus = currentStatusFilter === 'all' || row.getAttribute('data-status') === currentStatusFilter;
+      var show = matchesText && matchesStatus;
       setVisible(row, show);
       applyHL(row, show ? q : '');
       if (show) { total++; var g = row.getAttribute('data-group'); gCnt[g] = (gCnt[g] || 0) + 1; }
@@ -879,6 +919,15 @@
       searchInput.value = ''; searchInput.focus(); filterRows();
     });
   }
+  document.querySelectorAll('[data-status-filter]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      currentStatusFilter = this.dataset.statusFilter;
+      document.querySelectorAll('[data-status-filter]').forEach(function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+      filterRows();
+    });
+  });
   // Press '/' to jump to search from anywhere on the page
   document.addEventListener('keydown', function (e) {
     if (e.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
