@@ -9,7 +9,11 @@ class ActivityLog(me.Document):
     in app/utils/activity.py."""
 
     meta = {
-        'collection': 'activity_log',
+        # NOT "activity_log" — an old, unrelated feature already used that
+        # collection name in the live database with a completely different
+        # schema (user_role/icon/color/user_name/action_type), and without
+        # strict=False this model crashes trying to read those documents.
+        'collection': 'dashboard_activity_log',
         'indexes': ['-created_at'],
         'ordering': ['-created_at'],
     }
