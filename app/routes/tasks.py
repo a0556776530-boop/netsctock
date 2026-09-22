@@ -82,6 +82,8 @@ def new_task():
             notes=(form.notes.data or '').strip() or None,
         )
         task.save()
+        from app.utils.activity import log_activity
+        log_activity('task_created', task.title, current_user)
         flash(t.get('flash_task_created', 'Task created successfully.'), 'success')
         return redirect(url_for('tasks.list_tasks'))
 

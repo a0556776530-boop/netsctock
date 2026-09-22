@@ -295,6 +295,8 @@ def new_asset():
             flash(t.get('flash_asset_duplicate_generic', 'Another asset already uses that Product ID.'), 'danger')
             return redirect(url_for('assets.new_asset'))
         log_event(asset, 'created', current_user, notes=f'Asset registered. Status: {asset.status_label}')
+        from app.utils.activity import log_activity
+        log_activity('asset_created', asset.serial_number, current_user)
         flash(t.get('flash_asset_created', '{sn} registered successfully.').format(sn=asset.serial_number), 'success')
         return redirect(url_for('assets.list_assets'))
 

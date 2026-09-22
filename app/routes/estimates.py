@@ -296,6 +296,13 @@ def new_estimate():
                 return redirect(url_for('estimates.new_estimate'))
         _invalidate_list_cache()
 
+        from app.utils.activity import log_activity
+        log_activity(
+            'estimate_created' if record_type == 'estimate' else 'allocation_created',
+            f'{task_name} (#{estimate.allocation_number})',
+            current_user,
+        )
+
         if selected_pool:
             amount = round(total_nis, 2) if selected_pool.currency == 'ILS' else round(total_nis / float(usd_rate), 2)
             selected_pool.transactions.append(PoolTransaction(

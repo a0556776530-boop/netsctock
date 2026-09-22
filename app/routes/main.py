@@ -1,4 +1,3 @@
-import json
 import types
 from datetime import date, timedelta, datetime
 from urllib.parse import urlparse
@@ -12,15 +11,6 @@ from app.models.asset import Asset
 from app.models.task import Task
 
 main_bp = Blueprint('main', __name__)
-
-_STATUS_COLORS = {
-    'in_use': '#198754', 'in_storage': '#0dcaf0',
-    'assigned': '#0d6efd', 'faulty': '#dc3545',
-}
-_STATUS_LABELS = {
-    'in_use': 'In Use', 'in_storage': 'In Storage',
-    'assigned': 'Assigned', 'faulty': 'Faulty',
-}
 
 
 @main_bp.route('/sw.js')
@@ -171,10 +161,6 @@ def _dashboard_data():
     pending_allocations_count= Estimate.objects(Q(status='pending') & Q(record_type__ne='estimate')).count()
     open_purchases_count     = Purchase.objects(status__in=ACTIVE_STATUSES).count()
 
-    status_counts = {r['_id']: r['count']
-                     for r in Asset._get_collection().aggregate([
-                         {'$group': {'_id': '$status', 'count': {'$sum': 1}}}]) if r['_id']}
-
     dash_commitments = {str(r['_id']): r['total']
                         for r in Estimate._get_collection().aggregate([
                             {'$match': {'status': 'pending', 'record_type': {'$ne': 'estimate'}}},
@@ -241,7 +227,6 @@ def _dashboard_data():
         open_tasks_count=open_tasks_count,
         pending_allocations_count=pending_allocations_count,
         open_purchases_count=open_purchases_count,
-        status_counts=status_counts,
         low_stock_raw=low_stock_raw,
         red_line_count=red_line_count,
         purchases_pipeline=purchases_pipeline,
@@ -299,18 +284,12 @@ def dashboard():
     from app.routes.tasks import _user_photos
     user_photos = _user_photos()
 
-    # ── Charts ────────────────────────────────────────────────────────────────
-    sc = _d['status_counts']
-    all_statuses = ['in_use', 'in_storage', 'assigned', 'faulty']
-    status_chart = json.dumps({
-        'labels': [_STATUS_LABELS[s] for s in all_statuses],
-        'data':   [sc.get(s, 0) for s in all_statuses],
-        'colors': [_STATUS_COLORS[s] for s in all_statuses],
-    })
+    # ── Recent activity feed ────────────────────────────────────────────────
+    from app.models.activity import ActivityLog
+    recent_activity = list(ActivityLog.objects.limit(10))
 
     return render_template('dashboard.html',
         total_assets=_d['total_assets'],
-        status_counts=sc,
         open_tasks_count=_d['open_tasks_count'],
         pending_allocations_count=_d['pending_allocations_count'],
         open_purchases_count=_d['open_purchases_count'],
@@ -323,5 +302,60 @@ def dashboard():
         user_photos=user_photos,
         now_utc=now_utc,
         today=today,
-        status_chart=status_chart,
+        recent_activity=recent_activity,
+    )
+
+
+@main_bp.route('/activity/export')
+@login_required
+def export_activity():
+    import io
+    from flask import Response
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from app.models.activity import ActivityLog
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'פעילות'
+    ws.sheet_view.rightToLeft = True
+
+    headers = ['תאריך ושעה', 'פעולה', 'פירוט', 'בוצע ע"י']
+    ws.append(headers)
+
+    header_fill = PatternFill('solid', fgColor='1e293b')
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    center = Alignment(horizontal='center', vertical='center')
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center
+
+    def _safe(v):
+        s = str(v) if v else ''
+        return ("'" + s) if s and s[0] in ('=', '+', '-', '@', '\t', '\r') else s
+
+    for a in ActivityLog.objects.order_by('-created_at'):
+        ws.append([
+            a.created_at.strftime('%d/%m/%Y %H:%M') if a.created_at else '',
+            _safe(a.action_label),
+            _safe(a.description),
+            _safe(a.performed_by),
+        ])
+
+    for col in ws.columns:
+        max_len = max((len(str(cell.value or '')) for cell in col), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 6, 40)
+        for cell in col[1:]:
+            cell.alignment = center
+
+    ws.row_dimensions[1].height = 24
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return Response(
+        buf.read(),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': 'attachment; filename="activity_history.xlsx"'}
     )
