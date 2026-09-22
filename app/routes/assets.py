@@ -13,8 +13,6 @@ from collections import defaultdict
 from mongoengine.errors import NotUniqueError
 from app.models.asset import Asset, AssetType, AssetEvent
 from app.models.purchase import Purchase, ACTIVE_STATUSES
-from app.models.site import Site
-from app.models.user import User
 from app.utils.events import log_event
 from app.utils.translations import localize_form
 from app.utils.mongo_helpers import get_or_404
@@ -96,15 +94,6 @@ def _fetch_assets_unfiltered(sort_field, order):
     return list(qs.select_related())
 
 
-@cache.memoize(timeout=60)
-def _site_choices():
-    return [('', '— None —')] + [(str(s.id), s.name) for s in Site.objects.only('id', 'name').order_by('name')]
-
-
-@cache.memoize(timeout=60)
-def _user_choices():
-    return [('', '— None —')] + [(str(u.id), u.name) for u in User.objects.only('id', 'name').order_by('name')]
-
 
 @cache.memoize(timeout=60)
 def _type_choices():
@@ -134,35 +123,6 @@ class AssetForm(FlaskForm):
 
     def populate_choices(self):
         self.asset_type_id.choices = _type_choices()
-
-
-class AssignForm(FlaskForm):
-    assigned_to_id = SelectField('Assign To',      coerce=str, validators=[DataRequired()])
-    to_site_id     = SelectField('Deploy to Site', coerce=str, validators=[Optional()])
-    notes          = TextAreaField('Notes',        validators=[Optional()])
-    submit         = SubmitField('Confirm Assignment')
-
-    def populate_choices(self):
-        self.assigned_to_id.choices = [(uid, uname) for uid, uname in _user_choices() if uid]
-        self.to_site_id.choices     = _site_choices()
-
-
-class MoveForm(FlaskForm):
-    to_site_id = SelectField('Move to Site', coerce=str, validators=[DataRequired()])
-    notes      = TextAreaField('Notes',      validators=[Optional()])
-    submit     = SubmitField('Confirm Move')
-
-    def populate_choices(self):
-        self.to_site_id.choices = [(sid, sname) for sid, sname in _site_choices() if sid]
-
-
-class ReturnForm(FlaskForm):
-    to_site_id = SelectField('Return to Site (Storage)', coerce=str, validators=[Optional()])
-    notes      = TextAreaField('Notes', validators=[Optional()])
-    submit     = SubmitField('Confirm Return')
-
-    def populate_choices(self):
-        self.to_site_id.choices = _site_choices()
 
 
 # ── List ─────────────────────────────────────────────────────────────────────
@@ -413,108 +373,6 @@ def edit(id):
 
     return render_template('assets/form.html', form=form, asset=asset,
                            title=t.get('form_title_edit_asset', 'Edit Asset'))
-
-
-# ── Actions ──────────────────────────────────────────────────────────────────
-
-
-@assets_bp.route('/<id>/assign', methods=['POST'])
-@login_required
-def assign(id):
-    if not current_user.can_edit:
-        abort(403)
-    t = getattr(g, 't', {})
-    asset = get_or_404(Asset, id)
-    form  = AssignForm(prefix='assign')
-    form.populate_choices()
-
-    if form.validate_on_submit():
-        to_site  = Site.objects(id=form.to_site_id.data).first() if form.to_site_id.data else None
-        prev_site = asset.current_site
-        assignee  = User.objects(id=form.assigned_to_id.data).first()
-        asset.status       = 'assigned'
-        asset.assignee     = assignee
-        if to_site:
-            asset.current_site = to_site
-        asset.save()
-        log_event(asset, 'assigned', current_user, from_site=prev_site, to_site=to_site,
-                  notes=(form.notes.data or '').strip() or None)
-        flash(t.get('flash_assigned', '{sn} assigned successfully.').format(sn=asset.serial_number), 'success')
-
-    else:
-        flash(t.get('flash_form_error', 'Form error. Please try again.'), 'danger')
-
-    return redirect(url_for('assets.detail', id=str(asset.id)))
-
-
-@assets_bp.route('/<id>/move', methods=['POST'])
-@login_required
-def move(id):
-    if not current_user.can_edit:
-        abort(403)
-    t = getattr(g, 't', {})
-    asset = get_or_404(Asset, id)
-    form  = MoveForm(prefix='move')
-    form.populate_choices()
-
-    if form.validate_on_submit():
-        to_site   = get_or_404(Site, form.to_site_id.data)
-        prev_site = asset.current_site
-        asset.current_site = to_site
-        asset.save()
-        log_event(asset, 'moved', current_user, from_site=prev_site, to_site=to_site,
-                  notes=(form.notes.data or '').strip() or None)
-        flash(t.get('flash_moved', '{sn} moved to {site}.').format(sn=asset.serial_number, site=to_site.name), 'success')
-    else:
-        flash(t.get('flash_form_error', 'Form error. Please try again.'), 'danger')
-
-    return redirect(url_for('assets.detail', id=str(asset.id)))
-
-
-@assets_bp.route('/<id>/return', methods=['POST'])
-@login_required
-def return_asset(id):
-    if not current_user.can_edit:
-        abort(403)
-    t = getattr(g, 't', {})
-    asset = get_or_404(Asset, id)
-    form  = ReturnForm(prefix='ret')
-    form.populate_choices()
-
-    if form.validate_on_submit():
-        to_site   = Site.objects(id=form.to_site_id.data).first() if form.to_site_id.data else None
-        prev_site = asset.current_site
-        asset.status   = 'in_storage'
-        asset.assignee = None
-        if to_site:
-            asset.current_site = to_site
-        asset.save()
-        log_event(asset, 'returned', current_user, from_site=prev_site, to_site=to_site,
-                  notes=(form.notes.data or '').strip() or None)
-        flash(t.get('flash_returned', '{sn} returned to storage.').format(sn=asset.serial_number), 'info')
-    else:
-        flash(t.get('flash_form_error', 'Form error. Please try again.'), 'danger')
-
-    return redirect(url_for('assets.detail', id=str(asset.id)))
-
-
-
-
-@assets_bp.route('/<id>/qty', methods=['POST'])
-@login_required
-def update_qty(id):
-    if not current_user.can_edit:
-        abort(403)
-
-    asset = get_or_404(Asset, id)
-    data  = request.get_json(force=True) or {}
-    try:
-        delta = int(data.get('delta', 0))
-    except (ValueError, TypeError):
-        return jsonify({'ok': False, 'error': 'Invalid delta value'}), 400
-    asset.quantity = max(0, (asset.quantity or 0) + delta)
-    asset.save()
-    return jsonify(qty=asset.quantity)
 
 
 @assets_bp.route('/<id>/delete', methods=['POST'])

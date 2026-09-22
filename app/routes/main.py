@@ -121,14 +121,6 @@ def user_activity_api():
     return jsonify(payload)
 
 
-@main_bp.route('/api/rate')
-@login_required
-def exchange_rate():
-    from app.utils.exchange import get_usd_to_nis
-    rate = get_usd_to_nis()
-    return jsonify({'rate': rate, 'base': 'USD', 'target': 'ILS'})
-
-
 @main_bp.route('/api/settings', methods=['GET'])
 @login_required
 def get_settings():

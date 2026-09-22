@@ -113,7 +113,6 @@ def create_app(config_class=Config):
             'lang': getattr(g, 'lang', 'en'),
             'dir_html': getattr(g, 'dir_html', 'ltr'),
             't': getattr(g, 't', TRANSLATIONS['en']),
-            'unread_total': 0,
         }
 
     from .seed import register_commands

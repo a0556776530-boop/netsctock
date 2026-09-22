@@ -523,18 +523,6 @@ def export_csv(id):
                     headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
 
-@estimates_bp.route('/<id>/warehouse-receive', methods=['POST'])
-@login_required
-def warehouse_receive(id):
-    if not current_user.is_warehouse and not current_user.is_admin:
-        abort(403)
-    estimate = get_or_404(Estimate, id)
-    estimate.warehouse_status = 'received'
-    estimate.save()
-    flash('ההזמנה סומנה כהתקבלה.', 'success')
-    return redirect(url_for('estimates.detail', id=str(estimate.id)))
-
-
 @estimates_bp.route('/<id>/warehouse-complete', methods=['POST'])
 @login_required
 def warehouse_complete(id):
