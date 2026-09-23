@@ -87,10 +87,19 @@ def _global_settings_json():
     return AppSetting.all_as_dict()
 
 
+def _ordered(qs, sort_field, order):
+    """'created_at' (the default) respects manual drag-and-drop position first,
+    falling back to creation order for anything never dragged. Any other explicit
+    column sort (price, quantity, ...) ignores manual order, as expected."""
+    if sort_field == 'created_at':
+        return qs.order_by('sort_order', '-created_at')
+    return qs.order_by(sort_field if order == 'asc' else f'-{sort_field}')
+
+
 @cache.memoize(timeout=45)
 def _fetch_assets_unfiltered(sort_field, order):
     """Full assets list — photo excluded (fetched lazily per-asset via /assets/<id>/photo)."""
-    qs = Asset.objects.exclude('photo').order_by(sort_field if order == 'asc' else f'-{sort_field}')
+    qs = _ordered(Asset.objects.exclude('photo'), sort_field, order)
     return list(qs.select_related())
 
 
@@ -161,7 +170,7 @@ def list_assets():
         'quantity': 'quantity',
     }
     sort_field = sort_map.get(sort, 'created_at')
-    qs = qs.order_by(sort_field if order == 'asc' else f'-{sort_field}')
+    qs = _ordered(qs, sort_field, order)
 
     if not q and not status_filter and not type_filter:
         assets = _fetch_assets_unfiltered(sort_field, order)
@@ -417,6 +426,47 @@ def delete(id):
     asset.delete()
     flash(t.get('flash_retired', '{sn} deleted.').format(sn=sn), 'danger')
     return redirect(url_for('assets.list_assets'))
+
+
+# ── Drag-and-drop reorder ──────────────────────────────────────────────────
+
+@assets_bp.route('/reorder', methods=['POST'])
+@login_required
+def reorder_assets():
+    """Called after a drag-and-drop drop on the assets list. Payload is the
+    DESTINATION group's full new row order — covers both a same-category
+    reorder and a cross-category move in a single call (the source category's
+    remaining rows keep their relative order untouched, so nothing to send for it)."""
+    if not current_user.can_edit:
+        abort(403)
+
+    data = request.get_json(silent=True) or {}
+    group = (data.get('group') or '').strip()
+    ordered_ids = data.get('ordered_ids')
+    if not isinstance(ordered_ids, list) or not ordered_ids:
+        return jsonify({'ok': False, 'error': 'Invalid payload'}), 400
+
+    from bson import ObjectId
+    from bson.errors import InvalidId
+
+    asset_type = None
+    if group and group != 'Other':
+        asset_type = AssetType.objects(name=group).first()
+        if not asset_type:
+            return jsonify({'ok': False, 'error': 'Unknown category'}), 400
+
+    for idx, raw_id in enumerate(ordered_ids[:2000]):
+        try:
+            oid = ObjectId(raw_id)
+        except InvalidId:
+            continue
+        if asset_type is not None:
+            Asset.objects(id=oid).update(set__sort_order=idx, set__asset_type=asset_type)
+        else:
+            Asset.objects(id=oid).update(set__sort_order=idx, unset__asset_type=1)
+
+    cache.delete_memoized(_fetch_assets_unfiltered)
+    return jsonify({'ok': True})
 
 
 # ── CSV quantity import ───────────────────────────────────────────────────────

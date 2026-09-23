@@ -236,6 +236,7 @@
               <th style="width:2.2rem;">
                 <input type="checkbox" class="form-check-input" id="selectAllAssets">
               </th>
+              <th style="width:1.8rem;"></th>
               {% endif %}
               <!-- 1. Asset ID -->
               <th>
@@ -310,10 +311,10 @@
             </tr>
           </thead>
 
-          <tbody>
-            {% for group_label, group_assets in grouped_assets %}
+          {% for group_label, group_assets in grouped_assets %}
+          <tbody class="asset-group-body" data-group="{{ group_label }}">
             <tr class="table-light" data-group-row="{{ group_label }}">
-              <td colspan="{{ 12 if current_user.can_edit else 11 }}" class="py-2 px-3 border-top border-2">
+              <td colspan="{{ 13 if current_user.can_edit else 11 }}" class="py-2 px-3 border-top border-2">
                 <span class="fw-semibold small">{{ group_label }}</span>
                 <span class="badge bg-secondary bg-opacity-25 text-secondary ms-2" data-group-count="{{ group_label }}">{{ group_assets | length }}</span>
               </td>
@@ -334,6 +335,7 @@
             {% endif %}
             <tr data-asset-row="1"
                 data-group="{{ group_label }}"
+                data-asset-id="{{ asset.id }}"
                 data-q="{{ ((asset.component_id or '') ~ ' ' ~ asset.serial_number ~ ' ' ~ (asset.model or '') ~ ' ' ~ (asset.manufacturer or '') ~ ' ' ~ (asset.barcode or '')) | lower }}"
                 data-status="{{ asset.status }}"
                 data-type="{{ asset._resolved_type_id }}"
@@ -361,6 +363,9 @@
               {% if current_user.can_edit %}
               <td onclick="event.stopPropagation();">
                 <input type="checkbox" class="form-check-input asset-check" value="{{ asset.id }}">
+              </td>
+              <td class="text-center drag-handle" style="cursor:grab;" title="{{ t.get('drag_to_reorder', 'גרור כדי לסדר מחדש או להעביר לקטגוריה אחרת') }}" onclick="event.stopPropagation();">
+                <i class="bi bi-grip-vertical text-muted"></i>
               </td>
               {% endif %}
               <!-- 1. Asset ID -->
@@ -476,17 +481,20 @@
               </td>
             </tr>
             {% endfor %}
-
+          </tbody>
             {% else %}
+          <tbody>
             <tr id="serverEmptyRow">
-              <td colspan="{{ 12 if current_user.can_edit else 11 }}" class="text-center text-muted py-5">
+              <td colspan="{{ 13 if current_user.can_edit else 11 }}" class="text-center text-muted py-5">
                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                 {{ t.no_assets_found }} <a href="{{ url_for('assets.new_asset') }}">{{ t.register_one_link }}</a>
               </td>
             </tr>
+          </tbody>
             {% endfor %}
+          <tbody>
             <tr id="noResultsRow" style="display:none">
-              <td colspan="{{ 12 if current_user.can_edit else 11 }}" class="text-center text-muted py-5">
+              <td colspan="{{ 13 if current_user.can_edit else 11 }}" class="text-center text-muted py-5">
                 <i class="bi bi-search fs-3 d-block mb-2 opacity-50"></i>
                 <span>{{ t.no_assets_found }}</span>
               </td>
@@ -616,6 +624,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='vendor/sortable.min.js') }}"></script>
 <script>
 (function () {
   // ── Translation strings ───────────────────────────────────────────────────
@@ -1194,6 +1203,63 @@
     lightboxClose.addEventListener('click', function (e) { e.stopPropagation(); closeLightbox(); });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeLightbox();
+    });
+  })();
+
+  // ── Drag-and-drop reorder / move between categories ─────────────────────────
+  (function () {
+    if (!canEdit || typeof Sortable === 'undefined') return;
+
+    function collectIds(tbody) {
+      return Array.prototype.map.call(
+        tbody.querySelectorAll('tr[data-asset-row]'),
+        function (r) { return r.getAttribute('data-asset-id'); }
+      );
+    }
+
+    function updateGroupCount(tbody) {
+      var header = tbody.querySelector('tr[data-group-row]');
+      var badge  = header && header.querySelector('[data-group-count]');
+      if (badge) badge.textContent = tbody.querySelectorAll('tr[data-asset-row]').length;
+    }
+
+    document.querySelectorAll('tbody.asset-group-body').forEach(function (tbody) {
+      new Sortable(tbody, {
+        group: 'netstock-assets',
+        handle: '.drag-handle',
+        animation: 150,
+        filter: 'tr[data-group-row]',
+        preventOnFilter: true,
+        onMove: function (evt) {
+          // never allow dropping above the category header row
+          if (evt.related && evt.related.hasAttribute && evt.related.hasAttribute('data-group-row') && !evt.willInsertAfter) {
+            return false;
+          }
+          return true;
+        },
+        onEnd: function (evt) {
+          var fromBody = evt.from;
+          var toBody   = evt.to;
+          var newGroup = toBody.getAttribute('data-group');
+
+          evt.item.setAttribute('data-group', newGroup);
+          updateGroupCount(toBody);
+          if (fromBody !== toBody) updateGroupCount(fromBody);
+
+          var orderedIds = collectIds(toBody);
+          if (!orderedIds.length) return;
+
+          fetch('{{ url_for("assets.reorder_assets") }}', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body:    JSON.stringify({ group: newGroup, ordered_ids: orderedIds }),
+          }).then(function (res) {
+            if (!res.ok) throw new Error('save failed');
+          }).catch(function () {
+            alert('שגיאה בשמירת הסדר החדש — רענן את הדף ונסה שוב.');
+          });
+        },
+      });
     });
   })();
 })();

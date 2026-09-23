@@ -53,6 +53,7 @@ class Asset(me.Document):
     min_threshold  = me.IntField()
     photo          = me.StringField()
     specs          = me.DictField()
+    sort_order     = me.IntField()  # manual drag-and-drop position within its category; unset = falls back to created_at
     created_at     = me.DateTimeField(default=datetime.utcnow)
     updated_at     = me.DateTimeField(default=datetime.utcnow)
 
