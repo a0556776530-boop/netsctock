@@ -225,6 +225,38 @@
         background: #212529;
         box-shadow: 0 2px 4px rgba(0,0,0,.3);
       }
+
+      /* ── Drag-and-drop feedback ── */
+      .drag-handle:active { cursor: grabbing; }
+
+      /* The row left behind at the source position while its clone follows the cursor */
+      tr.asset-drag-source { opacity: .35; }
+
+      /* The floating clone that follows the cursor (forceFallback mode) */
+      tr.asset-drag-clone {
+        box-shadow: 0 12px 28px rgba(0,0,0,.28);
+        opacity: .96;
+        z-index: 10000;
+        background: #fff !important;
+        border-radius: 6px;
+      }
+
+      /* Drop-position indicator — a thin colored line instead of a full ghost row */
+      tr.asset-drop-ghost { background: transparent !important; }
+      tr.asset-drop-ghost td {
+        padding-top: 0; padding-bottom: 0; height: 3px; line-height: 0;
+        background: #0d6efd !important;
+        border: none !important;
+        visibility: visible !important;
+      }
+      tr.asset-drop-ghost td * { visibility: hidden; }
+
+      /* Category header highlighted while a dragged row hovers over its group */
+      tr[data-group-row].drop-target-active td {
+        background: #cfe2ff !important;
+        box-shadow: inset 0 0 0 2px #0d6efd;
+        transition: background .12s, box-shadow .12s;
+      }
     </style>
     <div class="card border-0 shadow-sm">
       <div class="table-responsive"
@@ -619,6 +651,16 @@
     transition:background .15s;
   " onmouseover="this.style.background='#e63946'"
      onmouseout="this.style.background='#1b2a3b'">✕</button>
+</div>
+
+<!-- ── Drag-and-drop error toast ──────────────────────────────────────────── -->
+<div class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index:100000;">
+  <div id="dragErrorToast" class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="dragErrorToastBody"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
@@ -1223,26 +1265,53 @@
       if (badge) badge.textContent = tbody.querySelectorAll('tr[data-asset-row]').length;
     }
 
+    function showErrorToast(msg) {
+      var el = document.getElementById('dragErrorToast');
+      if (!el || typeof bootstrap === 'undefined') { alert(msg); return; }
+      document.getElementById('dragErrorToastBody').textContent = msg;
+      bootstrap.Toast.getOrCreateInstance(el, { delay: 4500 }).show();
+    }
+
+    // Category-header highlight while a dragged row hovers over that group
+    var activeHeader = null;
+    function setDropTarget(tbody) {
+      var header = tbody && tbody.querySelector('tr[data-group-row]');
+      if (header === activeHeader) return;
+      if (activeHeader) activeHeader.classList.remove('drop-target-active');
+      if (header) header.classList.add('drop-target-active');
+      activeHeader = header;
+    }
+    function clearDropTarget() {
+      if (activeHeader) activeHeader.classList.remove('drop-target-active');
+      activeHeader = null;
+    }
+
     document.querySelectorAll('tbody.asset-group-body').forEach(function (tbody) {
       new Sortable(tbody, {
         group: 'netstock-assets',
         handle: '.drag-handle',
-        animation: 150,
-        filter: 'tr[data-group-row]',
-        preventOnFilter: true,
+        draggable: 'tr[data-asset-row]',   // only asset rows are sortable units — header stays fixed in place
+        animation: 180,
+        forceFallback: true,               // gives us a real, styleable floating clone instead of the native browser drag image
+        fallbackOnBody: true,
+        swapThreshold: 0.65,
+        chosenClass: 'asset-drag-source',  // the row left behind at the origin, faded
+        dragClass:   'asset-drag-clone',   // the floating clone following the cursor — shadow + elevation
+        ghostClass:  'asset-drop-ghost',   // the drop-position placeholder — rendered as a thin line
         onMove: function (evt) {
-          // never allow dropping above the category header row
-          if (evt.related && evt.related.hasAttribute && evt.related.hasAttribute('data-group-row') && !evt.willInsertAfter) {
-            return false;
-          }
+          setDropTarget(evt.to);
           return true;
         },
         onEnd: function (evt) {
+          clearDropTarget();
+
           var fromBody = evt.from;
           var toBody   = evt.to;
+          var item     = evt.item;
           var newGroup = toBody.getAttribute('data-group');
+          var oldIndex = evt.oldIndex;
 
-          evt.item.setAttribute('data-group', newGroup);
+          item.setAttribute('data-group', newGroup);
           updateGroupCount(toBody);
           if (fromBody !== toBody) updateGroupCount(fromBody);
 
@@ -1256,7 +1325,14 @@
           }).then(function (res) {
             if (!res.ok) throw new Error('save failed');
           }).catch(function () {
-            alert('שגיאה בשמירת הסדר החדש — רענן את הדף ונסה שוב.');
+            // Roll back the DOM to exactly where the row was before this drag
+            var rows = fromBody.querySelectorAll('tr[data-asset-row]');
+            var ref  = rows[oldIndex] || null;
+            fromBody.insertBefore(item, ref);
+            item.setAttribute('data-group', fromBody.getAttribute('data-group'));
+            updateGroupCount(fromBody);
+            if (toBody !== fromBody) updateGroupCount(toBody);
+            showErrorToast('שגיאה בשמירת הסדר החדש — הפעולה בוטלה.');
           });
         },
       });
