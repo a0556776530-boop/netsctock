@@ -21,7 +21,7 @@ from app.utils.cache import cache
 assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
 
 CATEGORY_ORDER = [
-    'Routers', 'Aggregation', 'Access switches', 'Sfp', 'Cards',
+    'Routers', 'Core Router', 'Aggregation', 'Access switches', 'Sfp', 'Cards',
     'Power supplies', 'Power cords', 'Console cables',
 ]
 CATEGORY_LABELS = {c: c for c in CATEGORY_ORDER}
